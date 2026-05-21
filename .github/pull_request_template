@@ -1,0 +1,52 @@
+# Pull Request Title
+<!-- 请填写相应Title，例如："修复了 Issue #123 的 Bug" 或 "添加了新功能：用户注册"。 -->
+## 📝 Description
+<!-- 请简要描述本次更改的内容。 -->
+- 这里描述你对代码的更改内容
+- 例如：修复了某个 Bug 或添加了新功能
+- 引用了相关的 Issue 编号（例如：`Closes #123`）
+# 🛠 提交类型 (Type)
+- [ ] ✨ 新功能 (Feature)
+- [ ] 🐛 Bug 修复 (Fix)
+- [ ] ♻️ 代码重构 (Refactor)
+- [ ] 📚 文档更新 (Docs)
+- [ ] 🚀 性能优化 (Perf)
+
+## 📝 变更背景 (Context)
+<!-- 请列出所有相关的 Issue，并使用 "Closes #issue_number" 自动关闭相关 Issue。 -->
+- Closes #issue_number
+- Related to #issue_number
+
+## ✅ 代码自检清单 (Self Check)
+- [ ] 我已在本地运行并通过了基础测试。
+- [ ] **NPE 防御**：所有对象调用前已做判空处理 (e.g., `Optional` or `if (obj != null)`).
+- [ ] **性能红线**：没有在 `for` 循环中进行数据库查询。
+- [ ] **日志规范**：异常捕获块中打印了错误日志 `log.error(...)`。
+- [ ] **Swagger/Knife4j/Apifox 文档已更新**，且与代码实现一致。
+- [ ] **数据结构检查**：没有直接返回 `null`，而是使用了 `CommonResult<T>` 包装。
+- [ ] **字段命名检查**：返回给前端的字段名符合约定（如 `user_id` vs `userId`）。
+- [ ] 代码风格符合团队规范（无无用的 import，变量命名清晰）。
+
+
+## 🛠️ How Has This Been Tested?
+
+<!-- 请描述你是如何测试本次更改的。 -->
+- [ ] 通过单元测试
+- [ ] 通过集成测试
+- [ ] 手动测试
+  - 测试步骤 1
+  - 测试步骤 2
+
+## 📸 截图/日志 (Screenshots/Logs)
+<!-- 如有必要，请提供截图以帮助理解更改。 -->
+
+## ⚠️ Attention
+
+<!-- 提醒评审人员注意的地方，或者当前请求的潜在问题。 -->
+- 请特别注意某个模块或功能
+- 有任何未解决的冲突或问题，请在此说明
+
+## 💡 Additional Notes
+
+<!-- 提供任何额外的背景信息或评论。 -->
+- 这里可以添加额外的信息
