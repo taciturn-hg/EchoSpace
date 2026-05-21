@@ -493,7 +493,8 @@ EchoSpace/
 | jjwt-impl | 0.12.x | JWT 实现（runtime 必需） |
 | jjwt-jackson | 0.12.x | JWT JSON 序列化（runtime 必需） |
 | elasticsearch-java | 8.x | Elasticsearch 8.x 新版 Java 客户端 |
-| minio | 8.x | MinIO 对象存储客户端（兼容 S3） |
+| minio | 8.x | MinIO 对象存储客户端（第一阶段） |
+| aliyun-sdk-oss | 3.x | 阿里云 OSS 对象存储客户端（第二阶段） |
 | jsoup | 1.18.x | HTML 白名单清洗 + 纯文本提取 |
 | flyway-core | — | 数据库版本迁移 |
 | flyway-mysql | — | Flyway MySQL 8.0 支持 |
@@ -503,18 +504,31 @@ EchoSpace/
 
 ### 前端（package.json 核心依赖）
 
+**Vue 脚手架自带**（`npm create vue@latest` 勾选后自动安装）：
+
 | 依赖 | 版本 | 说明 |
 |------|------|------|
 | Vue | 3.4.x | 前端框架 |
 | Vue Router | 4.x | 前端路由 |
 | Pinia | 2.x | 状态管理 |
+| Vite | 5.x | 构建工具（devDependency） |
+
+**需手动安装**（`npm install`）：
+
+| 依赖 | 版本 | 说明 |
+|------|------|------|
 | Axios | — | HTTP 请求 |
 | Element Plus | 2.x | UI 组件库 |
 | @tiptap/vue-3 | — | Tiptap Vue 3 集成 |
 | @tiptap/starter-kit | — | Tiptap 基础扩展包 |
 | @tiptap/extension-image | — | Tiptap 图片扩展 |
 | DOMPurify | — | 前端 XSS 过滤（渲染前最后一道防线） |
-| Vite | 5.x | 构建工具（devDependency） |
+
+> **注意**：DOMPurify 安装后不会自动生效，需在渲染富文本 HTML 的组件中手动调用：
+> ```js
+> import DOMPurify from 'dompurify';
+> const sanitizedHTML = DOMPurify.sanitize(contentHtml);
+> ```
 
 ---
 
