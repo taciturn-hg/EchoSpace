@@ -50,7 +50,7 @@ result.interceptors.response.use(
     // 已有刷新在进行中，等它完成
     if (store.refreshingPromise) {
       await store.refreshingPromise
-      error.config.headers.Authorization = `Bearer ${store.token}`
+      error.config.headers.set('Authorization', `Bearer ${store.token}`)
       return result(error.config)
     }
 
@@ -85,7 +85,7 @@ result.interceptors.response.use(
 
     if (!store.token) return Promise.reject(error)
 
-    error.config.headers.Authorization = `Bearer ${store.token}`
+    error.config.headers.set('Authorization', `Bearer ${store.token}`)
     return result(error.config)
   },
 )

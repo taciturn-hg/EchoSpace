@@ -5,7 +5,7 @@
 - **Base URL**：`http://localhost:8080/api`
 - **认证方式**：除注册/登录/刷新Token外，所有接口请求头须携带 `Authorization: Bearer {accessToken}`
 - **统一响应码**：`code` 为 1 代表成功，0 代表失败
-- **分页响应**中 `data` 为对象，包含 `records`（数组）、`total`（总记录数）、`page`（当前页）、`size`（每页条数）
+- **分页响应**中 `data` 为对象，包含 `records`（数组）、`total`（总记录数）、`current`（当前页）、`size`（每页条数）
 
 ---
 
@@ -515,14 +515,14 @@
 
 | 参数名 | 类型 | 是否必须 | 默认值 | 备注 |
 |--------|------|----------|--------|------|
-| page | number | 非必须 | 1 | 页码 |
+| current | number | 非必须 | 1 | 页码 |
 | size | number | 非必须 | 10 | 每页条数 |
 | sort | string | 非必须 | created_at | 排序字段：created_at(最新) / like_count(最热) |
 
 请求参数样例：
 
 ```
-/api/users/1/posts?page=1&size=10&sort=created_at
+/api/users/1/posts?current=1&size=10&sort=created_at
 ```
 
 #### 2.5.3 响应数据
@@ -537,7 +537,7 @@
 | msg | string | 非必须 | 提示信息 |
 | data | object | 非必须 | 返回的数据 |
 | \|- total | number | 必须 | 总记录数 |
-| \|- page | number | 必须 | 当前页码 |
+| \|- current | number | 必须 | 当前页码 |
 | \|- size | number | 必须 | 每页条数 |
 | \|- records | object[] | 必须 | 帖子列表 |
 | \|- records[].id | number | 必须 | 帖子ID |
@@ -565,7 +565,7 @@
       }
     ],
     "total": 25,
-    "page": 1,
+    "current": 1,
     "size": 10
   }
 }
@@ -644,13 +644,13 @@
 
 | 参数名 | 类型 | 是否必须 | 默认值 | 备注 |
 |--------|------|----------|--------|------|
-| page | number | 非必须 | 1 | 页码 |
+| current | number | 非必须 | 1 | 页码 |
 | size | number | 非必须 | 10 | 每页条数 |
 
 请求参数样例：
 
 ```
-/api/users/1/followers?page=1&size=10
+/api/users/1/followers?current=1&size=10
 ```
 
 #### 2.7.3 响应数据
@@ -665,7 +665,7 @@
 | msg | string | 非必须 | 提示信息 |
 | data | object | 非必须 | 返回的数据 |
 | \|- total | number | 必须 | 总记录数 |
-| \|- page | number | 必须 | 当前页码 |
+| \|- current | number | 必须 | 当前页码 |
 | \|- size | number | 必须 | 每页条数 |
 | \|- records | object[] | 必须 | 粉丝列表 |
 | \|- records[].id | number | 必须 | 用户ID |
@@ -689,7 +689,7 @@
       }
     ],
     "total": 128,
-    "page": 1,
+    "current": 1,
     "size": 10
   }
 }
@@ -723,7 +723,7 @@
 
 | 参数名 | 类型 | 是否必须 | 默认值 | 备注 |
 |--------|------|----------|--------|------|
-| page | number | 非必须 | 1 | 页码 |
+| current | number | 非必须 | 1 | 页码 |
 | size | number | 非必须 | 10 | 每页条数 |
 
 #### 2.8.3 响应数据
@@ -738,7 +738,7 @@
 | msg | string | 非必须 | 提示信息 |
 | data | object | 非必须 | 返回的数据 |
 | \|- total | number | 必须 | 总记录数 |
-| \|- page | number | 必须 | 当前页码 |
+| \|- current | number | 必须 | 当前页码 |
 | \|- size | number | 必须 | 每页条数 |
 | \|- records | object[] | 必须 | 关注列表 |
 | \|- records[].id | number | 必须 | 用户ID |
@@ -762,7 +762,7 @@
       }
     ],
     "total": 56,
-    "page": 1,
+    "current": 1,
     "size": 10
   }
 }
@@ -1045,14 +1045,14 @@
 
 | 参数名 | 类型 | 是否必须 | 默认值 | 备注 |
 |--------|------|----------|--------|------|
-| page | number | 非必须 | 1 | 页码 |
+| current | number | 非必须 | 1 | 页码 |
 | size | number | 非必须 | 10 | 每页条数 |
 | sort | string | 非必须 | created_at | 排序：created_at(最新) / hot(热门) |
 
 请求参数样例：
 
 ```
-/api/posts?page=1&size=10&sort=created_at
+/api/posts?current=1&size=10&sort=created_at
 ```
 
 #### 3.5.3 响应数据
@@ -1067,7 +1067,7 @@
 | msg | string | 非必须 | 提示信息 |
 | data | object | 非必须 | 返回的数据 |
 | \|- total | number | 必须 | 总记录数 |
-| \|- page | number | 必须 | 当前页码 |
+| \|- current | number | 必须 | 当前页码 |
 | \|- size | number | 必须 | 每页条数 |
 | \|- records | object[] | 必须 | 帖子列表 |
 | \|- records[].id | number | 必须 | 帖子ID |
@@ -1110,7 +1110,7 @@
       }
     ],
     "total": 500,
-    "page": 1,
+    "current": 1,
     "size": 10
   }
 }
@@ -1227,13 +1227,13 @@
 
 | 参数名 | 类型 | 是否必须 | 默认值 | 备注 |
 |--------|------|----------|--------|------|
-| page | number | 非必须 | 1 | 页码 |
+| current | number | 非必须 | 1 | 页码 |
 | size | number | 非必须 | 10 | 每页条数 |
 
 请求参数样例：
 
 ```
-/api/posts/favorites?page=1&size=10
+/api/posts/favorites?current=1&size=10
 ```
 
 #### 3.8.3 响应数据
@@ -1263,14 +1263,14 @@
 | 参数名 | 类型 | 是否必须 | 默认值 | 备注 |
 |--------|------|----------|--------|------|
 | q | string | 必须 | — | 搜索关键词 |
-| page | number | 非必须 | 1 | 页码 |
+| current | number | 非必须 | 1 | 页码 |
 | size | number | 非必须 | 10 | 每页条数 |
 | sort | string | 非必须 | created_at | 排序：created_at(最新) / hot(最热) |
 
 请求参数样例：
 
 ```
-/api/posts/search?q=Spring Boot&page=1&size=10
+/api/posts/search?q=Spring Boot&current=1&size=10
 ```
 
 #### 3.9.3 响应数据
@@ -1285,7 +1285,7 @@
 | msg | string | 非必须 | 提示信息 |
 | data | object | 非必须 | 返回的数据 |
 | \|- total | number | 必须 | 总记录数 |
-| \|- page | number | 必须 | 当前页码 |
+| \|- current | number | 必须 | 当前页码 |
 | \|- size | number | 必须 | 每页条数 |
 | \|- records | object[] | 必须 | 搜索结果列表 |
 | \|- records[].id | number | 必须 | 帖子ID |
@@ -1330,7 +1330,7 @@
       }
     ],
     "total": 12,
-    "page": 1,
+    "current": 1,
     "size": 10
   }
 }
@@ -1442,14 +1442,14 @@
 
 | 参数名 | 类型 | 是否必须 | 默认值 | 备注 |
 |--------|------|----------|--------|------|
-| page | number | 非必须 | 1 | 一级评论页码 |
+| current | number | 非必须 | 1 | 一级评论页码 |
 | size | number | 非必须 | 10 | 每页一级评论条数 |
 | replySize | number | 非必须 | 3 | 每条一级评论下预加载的二级回复数 |
 
 请求参数样例：
 
 ```
-/api/posts/100/comments?page=1&size=10&replySize=3
+/api/posts/100/comments?current=1&size=10&replySize=3
 ```
 
 #### 4.2.3 响应数据
@@ -1464,7 +1464,7 @@
 | msg | string | 非必须 | 提示信息 |
 | data | object | 非必须 | 返回的数据 |
 | \|- total | number | 必须 | 一级评论总数 |
-| \|- page | number | 必须 | 当前页码 |
+| \|- current | number | 必须 | 当前页码 |
 | \|- size | number | 必须 | 每页一级评论条数 |
 | \|- records | object[] | 必须 | 一级评论列表 |
 | \|- records[].id | number | 必须 | 评论ID |
@@ -1542,7 +1542,7 @@
       }
     ],
     "total": 25,
-    "page": 1,
+    "current": 1,
     "size": 10
   }
 }
@@ -1576,13 +1576,13 @@
 
 | 参数名 | 类型 | 是否必须 | 默认值 | 备注 |
 |--------|------|----------|--------|------|
-| page | number | 非必须 | 1 | 页码 |
+| current | number | 非必须 | 1 | 页码 |
 | size | number | 非必须 | 10 | 每页条数 |
 
 请求参数样例：
 
 ```
-/api/comments/15/replies?page=1&size=10
+/api/comments/15/replies?current=1&size=10
 ```
 
 #### 4.3.3 响应数据
@@ -1597,7 +1597,7 @@
 | msg | string | 非必须 | 提示信息 |
 | data | object | 非必须 | 返回的数据 |
 | \|- total | number | 必须 | 总记录数 |
-| \|- page | number | 必须 | 当前页码 |
+| \|- current | number | 必须 | 当前页码 |
 | \|- size | number | 必须 | 每页条数 |
 | \|- records | object[] | 必须 | 二级回复列表（字段结构同 4.2 中 replies[] 项） |
 
@@ -1622,7 +1622,7 @@
       }
     ],
     "total": 8,
-    "page": 1,
+    "current": 1,
     "size": 10
   }
 }
