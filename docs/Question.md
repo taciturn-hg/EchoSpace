@@ -1,4 +1,4 @@
-# Axios 401 拦截器问题与解决方案
+# EchoSpace 开发问题与解决方案
 
 ## 1、并发 401 导致重复刷新 Token
 
@@ -68,3 +68,48 @@ if (store.refreshingPromise) {
   return result(error.config)
 }
 ```
+
+## 4、Spring Security 开启后 CORS 失效，OPTIONS 预检被拦截
+
+**问题**
+
+仅通过 `WebMvcConfigurer#addCorsMappings` 配置 CORS 时，CORS 处理发生在 Spring MVC 层（DispatcherServlet）。但 Spring Security 的 FilterChain 在请求到达 MVC 层之前就会拦截所有请求，包括浏览器的 CORS 预检请求（`OPTIONS`）。由于 Security 层未处理 CORS，OPTIONS 请求直接被拒绝或未附加 CORS 响应头，浏览器端所有跨域请求失败。
+
+**解决方案：CORS 提升到 Security Filter 层**
+
+1. 在 `CorsConfig` 中新增 `CorsConfigurationSource` Bean，将 CORS 规则注册为 Spring Security 可识别的配置源。
+2. 在 `SecurityFilterChain` 中显式开启 `.cors(withDefaults())`，让 CORS 校验在 Security 过滤器链中最先执行（早于认证/授权）。
+3. 移除原有的 `addCorsMappings`（在 Security 激活时不再生效）。
+
+```java
+// CorsConfig.java — 提供 CorsConfigurationSource Bean
+@Configuration
+public class CorsConfig {
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOriginPatterns(List.of("*"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", config);
+        return source;
+    }
+}
+
+// SecurityConfig.java — 显式开启 CORS
+@Bean
+public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    http
+        .cors(withDefaults())  // 在 Security Filter 层处理 CORS
+        .csrf(csrf -> csrf.disable())
+        // ...
+    return http.build();
+}
+```
+
+> Spring Security 的 `CorsFilter` 会在 `cors()` 开启后自动拾取容器中的 `CorsConfigurationSource` Bean。整个 CORS 校验在 Security 过滤器链的最前端完成，OPTIONS 预检请求不再被拦截。
