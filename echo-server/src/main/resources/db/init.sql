@@ -4,7 +4,7 @@ USE echospace;
 -- 用户表
 CREATE TABLE IF NOT EXISTS user
 (
-    id         BIGINT PRIMARY KEY AUTO_INCREMENT,
+    id         BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '用户ID',
     username   VARCHAR(50)  NOT NULL UNIQUE COMMENT '用户名(可用于登录)',
     nickname   VARCHAR(50)  NOT NULL UNIQUE COMMENT '昵称(展示用,注册时随机生成)',
     email      VARCHAR(100) NOT NULL UNIQUE COMMENT '邮箱(可用于登录)',
@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS user
     avatar     VARCHAR(500) COMMENT '头像URL',
     bio        VARCHAR(500) COMMENT '个人简介',
     status     TINYINT  DEFAULT 1 COMMENT '1正常 0禁用',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     INDEX idx_email (email),
     INDEX idx_username (username),
     INDEX idx_phone (phone)
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS user
 -- 帖子表
 CREATE TABLE IF NOT EXISTS post
 (
-    id            BIGINT PRIMARY KEY AUTO_INCREMENT,
+    id            BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '帖子ID',
     user_id       BIGINT       NOT NULL COMMENT '发布者',
     title         VARCHAR(200) NOT NULL COMMENT '标题',
     content_html  LONGTEXT     NOT NULL COMMENT '富文本HTML',
@@ -37,8 +37,8 @@ CREATE TABLE IF NOT EXISTS post
     status        TINYINT  DEFAULT 1 COMMENT '1发布 0草稿 -1删除',
     is_pinned     TINYINT  DEFAULT 0 COMMENT '是否置顶',
     version       INT      DEFAULT 0 COMMENT '乐观锁版本号',
-    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     INDEX idx_user_id (user_id),
     INDEX idx_created_at (created_at),
     INDEX idx_status_created (status, created_at),
@@ -49,15 +49,15 @@ CREATE TABLE IF NOT EXISTS post
 -- 评论表
 CREATE TABLE IF NOT EXISTS comment
 (
-    id           BIGINT PRIMARY KEY AUTO_INCREMENT,
+    id           BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '评论ID',
     post_id      BIGINT NOT NULL COMMENT '所属帖子',
     user_id      BIGINT NOT NULL COMMENT '评论者',
     parent_id    BIGINT   DEFAULT 0 COMMENT '父评论ID(0=一级评论)',
     reply_to_uid BIGINT COMMENT '回复的目标用户ID',
     content      TEXT   NOT NULL COMMENT '评论内容',
-    like_count   INT      DEFAULT 0,
+    like_count   INT      DEFAULT 0 COMMENT '点赞数',
     status       TINYINT  DEFAULT 1 COMMENT '1正常 -1删除',
-    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     INDEX idx_post_id (post_id),
     INDEX idx_user_id (user_id),
     INDEX idx_parent_id (parent_id)
@@ -67,11 +67,11 @@ CREATE TABLE IF NOT EXISTS comment
 -- 点赞表(通用: 帖子点赞+评论点赞)
 CREATE TABLE IF NOT EXISTS user_like
 (
-    id          BIGINT PRIMARY KEY AUTO_INCREMENT,
+    id          BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '点赞记录ID',
     user_id     BIGINT  NOT NULL COMMENT '点赞人',
     target_type TINYINT NOT NULL COMMENT '1帖子 2评论',
     target_id   BIGINT  NOT NULL COMMENT '目标ID',
-    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     UNIQUE KEY uk_user_target (user_id, target_type, target_id)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4;
@@ -79,10 +79,10 @@ CREATE TABLE IF NOT EXISTS user_like
 -- 收藏表
 CREATE TABLE IF NOT EXISTS user_favorite
 (
-    id         BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id    BIGINT NOT NULL,
-    post_id    BIGINT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    id         BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '收藏记录ID',
+    user_id    BIGINT NOT NULL COMMENT '用户ID',
+    post_id    BIGINT NOT NULL COMMENT '帖子ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     UNIQUE KEY uk_user_post (user_id, post_id),
     INDEX idx_user_id (user_id)
 ) ENGINE = InnoDB
@@ -91,10 +91,10 @@ CREATE TABLE IF NOT EXISTS user_favorite
 -- 关注表
 CREATE TABLE IF NOT EXISTS user_follow
 (
-    id          BIGINT PRIMARY KEY AUTO_INCREMENT,
+    id          BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '关注记录ID',
     follower_id BIGINT NOT NULL COMMENT '关注者',
     followed_id BIGINT NOT NULL COMMENT '被关注者',
-    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     UNIQUE KEY uk_follower_followed (follower_id, followed_id),
     INDEX idx_followed_id (followed_id)
 ) ENGINE = InnoDB

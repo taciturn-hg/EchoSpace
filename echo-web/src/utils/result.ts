@@ -22,7 +22,7 @@ result.interceptors.request.use(
   (config) => {
     const token = getStore().token
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+      config.headers.set('Authorization', `Bearer ${token}`)
     }
     return config
   },
@@ -60,8 +60,14 @@ result.interceptors.response.use(
         const res = await axios.post(`${result.defaults.baseURL}/auth/refresh`, {
           refreshToken: store.refreshToken,
         })
-        const { accessToken, refreshToken: newRefreshToken } = res.data.data
-        store.setToken(accessToken, newRefreshToken)
+        if (res.data?.code) {
+          const { accessToken, refreshToken: newRefreshToken } = res.data.data
+          store.setToken(accessToken, newRefreshToken)
+        } else {
+          store.clearAuth()
+          router.push('/login')
+          ElMessage.error(res.data.msg)
+        }
       } catch {
         store.clearAuth()
         router.push('/login')

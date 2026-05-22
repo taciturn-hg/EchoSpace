@@ -4,7 +4,7 @@
 export interface ApiResult<T> {
   code: number
   msg?: string
-  data: T
+  data: T | null
 }
 
 /** 分页响应格式 */
