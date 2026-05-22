@@ -16,7 +16,7 @@ if (store.refreshingPromise) {
   await store.refreshingPromise
   // 刷新完成后用新 Token 重试
   error.config._retry = true
-  error.config.headers.set('Authorization', `Bearer ${store.token}`)
+  setHeader(error.config, 'Authorization', `Bearer ${store.token}`)
   return result(error.config)
 }
 
@@ -81,7 +81,7 @@ if (store.refreshingPromise) {
   await store.refreshingPromise
   if (!store.token) return Promise.reject(error) // 共享刷新失败，不再重试
   error.config._retry = true
-  error.config.headers.set('Authorization', `Bearer ${store.token}`)
+  setHeader(error.config, 'Authorization', `Bearer ${store.token}`)
   return result(error.config)
 }
 ```
@@ -106,7 +106,7 @@ public class CorsConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("*"));
+        config.setAllowedOriginPatterns(List.of("http://localhost:5173"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
