@@ -2,8 +2,8 @@
 
 ## Sprint 1（1-2天）：项目脚手架
 
-- [ ] 安装并本地启动 MySQL 8.0、Redis 7、Elasticsearch 8
-- [ ] 下载 MinIO 二进制文件，本地启动（`minio server /data`）
+- [x] 安装并本地启动 MySQL 8.0、Redis 7、Elasticsearch 8
+- [x] 下载 MinIO 二进制文件，本地启动（`minio server /data`）
 - [ ] 初始化 Spring Boot 3 项目 + 基础配置（yml、CORS、MyBatis-Plus）
 - [ ] 初始化 Vue 3 + Vite 项目 + Element Plus + 路由
 - [ ] 数据库建表 + Flyway 迁移脚本
@@ -25,7 +25,7 @@ echo-server/src/main/java/com/echospace/
 └── EchoServerApplication.java
 
 echo-web/src/
-├── router/index.js                     # 路由配置
+├── router/index.ts                     # 路由配置
 ├── stores/                             # Pinia
 ├── api/                                # Axios 封装
 ├── views/                              # 页面占位
@@ -82,9 +82,9 @@ echo-web/src/
 │   ├── Register.vue
 │   └── Settings.vue                      # 账号设置 / 编辑资料 / 修改密码
 ├── api/
-│   └── auth.js                         # Axios 拦截器 + 认证相关请求
+│   ├── auth.ts                        # Axios 拦截器 + 认证相关请求
 └── stores/
-    └── userStore.js                    # 用户登录态管理
+    └── userStore.ts                    # 用户登录态管理
 ```
 
 ---
@@ -129,8 +129,8 @@ echo-web/src/
 │   ├── RichTextEditor.vue              # Tiptap 封装组件
 │   └── PostCard.vue                    # 帖子卡片组件
 └── api/
-    ├── post.js
-    └── upload.js
+    ├── post.ts
+    └── upload.ts
 ```
 
 ---
@@ -168,7 +168,7 @@ echo-web/src/
 ├── components/
 │   └── CommentList.vue                 # 嵌套评论组件
 ├── api/
-│   └── comment.js
+│   └── comment.ts
 ```
 
 ---
@@ -200,7 +200,7 @@ echo-web/src/
 ├── views/
 │   └── Search.vue
 └── api/
-    └── search.js
+    └── search.ts
 ```
 
 ---
@@ -236,7 +236,7 @@ echo-web/src/
 │   ├── UserProfile.vue                 # 个人主页
 │   └── FollowList.vue                  # 关注/粉丝列表
 └── api/
-    └── user.js
+    └── user.ts
 ```
 
 ---

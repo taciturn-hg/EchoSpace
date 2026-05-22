@@ -444,12 +444,13 @@ EchoSpace/
 │       └── db/migration/                 # Flyway SQL
 ├── echo-web/                             # Vue 3 前端
 │   ├── src/
-│   │   ├── views/                        # 页面：Login, Register, Home, PostDetail, PostEdit, Search, UserProfile, Settings, FollowList
-│   │   ├── components/                   # PostCard, CommentList, RichTextEditor, NavBar, Avatar
+│   │   ├── views/                        # 页面：Login, Register, Home, PostDetail, PostCreate, Search, UserProfile, Settings
+│   │   ├── components/                   # Layout, PostCard, CommentList, RichTextEditor, NavBar, Avatar
 │   │   ├── router/                       # 路由配置
 │   │   ├── stores/                       # Pinia: userStore, postStore
-│   │   ├── api/                          # Axios 封装 + 各模块 API
-│   │   └── utils/                        # 工具函数
+│   │   ├── api/                          # API 类型 + 请求封装
+│   │   │   └── modules/                  # 共享类型定义
+│   │   └── utils/                        # 工具函数（Axios 实例等）
 │   └── public/
 ├── docker/                               # Docker 相关（第三阶段学习后加入）
 │   ├── docker-compose.yml                # 基础服务编排
@@ -471,7 +472,7 @@ EchoSpace/
 
 ### 后端（pom.xml 核心依赖）
 
-**Spring Boot Starters**（版本由父工程 3.3.x 统一管理，无需手写版本号）：
+**Spring Boot Starters**（版本由父工程 3.5.x 统一管理，无需手写版本号）：
 
 | 依赖 | 说明 |
 |------|------|
@@ -495,9 +496,9 @@ EchoSpace/
 | elasticsearch-java | 8.x | Elasticsearch 8.x 新版 Java 客户端 |
 | minio | 8.x | MinIO 对象存储客户端（第一阶段） |
 | aliyun-sdk-oss | 3.x | 阿里云 OSS 对象存储客户端（第二阶段） |
-| jsoup | 1.18.x | HTML 白名单清洗 + 纯文本提取 |
+| jsoup | 1.22.x | HTML 白名单清洗 + 纯文本提取 |
 | flyway-core | — | 数据库版本迁移 |
-| flyway-mysql | — | Flyway MySQL 8.0 支持 |
+| flyway-mysql | — | Flyway MySQL 8.0 支持（计划引入，当前暂未添加） |
 | lombok | — | 简化 Getter/Setter/Builder 等样板代码 |
 
 > **说明**：`jjwt` 从 0.12.x 起拆分为三个独立模块，`jjwt-api` 是编译期接口，`jjwt-impl` 和 `jjwt-jackson` 是运行期必需实现，三个都要引入、版本保持一致。
@@ -508,16 +509,17 @@ EchoSpace/
 
 | 依赖 | 版本 | 说明 |
 |------|------|------|
-| Vue | 3.4.x | 前端框架 |
-| Vue Router | 4.x | 前端路由 |
-| Pinia | 2.x | 状态管理 |
-| Vite | 5.x | 构建工具（devDependency） |
+| Vue | 3.5.x | 前端框架 |
+| Vue Router | 5.x | 前端路由 |
+| Pinia | 3.x | 状态管理 |
+| Vite | 8.x | 构建工具（devDependency） |
 
 **需手动安装**（`npm install`）：
 
 | 依赖 | 版本 | 说明 |
 |------|------|------|
 | Axios | — | HTTP 请求 |
+| pinia-plugin-persistedstate | — | Pinia 持久化插件 |
 | Element Plus | 2.x | UI 组件库 |
 | @tiptap/vue-3 | — | Tiptap Vue 3 集成 |
 | @tiptap/starter-kit | — | Tiptap 基础扩展包 |

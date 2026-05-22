@@ -220,6 +220,7 @@
 | \|- username | string | 必须 | 用户名 |
 | \|- nickname | string | 必须 | 昵称 |
 | \|- email | string | 必须 | 邮箱 |
+| \|- phone | string | 必须 | 手机号 |
 | \|- avatar | string | 非必须 | 头像 URL |
 | \|- bio | string | 非必须 | 个人简介 |
 | \|- createdAt | string | 必须 | 注册时间 |
@@ -235,6 +236,7 @@
     "username": "zhangsan",
     "nickname": "张三",
     "email": "zhangsan@example.com",
+    "phone": "13800138000",
     "avatar": "http://localhost:9000/echospace/avatars/default.png",
     "bio": "这个人很懒，什么都没写",
     "createdAt": "2026-05-20 12:00:00"
