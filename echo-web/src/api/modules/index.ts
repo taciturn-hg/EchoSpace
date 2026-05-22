@@ -35,5 +35,14 @@ export interface LoginVO {
   expiresIn: number
 }
 
+// ===== Axios 类型扩展 =====
+
+declare module 'axios' {
+  interface InternalAxiosRequestConfig {
+    /** 401 重试标记，防止无限循环刷新 Token */
+    _retry?: boolean
+  }
+}
+
 // ===== 后续 Sprint 按需补充 =====
 // PostVO, PostDetailVO, CommentVO, SearchVO ...

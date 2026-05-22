@@ -2,7 +2,7 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/userStore'
 import router from '@/router'
-import { setHeader } from './hearder'
+import { setHeader } from './header.ts'
 
 let userStore: ReturnType<typeof useUserStore>
 
@@ -37,6 +37,11 @@ result.interceptors.response.use(
     if (error.response?.status !== 401) {
       const msg = error.response?.data?.msg || error.message || '请求失败'
       ElMessage.error(msg)
+      return Promise.reject(error)
+    }
+
+    // config 不存在则无法重试，直接拒绝
+    if (!error.config) {
       return Promise.reject(error)
     }
 

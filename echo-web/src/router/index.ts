@@ -17,6 +17,7 @@ const router = createRouter({
       meta: { guest: true },
     },
     {
+      // TODO: 替换为独立的 NotFound.vue 页面，带返回首页按钮，而非静默重定向
       path: '/:pathMatch(.*)*',
       redirect: '/',
     },
@@ -55,11 +56,6 @@ const router = createRouter({
           name: 'settings',
           component: () => import('@/views/Settings.vue'),
           meta: { requiresAuth: true },
-        },
-        {
-          // TODO: 替换为独立的 NotFound.vue 页面，带返回首页按钮，而非静默重定向
-          path: ':pathMatch(.*)*',
-          redirect: '/',
         },
       ],
     },

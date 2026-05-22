@@ -32,11 +32,28 @@ try { await promise } finally { store.refreshingPromise = null }
 
 Token 刷新成功后，拦截器会用新 Token 自动重试原请求。但如果 refresh token 本身也已过期，刷新接口返回失败（或重试后再次 401），拦截器会再次进入 401 分支 → 再次尝试刷新 → 再次失败 → 无限循环。
 
-**解决方案：`_retry` 标记**
+**解决方案：`_retry` 标记 + 类型扩展 + 判空**
 
-在 `error.config` 上增加一个自定义标记 `_retry`。401 入口先检查该标记：若已为 `true` 说明这个请求已经走过一轮刷新流程，不再继续，直接清除登录态并跳转登录页。重试前设置 `_retry = true`，确保每个请求最多重试一次。
+在 `api/modules/index.ts` 中通过 `declare module 'axios'` 扩展 `InternalAxiosRequestConfig`，为其增加可选的 `_retry?: boolean` 属性，解决 TypeScript 类型报错。
 
 ```typescript
+// api/modules/index.ts — Axios 类型扩展
+declare module 'axios' {
+  interface InternalAxiosRequestConfig {
+    /** 401 重试标记，防止无限循环刷新 Token */
+    _retry?: boolean
+  }
+}
+```
+
+在 result.ts 的 401 入口先对 `error.config` 判空（config 在 AxiosError 中为可选字段，可能为 undefined），再检查 `_retry` 标记。若已为 `true` 说明已走过一轮刷新，直接清除登录态并跳转登录页。重试前设置 `_retry = true`，确保每个请求最多重试一次。
+
+```typescript
+// config 不存在则无法重试，直接拒绝
+if (!error.config) {
+  return Promise.reject(error)
+}
+
 // 401 入口守卫：已重试过，直接踢到登录页
 if (error.config._retry) {
   store.clearAuth()
