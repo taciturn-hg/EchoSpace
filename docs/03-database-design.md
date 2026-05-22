@@ -233,6 +233,7 @@ erDiagram
     comment ||--o{ comment : "回复"
     comment ||--o{ user_like : "被点赞"
     post ||--o{ user_like : "被点赞"
+    user ||--o{ user_like : "点赞"
 
     user {
         BIGINT id PK "用户ID"

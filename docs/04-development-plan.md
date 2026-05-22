@@ -6,7 +6,7 @@
 - [x] 下载 MinIO 二进制文件，本地启动（`minio server /data`）
 - [ ] 初始化 Spring Boot 3 项目 + 基础配置（yml、CORS、MyBatis-Plus）
 - [ ] 初始化 Vue 3 + Vite 项目 + Element Plus + 路由
-- [ ] 数据库建表 + Flyway 迁移脚本
+- [ ] 数据库建表 + Flyway 迁移脚本（暂用 init.sql 直接执行，后续引入 Flyway）
 - [ ] 统一响应格式封装 + 全局异常处理
 
 ### Sprint 1 产出物
