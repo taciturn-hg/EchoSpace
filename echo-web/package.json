@@ -27,8 +27,8 @@
     "vue-router": "^5.0.4"
   },
   "devDependencies": {
-    "@tsconfig/node24": "^24.0.4",
-    "@types/node": "^24.12.2",
+    "@tsconfig/node22": "^22.0.0",
+    "@types/node": "^22.15.0",
     "@vitejs/plugin-vue": "^6.0.6",
     "@vue/eslint-config-typescript": "^14.7.0",
     "@vue/tsconfig": "^0.9.1",
@@ -46,6 +46,6 @@
     "vue-tsc": "^3.2.6"
   },
   "engines": {
-    "node": ">=24.0.0"
+    "node": ">=22.0.0"
   }
 }

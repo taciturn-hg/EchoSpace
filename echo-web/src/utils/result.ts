@@ -2,6 +2,7 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/userStore'
 import router from '@/router'
+import { setHeader } from './hearder'
 
 let userStore: ReturnType<typeof useUserStore>
 
@@ -22,14 +23,14 @@ result.interceptors.request.use(
   (config) => {
     const token = getStore().token
     if (token) {
-      config.headers.set('Authorization', `Bearer ${token}`)
+      setHeader(config, 'Authorization', `Bearer ${token}`)
     }
     return config
   },
   (error) => Promise.reject(error),
 )
 
-// 响应拦截器：Token 过期自动刷新（Promise 锁防并发重复刷新）
+// 响应拦截器：Token 过期自动刷新（Promise 锁 + _retry 防无限循环）
 result.interceptors.response.use(
   (response) => response.data,
   async (error) => {
@@ -41,6 +42,13 @@ result.interceptors.response.use(
 
     const store = getStore()
 
+    // 已重试过一次，不再继续，直接踢到登录页
+    if (error.config._retry) {
+      store.clearAuth()
+      router.push('/login')
+      return Promise.reject(error)
+    }
+
     if (!store.refreshToken) {
       store.clearAuth()
       router.push('/login')
@@ -50,7 +58,9 @@ result.interceptors.response.use(
     // 已有刷新在进行中，等它完成
     if (store.refreshingPromise) {
       await store.refreshingPromise
-      error.config.headers.set('Authorization', `Bearer ${store.token}`)
+      if (!store.token) return Promise.reject(error)
+      error.config._retry = true
+      setHeader(error.config, 'Authorization', `Bearer ${store.token}`)
       return result(error.config)
     }
 
@@ -85,7 +95,8 @@ result.interceptors.response.use(
 
     if (!store.token) return Promise.reject(error)
 
-    error.config.headers.set('Authorization', `Bearer ${store.token}`)
+    error.config._retry = true
+    setHeader(error.config, 'Authorization', `Bearer ${store.token}`)
     return result(error.config)
   },
 )

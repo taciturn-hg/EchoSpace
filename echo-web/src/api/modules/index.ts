@@ -11,7 +11,7 @@ export interface ApiResult<T> {
 export interface PageResult<T> {
   records: T[]
   total: number
-  page: number
+  current: number
   size: number
 }
 

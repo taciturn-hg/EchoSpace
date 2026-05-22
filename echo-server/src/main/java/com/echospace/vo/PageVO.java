@@ -1,4 +1,4 @@
-package com.echospace.VO;
+package com.echospace.vo;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.AllArgsConstructor;
@@ -16,7 +16,7 @@ public class PageVO<T> {
     private long current;
     private long size;
 
-    public static <T> PageVO<T> of(Page page) {
+    public static <T> PageVO<T> of(Page<T> page) {
         return new PageVO<>(
                 page.getRecords(),
                 page.getTotal(),
