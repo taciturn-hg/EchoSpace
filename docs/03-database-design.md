@@ -7,7 +7,7 @@
 | `id` | BIGINT | 是 | 否 | — | PRIMARY | 用户ID |
 | `username` | VARCHAR(50) | 否 | 否 | — | UNIQUE | 用户名，可用于登录 |
 | `nickname` | VARCHAR(50) | 否 | 否 | — | UNIQUE | 昵称（展示用，注册时随机生成，用户可自行修改） |
-| `email` | VARCHAR(100) | 否 | 否 | — | INDEX | 邮箱，可用于登录 |
+| `email` | VARCHAR(100) | 否 | 否 | — | INDEX UNIQUE | 邮箱，可用于登录 |
 | `phone` | VARCHAR(20) | 否 | 否 | — | UNIQUE | 手机号，可用于登录 |
 | `password` | VARCHAR(255) | 否 | 否 | — | — | 密码（BCrypt 加密） |
 | `avatar` | VARCHAR(500) | 否 | 是 | NULL | — | 头像 URL |
