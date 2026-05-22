@@ -1,0 +1,87 @@
+import axios from 'axios'
+import { ElMessage } from 'element-plus'
+import { useUserStore } from '@/stores/userStore'
+import router from '@/router'
+
+let userStore: ReturnType<typeof useUserStore>
+
+function getStore() {
+  if (!userStore) {
+    userStore = useUserStore()
+  }
+  return userStore
+}
+
+const result = axios.create({
+  baseURL: '/api',
+  timeout: 15000,
+})
+
+// 请求拦截器：注入 Token
+result.interceptors.request.use(
+  (config) => {
+    const token = getStore().token
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => Promise.reject(error),
+)
+
+// 响应拦截器：Token 过期自动刷新（Promise 锁防并发重复刷新）
+result.interceptors.response.use(
+  (response) => response.data,
+  async (error) => {
+    if (error.response?.status !== 401) {
+      const msg = error.response?.data?.msg || error.message || '请求失败'
+      ElMessage.error(msg)
+      return Promise.reject(error)
+    }
+
+    const store = getStore()
+
+    if (!store.refreshToken) {
+      store.clearAuth()
+      router.push('/login')
+      return Promise.reject(error)
+    }
+
+    // 已有刷新在进行中，等它完成
+    if (store.refreshingPromise) {
+      await store.refreshingPromise
+      error.config.headers.Authorization = `Bearer ${store.token}`
+      return result(error.config)
+    }
+
+    // 发起刷新
+    const promise = (async () => {
+      try {
+        const res = await axios.post(`${result.defaults.baseURL}/auth/refresh`, {
+          refreshToken: store.refreshToken,
+        })
+        const { accessToken, refreshToken: newRefreshToken } = res.data.data
+        store.setToken(accessToken, newRefreshToken)
+      } catch {
+        store.clearAuth()
+        router.push('/login')
+        throw new Error('refresh failed')
+      }
+    })()
+
+    store.refreshingPromise = promise
+
+    try {
+      await promise
+    } finally {
+      store.refreshingPromise = null
+    }
+
+    if (!store.token) return Promise.reject(error)
+
+    error.config.headers.Authorization = `Bearer ${store.token}`
+    return result(error.config)
+  },
+)
+
+export default result
