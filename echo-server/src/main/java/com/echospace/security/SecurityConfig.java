@@ -16,6 +16,7 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                //TODO:这次将请求全部放行，后续要用requestMatchers permitalll设置放行路径,并对其它路径 require authentication
             .authorizeHttpRequests(auth -> auth
                 .anyRequest().permitAll()
             );
