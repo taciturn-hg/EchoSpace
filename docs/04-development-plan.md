@@ -36,10 +36,10 @@ echo-web/src/
 
 ## Sprint 2（2-3天）：用户认证与账号管理（方案C：Spring Security 轻量集成）
 
-- [ ] JwtUtil 工具类（生成 Token、解析 Token、校验过期）
-- [ ] JwtAuthFilter（继承 OncePerRequestFilter，解析 JWT → 写入 SecurityContextHolder）
-- [ ] SecurityConfig（配置白名单路径 /api/auth/register, /api/auth/login, /api/auth/refresh，关闭 CSRF/Session，注册 JwtAuthFilter）
-- [ ] SecurityUtil 工具类（封装 getCurrentUserId / getCurrentUsername）
+- [x] JwtUtil 工具类（生成 Token、解析 Token、校验过期）
+- [x] JwtAuthFilter（继承 OncePerRequestFilter，解析 JWT → 写入 SecurityContextHolder）
+- [x] SecurityConfig（配置白名单路径 /api/auth/register, /api/auth/login, /api/auth/refresh，关闭 CSRF/Session，注册 JwtAuthFilter）
+- [x] SecurityUtil 工具类（封装 getCurrentUserId / getCurrentUsername）
 - [ ] 注册/登录接口（BCrypt 加密密码，登录支持用户名/邮箱/手机号，返回 accessToken + refreshToken）
 - [ ] 刷新 Token 接口
 - [ ] 获取当前用户信息接口 (GET /api/auth/me)
