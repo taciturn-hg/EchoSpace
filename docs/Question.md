@@ -63,6 +63,7 @@ if (error.config._retry) {
 
 // 重试前打标
 error.config._retry = true
+setHeader(error.config, 'Authorization', `Bearer ${store.token}`)
 return result(error.config)
 ```
 
@@ -130,3 +131,166 @@ public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 ```
 
 > Spring Security 的 `CorsFilter` 会在 `cors()` 开启后自动拾取容器中的 `CorsConfigurationSource` Bean。整个 CORS 校验在 Security 过滤器链的最前端完成，OPTIONS 预检请求不再被拦截。
+
+## 5、Spring Security 构建流程与常见问题
+
+### 5.1 `@Value` 注入 static 字段无效
+
+**问题**
+
+Spring 的 `@Value` 注解通过 Bean 后处理器在实例化后注入，但 static 字段属于类而非实例，Spring 不会为其赋值。若 JwtUtil 中的 `SECRET_KEY` 或过期时间用 `private static` + `@Value`，运行时字段始终为 `null`（或默认值），导致签名或解析时 NPE。
+
+**修复点**
+
+- 类加 `@Component`，字段改为实例字段。
+- 用 `@PostConstruct` 将 String 类型的 secret 转为 `SecretKey`（`@Value` 只能注入基本类型/String，无法直接注入 `SecretKey`）。
+- 过期时间也从 `application.yaml` 注入，避免硬编码。
+
+```java
+@Component
+public class JwtUtil {
+
+    @Value("${jwt.secret}")
+    private String secret;
+
+    @Value("${jwt.access-token-expiration:1800000}")
+    private long accessExpire;
+
+    @Value("${jwt.refresh-token-expiration:604800000}")
+    private long refreshExpire;
+
+    private SecretKey secretKey;
+
+    @PostConstruct
+    public void init() {
+        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    }
+    // ...
+}
+```
+
+### 5.2 `parseEncryptedClaims` 误用于签名 JWT（JWS）
+
+**问题**
+
+代码中生成的是签名 JWT（JWS），但解析时调用了 `parseEncryptedClaims()`。该方法是给 JWE（加密）Token 用的，对签名 Token 会直接报错。
+
+**修复点**
+
+签名 Token 应使用 `parseSignedClaims()`：
+
+```java
+// ❌ JWE 解析
+.parseEncryptedClaims(token)
+
+// ✅ JWS 解析
+.parseSignedClaims(token)
+```
+
+### 5.3 jjwt API 演进：废弃的 `SignatureAlgorithm` 和参数顺序
+
+**问题**
+
+jjwt 0.12.x 中 `SignatureAlgorithm.HS256` 已废弃，且 `signWith(Algorithm, Key)` 的参数顺序改为 `signWith(Key, Algorithm)`。旧写法编译通过但 IDE 会标黄，且容易与新代码混用造成不一致。
+
+**修复点**
+
+```java
+// ❌ 旧 API（HS256 废弃，参数顺序反了）
+.signWith(SignatureAlgorithm.HS256, SECURITY)
+
+// ✅ 新 API（Jwts.SIG.HS256，key 在前）
+.signWith(secretKey, Jwts.SIG.HS256)
+```
+
+### 5.4 JwtAuthFilter 未注册到 SecurityFilterChain
+
+**问题**
+
+Filter 类写好了（继承 `OncePerRequestFilter`），但如果没有通过 `http.addFilterBefore()` 注册到 Security 过滤器链中，这个 Filter 根本不会被执行——请求不会经过 JWT 解析，SecurityContextHolder 始终为空。
+
+**修复点**
+
+1. `JwtAuthFilter` 加 `@Component`，`@Autowired` 注入 `JwtUtil`。
+2. `SecurityConfig` 中 `@Autowired` 注入 `JwtAuthFilter`，并通过 `addFilterBefore` 将其注册到 `UsernamePasswordAuthenticationFilter` 之前。
+
+```java
+// SecurityConfig.java
+@Autowired
+private JwtAuthFilter jwtAuthFilter;
+
+@Bean
+public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    http
+        // ... cors, csrf, session ...
+        .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+    return http.build();
+}
+```
+
+### 5.5 Filter 中 JWT 解析异常未处理 → 500 而非 401
+
+**问题**
+
+`JwtUtil.parseToken()` 在 Token 过期、签名错误、格式错误时会抛 `ExpiredJwtException` / `JwtException`。若 Filter 中不 catch，异常会向上传播到 Servlet 容器，最终返回 500，而不是业务期望的 401。
+
+**修复点**
+
+在 Filter 的 `doFilterInternal` 中用 try-catch 包裹 `parseToken()`，捕获后直接写 401 JSON 响应并 `return`（不继续走过滤器链）：
+
+```java
+Claims claims;
+try {
+    claims = jwtUtil.parseToken(token);
+} catch (ExpiredJwtException e) {
+    response.setStatus(401);
+    response.setContentType("application/json;charset=UTF-8");
+    response.getWriter().write("{\"code\":401,\"msg\":\"Token已过期\"}");
+    return;
+} catch (JwtException e) {
+    response.setStatus(401);
+    response.setContentType("application/json;charset=UTF-8");
+    response.getWriter().write("{\"code\":401,\"msg\":\"Token无效\"}");
+    return;
+}
+```
+
+### 5.6 SecurityUtil 缺少 SecurityContext 空判断
+
+**问题**
+
+未登录请求或白名单接口不会经过 JWT 认证，`SecurityContextHolder.getContext().getAuthentication()` 返回 `null`。此时直接调用 `.getPrincipal()` / `.getDetails()` 会 NPE。
+
+**修复点**
+
+两个静态方法加 null 短路：
+
+```java
+public static Long getCurrentUserId() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth == null || auth.getPrincipal() == null) return null;
+    return (Long) auth.getPrincipal();
+}
+
+public static String getCurrentUsername() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth == null || auth.getDetails() == null) return null;
+    return (String) auth.getDetails();
+}
+```
+
+### 5.7 Spring Security 过滤器链执行顺序（整体流程）
+
+了解过滤器的执行顺序有助于理解上述修复的必要性：
+
+```
+请求 → CorsFilter  → CsrfFilter  → ...  → JwtAuthFilter  → 认证 → 授权 → Controller
+        ↑                                    ↑
+     最早执行，                            在此验证 JWT，
+     处理 OPTIONS                          写入 SecurityContextHolder
+```
+
+- **CorsFilter** 必须在最前面（OPTIONS 预检不需要认证）。
+- **JwtAuthFilter** 在 `UsernamePasswordAuthenticationFilter` 之前执行，将 JWT 中的用户信息写入 `SecurityContextHolder`。
+- 后续的认证/授权组件从 `SecurityContextHolder` 中读取当前用户。
+- Filter 中未捕获的异常会绕过 Spring 全局异常处理器，直接返回 500 → 必须在 Filter 内部 try-catch。
