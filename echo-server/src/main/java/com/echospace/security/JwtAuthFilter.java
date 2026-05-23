@@ -1,5 +1,7 @@
 package com.echospace.security;
 
+import com.echospace.common.Result;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -29,12 +31,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     /**
      * 过滤器核心逻辑
      *
-     * @param request      HTTP 请求
-     * @param response     HTTP 响应
-     * @param filterChain  过滤器链
+     * @param request     HTTP 请求
+     * @param response    HTTP 响应
+     * @param filterChain 过滤器链
      * @Author: taciturn-hg
      * @Date: 5/22/2026 9:57 下午
      */
@@ -51,32 +56,44 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
         String token = authHeader.substring(7);
 
-        // 2. 解析 JWT → userId + username，异常时返回 401
+        // 2. 解析 JWT → userId + username，异常时返回 401 + Result 结构
         Claims claims;
         try {
             claims = jwtUtil.parseToken(token);
         } catch (ExpiredJwtException e) {
             response.setStatus(401);
             response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write("{\"code\":401,\"msg\":\"Token已过期\"}");
+            objectMapper.writeValue(response.getWriter(), Result.error("Token已过期"));
             return;
         } catch (JwtException e) {
             response.setStatus(401);
             response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write("{\"code\":401,\"msg\":\"Token无效\"}");
+            objectMapper.writeValue(response.getWriter(), Result.error("Token无效"));
             return;
         }
 
-        // 3. 可选：查 Redis/MySQL 校验用户状态（是否被禁用）
-        // if (redisTemplate.opsForValue().get("user:ban:" + userId) != null) { ... }
-
-        Long userId = Long.valueOf(claims.getSubject());
+        // 3. 提取 userId + username，subject 非数字时按 Token 无效处理
+        Long userId;
+        try {
+            String subject = claims.getSubject();
+            if (subject == null || subject.isBlank()) {
+                throw new NumberFormatException("subject is empty");
+            }
+            userId = Long.valueOf(subject);
+        } catch (NumberFormatException e) {
+            response.setStatus(401);
+            response.setContentType("application/json;charset=UTF-8");
+            objectMapper.writeValue(response.getWriter(), Result.error("Token无效"));
+            return;
+        }
         String username = claims.get("username", String.class);
 
-        // 4. 写入 SecurityContextHolder（无密码的认证信息）
+        // 4. 可选：查 Redis/MySQL 校验用户状态（是否被禁用）
+        // if (redisTemplate.opsForValue().get("user:ban:" + userId) != null) { ... }
+
+        // 5. 写入 SecurityContextHolder（无密码的认证信息）
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(userId, null, List.of());
-        // 把 username 存到 details 里，方便 Controller 取
         authentication.setDetails(username);
         SecurityContextHolder.getContext().setAuthentication(authentication);
 

@@ -228,58 +228,154 @@ public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 }
 ```
 
-### 5.5 Filter 中 JWT 解析异常未处理 → 500 而非 401
+### 5.5 Filter 中 JWT 解析异常未处理 → 500 而非 401，且响应体与统一 Result 格式不一致
 
 **问题**
 
-`JwtUtil.parseToken()` 在 Token 过期、签名错误、格式错误时会抛 `ExpiredJwtException` / `JwtException`。若 Filter 中不 catch，异常会向上传播到 Servlet 容器，最终返回 500，而不是业务期望的 401。
+两个层面：
+
+1. **异常未处理 → 500**：`JwtUtil.parseToken()` 在 Token 过期、签名错误、格式错误时会抛 `ExpiredJwtException` / `JwtException`。若 Filter 中不 catch，异常会向上传播到 Servlet 容器，最终返回 500，而不是业务期望的 401。
+
+2. **手动拼 JSON → 格式不一致**：即使 catch 了，如果直接 `response.getWriter().write("{\"code\":401,...}")` ，手写的 JSON 字符串与后端统一 `Result` 结构（`code=0` 表示错误、必有 `data` 字段）不一致，前端拦截器按统一格式解析时会出错（如 `error.response.data.msg` 取到 undefined）。
 
 **修复点**
 
-在 Filter 的 `doFilterInternal` 中用 try-catch 包裹 `parseToken()`，捕获后直接写 401 JSON 响应并 `return`（不继续走过滤器链）：
+- catch 后在 Filter 中写 401 响应时，使用 `ObjectMapper` 将 `Result.error("...")` 序列化输出，确保响应的 JSON 结构与 Controller 层完全一致。
+- `ObjectMapper` 通过 `@Autowired` 注入（Spring Boot 自动配置已提供），避免手动拼字符串。
 
 ```java
-Claims claims;
-try {
-    claims = jwtUtil.parseToken(token);
+@Autowired
+private ObjectMapper objectMapper;
+
+// catch 块中：
 } catch (ExpiredJwtException e) {
     response.setStatus(401);
     response.setContentType("application/json;charset=UTF-8");
-    response.getWriter().write("{\"code\":401,\"msg\":\"Token已过期\"}");
+    objectMapper.writeValue(response.getWriter(), Result.error("Token已过期"));
     return;
 } catch (JwtException e) {
     response.setStatus(401);
     response.setContentType("application/json;charset=UTF-8");
-    response.getWriter().write("{\"code\":401,\"msg\":\"Token无效\"}");
+    objectMapper.writeValue(response.getWriter(), Result.error("Token无效"));
     return;
 }
 ```
 
-### 5.6 SecurityUtil 缺少 SecurityContext 空判断
+> **关键点**：Filter 中不能像 Controller 那样直接 return `Result<T>`，因为 Filter 工作在 Servlet 层（Controller 之前），只能通过 `HttpServletResponse` 写入。使用 `ObjectMapper` 序列化 `Result` 对象可以保证格式与 Controller 返回的完全一致：`{"code":0,"msg":"Token已过期","data":null}`。
+
+### 5.6 JWT subject 解析为 Long 时未捕获 NumberFormatException
 
 **问题**
 
-未登录请求或白名单接口不会经过 JWT 认证，`SecurityContextHolder.getContext().getAuthentication()` 返回 `null`。此时直接调用 `.getPrincipal()` / `.getDetails()` 会 NPE。
+`Long.valueOf(claims.getSubject())` 在以下情况会抛 `NumberFormatException`，进而导致 500：
+- `claims.getSubject()` 返回 `null`（Token 生成时未设置 subject）
+- subject 是非数字字符串（Token 被篡改或来自其他系统）
+
+`NumberFormatException` 不是 `JwtException` 的子类，不会被上方的 JWT 解析 catch 块捕获。
 
 **修复点**
 
-两个静态方法加 null 短路：
+在提取 userId 时单独 try-catch `NumberFormatException`，先做非空校验，解析失败统一按"Token 无效"返回 401：
+
+```java
+Long userId;
+try {
+    String subject = claims.getSubject();
+    if (subject == null || subject.isBlank()) {
+        throw new NumberFormatException("subject is empty");
+    }
+    userId = Long.valueOf(subject);
+} catch (NumberFormatException e) {
+    response.setStatus(401);
+    response.setContentType("application/json;charset=UTF-8");
+    objectMapper.writeValue(response.getWriter(), Result.error("Token无效"));
+    return;
+}
+```
+
+> **关键点**：`NumberFormatException` 继承自 `IllegalArgumentException`，与 `JwtException` 无关，必须单独捕获。不要用 `catch (Exception e)` 大包——那会把真正的系统异常也吞掉，掩盖 bug。
+
+### 5.7 SecurityUtil 缺少 SecurityContext 空判断 + 强转风险
+
+**问题**
+
+两个层面的缺陷：
+
+1. **NPE 风险**：未登录请求或白名单接口不会经过 JWT 认证，`SecurityContextHolder.getContext().getAuthentication()` 返回 `null`。此时直接调用 `.getPrincipal()` / `.getDetails()` 会 NPE。
+
+2. **ClassCastException 风险**：Spring Security 在未认证状态下可能注入 `AnonymousAuthenticationToken`，其 `principal` 是字符串 `"anonymousUser"`，而非 `Long`。直接 `(Long) auth.getPrincipal()` 强转会抛 `ClassCastException`。同理，`details` 也可能不是 `String`。
+
+**修复点**
+
+三层防御：判空 → 排除匿名 Token → `instanceof` 类型检查（利用 Java 16+ 模式匹配）：
 
 ```java
 public static Long getCurrentUserId() {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    if (auth == null || auth.getPrincipal() == null) return null;
-    return (Long) auth.getPrincipal();
+    if (auth == null
+            || !auth.isAuthenticated()
+            || auth instanceof AnonymousAuthenticationToken) {
+        return null;
+    }
+    Object principal = auth.getPrincipal();
+    if (principal instanceof Long id) {
+        return id;
+    }
+    return null;
 }
 
 public static String getCurrentUsername() {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    if (auth == null || auth.getDetails() == null) return null;
-    return (String) auth.getDetails();
+    if (auth == null
+            || !auth.isAuthenticated()
+            || auth instanceof AnonymousAuthenticationToken) {
+        return null;
+    }
+    Object details = auth.getDetails();
+    if (details instanceof String username) {
+        return username;
+    }
+    return null;
 }
 ```
 
-### 5.7 Spring Security 过滤器链执行顺序（整体流程）
+> **关键点**：`auth.isAuthenticated()` 对 `AnonymousAuthenticationToken` 返回 `false`，但显式 `instanceof` 检查是最安全的做法——即使 Spring Security 未来版本改变行为也不会出错。
+
+### 5.8 未配置 exceptionHandling → 未认证访问返回默认 403 HTML 而非 401 JSON
+
+**问题**
+
+仅配置 `.anyRequest().authenticated()` 时，Spring Security 对未认证请求的默认行为是：
+- 触发 `AuthenticationEntryPoint`，默认实现返回 **403**（无状态场景下不会重定向到登录页，但也不是 401）
+- 响应体是 Spring 默认的 HTML 错误页，而非项目统一的 JSON `Result` 结构
+- 前端拦截器按 `error.response?.data?.msg` 解析时取到 `undefined`，无法给用户有意义的提示
+
+**修复点**
+
+在 `SecurityFilterChain` 中显式配置 `.exceptionHandling()`，分别处理两种场景：
+- `authenticationEntryPoint`：未认证（没有 Token 或 Token 无效后未被 Filter 拦截）→ 返回 **401**
+- `accessDeniedHandler`：已认证但无权限 → 返回 **403**
+
+两者都用 `ObjectMapper` 序列化 `Result.error(...)` 保持响应格式统一：
+
+```java
+.exceptionHandling(ex -> ex
+    .authenticationEntryPoint((request, response, authException) -> {
+        response.setStatus(401);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
+        objectMapper.writeValue(response.getWriter(), Result.error("未登录或登录已过期"));
+    })
+    .accessDeniedHandler((request, response, accessDeniedException) -> {
+        response.setStatus(403);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
+        objectMapper.writeValue(response.getWriter(), Result.error("无访问权限"));
+    })
+)
+```
+
+> **关键点**：`AuthenticationEntryPoint` 和 `AccessDeniedHandler` 工作在 Security 异常处理层，与 `@ControllerAdvice` 全局异常处理器无关——Security 层的异常不会流转到 Spring MVC，必须在这里单独处理。
+
+### 5.9 Spring Security 过滤器链执行顺序（整体流程）
 
 了解过滤器的执行顺序有助于理解上述修复的必要性：
 

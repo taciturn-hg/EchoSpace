@@ -1,5 +1,6 @@
 package com.echospace.security;
 
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -14,30 +15,42 @@ public class SecurityUtil {
     /**
      * 获取当前用户 ID
      *
-     * @return 用户 ID，未登录时返回 null
+     * @return 用户 ID，未登录或类型不匹配时返回 null
      * @Author: taciturn-hg
      * @Date: 5/22/2026 11:14 下午
      */
     public static Long getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getPrincipal() == null) {
+        if (auth == null
+                || !auth.isAuthenticated()
+                || auth instanceof AnonymousAuthenticationToken) {
             return null;
         }
-        return (Long) auth.getPrincipal();
+        Object principal = auth.getPrincipal();
+        if (principal instanceof Long id) {
+            return id;
+        }
+        return null;
     }
 
     /**
      * 获取当前用户名
      *
-     * @return 用户名，未登录时返回 null
+     * @return 用户名，未登录或类型不匹配时返回 null
      * @Author: taciturn-hg
      * @Date: 5/22/2026 11:14 下午
      */
     public static String getCurrentUsername() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getDetails() == null) {
+        if (auth == null
+                || !auth.isAuthenticated()
+                || auth instanceof AnonymousAuthenticationToken) {
             return null;
         }
-        return (String) auth.getDetails();
+        Object details = auth.getDetails();
+        if (details instanceof String username) {
+            return username;
+        }
+        return null;
     }
 }

@@ -1,8 +1,11 @@
 package com.echospace.security;
 
+import com.echospace.common.Result;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -12,7 +15,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import static org.springframework.security.config.Customizer.withDefaults;
 
 /**
- * Spring Security 核心配置：CORS、CSRF、会话管理、接口授权、JWT 过滤器注册
+ * Spring Security 核心配置：CORS、CSRF、会话管理、接口授权、JWT 过滤器注册、异常处理
  *
  * @Author: taciturn-hg
  * @Date: 5/22/2026 9:57 下午
@@ -23,6 +26,9 @@ public class SecurityConfig {
 
     @Autowired
     private JwtAuthFilter jwtAuthFilter;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     /**
      * 配置 Security 过滤器链
@@ -45,6 +51,19 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh").permitAll()
                         .anyRequest().authenticated()
+                )
+                // 未认证/无权限统一返回标准 JSON，避免默认 403 HTML 响应
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(401);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
+                            objectMapper.writeValue(response.getWriter(), Result.error("未登录或登录已过期"));
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setStatus(403);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
+                            objectMapper.writeValue(response.getWriter(), Result.error("无访问权限"));
+                        })
                 )
                 // JWT 过滤器在 UsernamePasswordAuthenticationFilter 之前执行
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
