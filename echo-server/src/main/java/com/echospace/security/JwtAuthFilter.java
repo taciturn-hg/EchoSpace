@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,6 +42,33 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
+    private List<String> whitelist;
+
+    /**
+     * 缓存白名单列表，避免每次请求重复调用 securityProperties.getWhitelist()
+     *
+     * @Author: taciturn-hg
+     * @Date: 5/23/2026
+     */
+    @PostConstruct
+    public void init() {
+        this.whitelist = securityProperties.getWhitelist();
+    }
+
+    /**
+     * 白名单路径直接跳过整个过滤器，不进入 doFilterInternal
+     *
+     * @param request HTTP 请求
+     * @return 命中白名单时返回 true，跳过过滤器
+     * @Author: taciturn-hg
+     * @Date: 5/23/2026
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        return whitelist.stream().anyMatch(pattern -> PATH_MATCHER.match(pattern, uri));
+    }
+
     /**
      * 过滤器核心逻辑
      *
@@ -54,15 +82,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        // 白名单路径直接放行，不做任何 Token 校验
-        String uri = request.getRequestURI();
-        for (String pattern : securityProperties.getWhitelist()) {
-            if (PATH_MATCHER.match(pattern, uri)) {
-                filterChain.doFilter(request, response);
-                return;
-            }
-        }
-
         // 1. 从 Header 取 Token
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {

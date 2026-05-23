@@ -645,26 +645,76 @@ security:
     - /error
 ```
 
-2. **用 `@ConfigurationProperties` 绑定为不可变 `List<String>`**：
+2. **用 `@ConfigurationProperties` 绑定为 `List<String>`，默认值为空列表防止 NPE**：
 
 ```java
 @ConfigurationProperties(prefix = "security")
 @Data
 public class SecurityProperties {
-    private List<String> whitelist;
+    /** 不需要 JWT 认证的路径白名单，对应 yaml 中的 security.whitelist */
+    private List<String> whitelist = List.of();
 }
 ```
 
-3. **`SecurityConfig` 和 `JwtAuthFilter` 均注入 `SecurityPorperties` 读取白名单**，不再引用任何静态数组：
+3. **`SecurityConfig` 和 `JwtAuthFilter` 均注入 `SecurityProperties` 读取白名单**，不再引用任何静态数组：
 
 ```java
 // SecurityConfig — 授权层白名单
 .requestMatchers(securityProperties.getWhitelist().toArray(new String[0])).permitAll()
 
-// JwtAuthFilter — Filter 层白名单
-for (String pattern : securityProperties.getWhitelist()) {
-    if (PATH_MATCHER.match(pattern, uri)) { ... }
+// JwtAuthFilter — @PostConstruct 缓存后由 shouldNotFilter 使用（见 5.17）
+@PostConstruct
+public void init() {
+    this.whitelist = securityProperties.getWhitelist();
 }
 ```
 
-> **关键点**：`List<String>` 由 Spring 绑定后为普通 ArrayList，外部无法通过静态字段直接访问，消除了数组元素被篡改的风险。白名单集中在配置文件维护，两处消费方（Filter 层和授权层）引用同一数据源，新增路径只改 yaml 即可，无需重新编译。
+> **关键点**：`List<String>` 由 Spring 绑定，外部无法通过静态字段直接访问，消除了数组元素被篡改的风险。白名单集中在配置文件维护，两处消费方（Filter 层和授权层）引用同一数据源，新增路径只改 yaml 即可，无需重新编译。
+
+### 5.17 白名单匹配在 doFilterInternal 内遍历，per-request 开销随白名单增长
+
+**问题**
+
+原实现在 `doFilterInternal` 开头遍历白名单并调用 `AntPathMatcher.match`：
+
+```java
+for (String pattern : securityProperties.getWhitelist()) {
+    if (PATH_MATCHER.match(pattern, uri)) {
+        filterChain.doFilter(request, response);
+        return;
+    }
+}
+```
+
+两个问题：
+1. **每次请求都进入 `doFilterInternal`**：即使是白名单路径，也要先进入方法体才能判断并 `return`，无法在框架层面跳过。
+2. **每次请求都调用 `getWhitelist()`**：白名单列表在运行期不会变化，没有必要每次重新获取。
+
+**修复点**
+
+两步：
+
+1. **`@PostConstruct` 缓存白名单列表**，避免每次请求重复调用 getter：
+
+```java
+private List<String> whitelist;
+
+@PostConstruct
+public void init() {
+    this.whitelist = securityProperties.getWhitelist();
+}
+```
+
+2. **重写 `shouldNotFilter`**，命中白名单时框架直接跳过整个过滤器，不进入 `doFilterInternal`：
+
+```java
+@Override
+protected boolean shouldNotFilter(HttpServletRequest request) {
+    String uri = request.getRequestURI();
+    return whitelist.stream().anyMatch(pattern -> PATH_MATCHER.match(pattern, uri));
+}
+```
+
+`doFilterInternal` 中的白名单遍历块随之删除。
+
+> **关键点**：`OncePerRequestFilter.shouldNotFilter` 在框架层面决定是否执行过滤器，返回 `true` 时整个 filter 被跳过，比在方法体内 `return` 更彻底。白名单路径的请求不再进入 `doFilterInternal`，也不会触发任何 JWT 解析逻辑。
