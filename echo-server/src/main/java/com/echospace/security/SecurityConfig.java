@@ -45,6 +45,10 @@ public class SecurityConfig {
                 .cors(withDefaults())
                 // 无状态 API，禁用 CSRF
                 .csrf(csrf -> csrf.disable())
+                // 纯 JWT API，禁用表单登录、HTTP Basic 和默认登出，避免暴露不必要的端点
+                .formLogin(form -> form.disable())
+                .httpBasic(basic -> basic.disable())
+                .logout(logout -> logout.disable())
                 // 无状态会话，不创建 HttpSession
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // 接口授权：白名单放行，其余需认证

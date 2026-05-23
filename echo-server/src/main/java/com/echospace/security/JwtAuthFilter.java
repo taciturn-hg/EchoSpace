@@ -103,8 +103,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
         String username = claims.get("username", String.class);
 
-        // 4. 校验 Token 类型：只允许 accessToken 访问受保护接口
+        // 4. 校验 Token 类型：缺失/空视为格式无效，非 access 视为类型错误
         String tokenType = claims.get("type", String.class);
+        if (tokenType == null || tokenType.isBlank()) {
+            response.setStatus(401);
+            response.setContentType("application/json;charset=UTF-8");
+            objectMapper.writeValue(response.getWriter(), Result.error("Token无效"));
+            return;
+        }
         if (!JwtUtil.TokenType.ACCESS.claimValue().equals(tokenType)) {
             response.setStatus(401);
             response.setContentType("application/json;charset=UTF-8");

@@ -301,13 +301,15 @@ try {
 
 两个层面的缺陷：
 
-1. **NPE 风险**：未登录请求或白名单接口不会经过 JWT 认证，`SecurityContextHolder.getContext().getAuthentication()` 返回 `null`。此时直接调用 `.getPrincipal()` / `.getDetails()` 会 NPE。
+1. **NPE 风险**：未登录请求或白名单接口不会经过 JWT 认证，`SecurityContextHolder.getContext().getAuthentication()` 返回 `null`。此时直接调用 `.getPrincipal()` 会 NPE。
 
-2. **ClassCastException 风险**：Spring Security 在未认证状态下可能注入 `AnonymousAuthenticationToken`，其 `principal` 是字符串 `"anonymousUser"`，而非 `Long`。直接 `(Long) auth.getPrincipal()` 强转会抛 `ClassCastException`。同理，`details` 也可能不是 `String`。
+2. **ClassCastException 风险**：Spring Security 在未认证状态下可能注入 `AnonymousAuthenticationToken`，其 `principal` 是字符串 `"anonymousUser"`，而非业务对象。直接强转会抛 `ClassCastException`。
 
 **修复点**
 
-三层防御：判空 → 排除匿名 Token → `instanceof` 类型检查（利用 Java 16+ 模式匹配）：
+三层防御：判空 → 排除匿名 Token → `instanceof` 类型检查（利用 Java 16+ 模式匹配）。
+
+同时，将 `userId` 和 `username` 封装进自定义 `UserPrincipal` record，统一存入 `principal`（见 5.12），两个工具方法都从 `getPrincipal()` 读取，不再依赖 `details` 字段：
 
 ```java
 public static Long getCurrentUserId() {
@@ -317,9 +319,8 @@ public static Long getCurrentUserId() {
             || auth instanceof AnonymousAuthenticationToken) {
         return null;
     }
-    Object principal = auth.getPrincipal();
-    if (principal instanceof Long id) {
-        return id;
+    if (auth.getPrincipal() instanceof UserPrincipal up) {
+        return up.userId();
     }
     return null;
 }
@@ -331,15 +332,14 @@ public static String getCurrentUsername() {
             || auth instanceof AnonymousAuthenticationToken) {
         return null;
     }
-    Object details = auth.getDetails();
-    if (details instanceof String username) {
-        return username;
+    if (auth.getPrincipal() instanceof UserPrincipal up) {
+        return up.username();
     }
     return null;
 }
 ```
 
-> **关键点**：`auth.isAuthenticated()` 对 `AnonymousAuthenticationToken` 返回 `false`，但显式 `instanceof` 检查是最安全的做法——即使 Spring Security 未来版本改变行为也不会出错。
+> **关键点**：`auth.isAuthenticated()` 对 `AnonymousAuthenticationToken` 返回 `false`，但显式 `instanceof` 检查是最安全的做法——即使 Spring Security 未来版本改变行为也不会出错。`UserPrincipal` 的引入见 5.12，两处修复配合使用。
 
 ### 5.8 未配置 exceptionHandling → 未认证访问返回默认 403 HTML 而非 401 JSON
 
@@ -387,17 +387,25 @@ public static String getCurrentUsername() {
 
 两步：
 
-1. **生成时写入 type claim**（已在 `JwtUtil.generateToken` 中完成）：
+1. **生成时写入 type claim**（通过 `TokenType.claimValue()` 写入，见 5.13）：
 
 ```java
-.claim("type", type)   // "access" 或 "refresh"
+.claim("type", type.claimValue())   // "access" 或 "refresh"
 ```
 
-2. **过滤器中校验 type**：解析 claims 后，读取 `type` 字段，非 `"access"` 一律拒绝：
+2. **过滤器中区分两种拒绝场景**：`type` 缺失/空说明 Token 格式不完整（历史 Token 或被裁剪），按无效处理；存在但非 `"access"` 才是类型错误：
 
 ```java
 String tokenType = claims.get("type", String.class);
-if (!"access".equals(tokenType)) {
+if (tokenType == null || tokenType.isBlank()) {
+    // type claim 缺失，Token 格式不完整
+    response.setStatus(401);
+    response.setContentType("application/json;charset=UTF-8");
+    objectMapper.writeValue(response.getWriter(), Result.error("Token无效"));
+    return;
+}
+if (!JwtUtil.TokenType.ACCESS.claimValue().equals(tokenType)) {
+    // type 存在但不是 access，明确是类型错误
     response.setStatus(401);
     response.setContentType("application/json;charset=UTF-8");
     objectMapper.writeValue(response.getWriter(), Result.error("Token类型错误，请使用AccessToken"));
@@ -554,3 +562,26 @@ if (!JwtUtil.TokenType.ACCESS.claimValue().equals(tokenType)) { ... }
 ```
 
 > **关键点**：拆成两个方法后，调用方在编译期就被约束只能选择 `generateAccessToken` 或 `generateRefreshToken`，不存在传错字符串的可能。`claimValue()` 集中维护 payload 中的字符串值，生成侧和校验侧引用同一个来源，彻底消除魔法字符串不一致的风险。
+
+### 5.14 未显式禁用 formLogin / httpBasic / logout，默认行为偏离预期
+
+**问题**
+
+无状态 JWT API 场景下，Spring Security 默认仍会启用以下行为：
+
+- **formLogin**：未认证请求触发重定向到 `/login` 登录页（或返回 302），而非 JSON 401。即使配置了 `authenticationEntryPoint`，`UsernamePasswordAuthenticationFilter` 仍在过滤器链中，暴露了不必要的端点。
+- **httpBasic**：响应头携带 `WWW-Authenticate: Basic realm="..."` Challenge，浏览器弹出原生认证对话框，与 JSON API 的交互预期完全不符。
+- **logout**：默认注册 `POST /logout` 端点，在纯 JWT 场景下无意义，属于多余的攻击面。
+
+**修复点**
+
+在 `SecurityFilterChain` 中显式禁用三者：
+
+```java
+.csrf(csrf -> csrf.disable())
+.formLogin(form -> form.disable())
+.httpBasic(basic -> basic.disable())
+.logout(logout -> logout.disable())
+```
+
+> **关键点**：显式禁用比依赖"默认不触发"更安全——Spring Security 版本升级可能改变默认行为，显式配置让意图清晰且不受版本影响。禁用后，未认证请求完全由 `authenticationEntryPoint` 接管，统一返回 JSON 401，行为可预期。
