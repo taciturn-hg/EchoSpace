@@ -718,3 +718,47 @@ protected boolean shouldNotFilter(HttpServletRequest request) {
 `doFilterInternal` 中的白名单遍历块随之删除。
 
 > **关键点**：`OncePerRequestFilter.shouldNotFilter` 在框架层面决定是否执行过滤器，返回 `true` 时整个 filter 被跳过，比在方法体内 `return` 更彻底。白名单路径的请求不再进入 `doFilterInternal`，也不会触发任何 JWT 解析逻辑。
+
+## 6、白名单路径含 context-path 前缀导致 Security 放行失效
+
+**问题**
+
+`application.yaml` 中配置了 `server.servlet.context-path: /api`，白名单路径写成了带前缀的形式：
+
+```yaml
+security:
+  whitelist:
+    - /api/auth/login
+    - /api/auth/register
+    - /api/auth/refresh
+```
+
+但 Spring Security 的 `requestMatchers` 匹配的是**去掉 context-path 之后的 Servlet 路径**（即 `/auth/register`），而 `JwtAuthFilter.shouldNotFilter` 调用的 `request.getRequestURI()` 返回的是**含 context-path 的完整路径**（即 `/api/auth/register`）。
+
+两处消费方对路径的理解不一致：
+
+| 消费方 | 路径来源 | 实际值 |
+|--------|----------|--------|
+| `SecurityConfig.requestMatchers` | Servlet 路径（不含 context-path） | `/auth/register` |
+| `JwtAuthFilter.shouldNotFilter` | `getRequestURI()`（含 context-path） | `/api/auth/register` |
+
+白名单写 `/api/auth/register`：`requestMatchers` 匹配不上（它期望 `/auth/register`），Security 授权层拦截请求返回 401。
+
+**解决方案**
+
+白名单路径统一去掉 `/api` 前缀，只写 Servlet 路径：
+
+```yaml
+security:
+  whitelist:
+    - /auth/login
+    - /auth/register
+    - /auth/refresh
+    - /error
+    - /swagger-ui/**
+    - /v3/api-docs/**
+```
+
+`requestMatchers` 和 `shouldNotFilter` 的 `getRequestURI()` 此时行为不一致（前者匹配 `/auth/register`，后者看到 `/api/auth/register`），但实际上 `shouldNotFilter` 用 `AntPathMatcher` 匹配 `/auth/register` 模式对 `/api/auth/register` 路径会失败——这意味着白名单路径的请求仍会进入 `doFilterInternal`，但因为没有 `Authorization` Header 会直接 `filterChain.doFilter` 放行，不影响功能。Security 授权层的 `requestMatchers` 才是真正决定是否放行的关卡，只要它匹配正确即可。
+
+> **关键点**：`server.servlet.context-path` 只影响 URL 路由，不影响 Spring Security 内部的路径匹配。`requestMatchers` 始终基于去掉 context-path 后的路径工作，白名单配置时不要加 context-path 前缀。

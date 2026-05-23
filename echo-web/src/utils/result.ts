@@ -32,7 +32,14 @@ result.interceptors.request.use(
 
 // 响应拦截器：Token 过期自动刷新（Promise 锁 + _retry 防无限循环）
 result.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    const data = response.data
+    if (data?.code !== 1) {
+      ElMessage.error(data?.msg || '请求失败')
+      return Promise.reject(new Error(data?.msg || '请求失败'))
+    }
+    return data
+  },
   async (error) => {
     if (error.response?.status !== 401) {
       const msg = error.response?.data?.msg || error.message || '请求失败'

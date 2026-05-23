@@ -14,6 +14,7 @@
 | **后端框架** | Spring Boot 3.x | 主流 Java 后端框架，生态成熟 |
 | **前端框架** | Vue 3 + Vite | 渐进式前端框架，上手友好 |
 | **前端 UI** | Element Plus | 成熟的 Vue 3 组件库 |
+| **CSS 预处理器** | SCSS | 变量、嵌套、混入，提升样式可维护性 |
 | **富文本编辑器** | Tiptap | 基于 ProseMirror，Vue 3 原生支持，插件化架构 |
 | **认证方案** | JWT（jjwt + Spring Security） | 无状态认证，适合前后端分离 |
 | **数据库** | MySQL 8.0 | 主力关系型存储 |
@@ -498,6 +499,7 @@ EchoSpace/
 | minio | 8.x | MinIO 对象存储客户端（第一阶段） |
 | aliyun-sdk-oss | 3.x | 阿里云 OSS 对象存储客户端（第二阶段） |
 | jsoup | 1.22.x | HTML 白名单清洗 + 纯文本提取 |
+| springdoc-openapi-starter-webmvc-ui | 2.8.x | OpenAPI 3 / Swagger UI 接口文档（开发环境） |
 | flyway-core | — | 数据库版本迁移 |
 | flyway-mysql | — | Flyway MySQL 8.0 支持（计划引入，当前暂未添加） |
 | lombok | — | 简化 Getter/Setter/Builder 等样板代码 |

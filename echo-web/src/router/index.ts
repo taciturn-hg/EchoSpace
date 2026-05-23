@@ -7,13 +7,19 @@ const router = createRouter({
     {
       path: '/login',
       name: 'login',
-      component: () => import('@/views/Login.vue'),
+      component: () => import('@/views/LoginPage.vue'),
       meta: { guest: true },
     },
     {
       path: '/register',
       name: 'register',
-      component: () => import('@/views/Register.vue'),
+      component: () => import('@/views/RegisterPage.vue'),
+      meta: { guest: true },
+    },
+    {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: () => import('@/views/ForgotPassword.vue'),
       meta: { guest: true },
     },
     {
@@ -23,12 +29,12 @@ const router = createRouter({
     },
     {
       path: '/',
-      component: () => import('@/components/Layout.vue'),
+      component: () => import('@/components/LayoutPage.vue'),
       children: [
         {
           path: '',
           name: 'home',
-          component: () => import('@/views/Home.vue'),
+          component: () => import('@/views/HomePage.vue'),
         },
         {
           path: 'post/:id',
@@ -44,7 +50,7 @@ const router = createRouter({
         {
           path: 'search',
           name: 'search',
-          component: () => import('@/views/Search.vue'),
+          component: () => import('@/views/SearchPage.vue'),
         },
         {
           path: 'user/:id',
@@ -54,7 +60,7 @@ const router = createRouter({
         {
           path: 'settings',
           name: 'settings',
-          component: () => import('@/views/Settings.vue'),
+          component: () => import('@/views/SettingsPage.vue'),
           meta: { requiresAuth: true },
         },
       ],

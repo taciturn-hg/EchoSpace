@@ -3,7 +3,7 @@
 /** 后端统一响应格式 */
 export interface ApiResult<T> {
   code: number
-  msg?: string
+  msg: string
   data: T | null
 }
 
@@ -15,7 +15,25 @@ export interface PageResult<T> {
   size: number
 }
 
-// ===== 用户相关 =====
+// ===== 认证相关 =====
+export interface LoginDTO {
+  account: string
+  password: string
+}
+
+export interface LoginVO {
+  accessToken: string
+  refreshToken: string
+  expiresIn: number
+}
+
+export interface RegisterDTO {
+  username: string
+  phone: string
+  email: string
+  password: string
+  confirmPassword: string
+}
 
 export interface UserInfo {
   id: number
@@ -25,14 +43,6 @@ export interface UserInfo {
   phone: string
   avatar?: string
   bio?: string
-}
-
-// ===== 认证相关 =====
-
-export interface LoginVO {
-  accessToken: string
-  refreshToken: string
-  expiresIn: number
 }
 
 // ===== Axios 类型扩展 =====
