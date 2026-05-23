@@ -30,6 +30,10 @@ public class SecurityConfig {
     @Autowired
     private ObjectMapper objectMapper;
 
+    public static final String[] WHITELIST_PATHS = {
+            "/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/error"
+    };
+
     /**
      * 配置 Security 过滤器链
      *
@@ -53,7 +57,7 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // 接口授权：白名单放行，其余需认证
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh").permitAll()
+                        .requestMatchers(WHITELIST_PATHS).permitAll()
                         .anyRequest().authenticated()
                 )
                 // 未认证/无权限统一返回标准 JSON，避免默认 403 HTML 响应

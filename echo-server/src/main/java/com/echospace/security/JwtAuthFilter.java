@@ -37,10 +37,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
-    private static final String[] WHITELIST_PATHS = {
-            "/api/auth/login", "/api/auth/register", "/api/auth/refresh"
-    };
-
     /**
      * 过滤器核心逻辑
      *
@@ -56,7 +52,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         // 白名单路径直接放行，不做任何 Token 校验
         String uri = request.getRequestURI();
-        for (String pattern : WHITELIST_PATHS) {
+        for (String pattern : SecurityConfig.WHITELIST_PATHS) {
             if (PATH_MATCHER.match(pattern, uri)) {
                 filterChain.doFilter(request, response);
                 return;
@@ -102,6 +98,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
         String username = claims.get("username", String.class);
+        if (username == null || username.isBlank()) {
+            response.setStatus(401);
+            response.setContentType("application/json;charset=UTF-8");
+            objectMapper.writeValue(response.getWriter(), Result.error("Token无效"));
+            return;
+        }
 
         // 4. 校验 Token 类型：缺失/空视为格式无效，非 access 视为类型错误
         String tokenType = claims.get("type", String.class);
