@@ -12,6 +12,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import java.util.List;
+
 import static org.springframework.security.config.Customizer.withDefaults;
 
 /**
@@ -30,9 +32,8 @@ public class SecurityConfig {
     @Autowired
     private ObjectMapper objectMapper;
 
-    public static final String[] WHITELIST_PATHS = {
-            "/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/error"
-    };
+    @Autowired
+    private SecurityPorperties securityPorperties;
 
     /**
      * 配置 Security 过滤器链
@@ -57,7 +58,7 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // 接口授权：白名单放行，其余需认证
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(WHITELIST_PATHS).permitAll()
+                        .requestMatchers(securityPorperties.getWritelist().toArray(new String[0])).permitAll()
                         .anyRequest().authenticated()
                 )
                 // 未认证/无权限统一返回标准 JSON，避免默认 403 HTML 响应

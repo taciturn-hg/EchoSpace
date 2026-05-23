@@ -585,3 +585,86 @@ if (!JwtUtil.TokenType.ACCESS.claimValue().equals(tokenType)) { ... }
 ```
 
 > **关键点**：显式禁用比依赖"默认不触发"更安全——Spring Security 版本升级可能改变默认行为，显式配置让意图清晰且不受版本影响。禁用后，未认证请求完全由 `authenticationEntryPoint` 接管，统一返回 JSON 401，行为可预期。
+
+### 5.15 Filter 内 401 响应写出逻辑重复，散落多处难以统一维护
+
+**问题**
+
+`JwtAuthFilter` 中每个拒绝分支都重复三行相同的代码：
+
+```java
+response.setStatus(401);
+response.setContentType("application/json;charset=UTF-8");
+objectMapper.writeValue(response.getWriter(), Result.error("..."));
+```
+
+共出现 6 次。一旦需要统一添加响应头（如 `Cache-Control: no-store`、`X-Trace-Id`）或调整 Content-Type 格式，必须逐一修改，极易漏改导致行为不一致。
+
+**修复点**
+
+抽取私有方法 `writeUnauthorized`，集中管理状态码、Content-Type 和序列化逻辑，调用方只传错误描述：
+
+```java
+private void writeUnauthorized(HttpServletResponse response, String message) throws IOException {
+    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
+    objectMapper.writeValue(response.getWriter(), Result.error(message));
+}
+```
+
+各拒绝分支简化为：
+
+```java
+writeUnauthorized(response, "Token已过期");
+return;
+```
+
+> **关键点**：使用 `HttpServletResponse.SC_UNAUTHORIZED`（值为 401）替代魔法数字，使用 `MediaType.APPLICATION_JSON_VALUE` 替代字符串字面量，语义更清晰。后续如需统一加响应头或切换序列化方式，只改一处即可。
+
+### 5.16 白名单硬编码为 public static final String[]，数组内容可被外部篡改
+
+**问题**
+
+将白名单定义为 `public static final String[] WHITELIST_PATHS` 存在两个问题：
+
+1. **数组可变性**：Java 数组即使声明为 `final`，`final` 只保证引用不变，数组元素仍可被任意代码修改（`SecurityConfig.WHITELIST_PATHS[0] = "/api/admin/..."`），导致白名单被静默篡改。
+2. **硬编码耦合**：白名单路径散落在代码中，新增/删除路径需要重新编译部署，无法在不同环境（开发/测试/生产）灵活调整。
+
+**修复点**
+
+三步：
+
+1. **在 `application.yaml` 中配置白名单**：
+
+```yaml
+security:
+  writelist:
+    - /api/auth/login
+    - /api/auth/register
+    - /api/auth/refresh
+    - /error
+```
+
+2. **用 `@ConfigurationProperties` 绑定为不可变 `List<String>`**：
+
+```java
+@ConfigurationProperties(prefix = "security")
+@Data
+public class SecurityPorperties {
+    private List<String> writelist;
+}
+```
+
+3. **`SecurityConfig` 和 `JwtAuthFilter` 均注入 `SecurityPorperties` 读取白名单**，不再引用任何静态数组：
+
+```java
+// SecurityConfig — 授权层白名单
+.requestMatchers(securityPorperties.getWritelist().toArray(new String[0])).permitAll()
+
+// JwtAuthFilter — Filter 层白名单
+for (String pattern : securityPorperties.getWritelist()) {
+    if (PATH_MATCHER.match(pattern, uri)) { ... }
+}
+```
+
+> **关键点**：`List<String>` 由 Spring 绑定后为普通 ArrayList，外部无法通过静态字段直接访问，消除了数组元素被篡改的风险。白名单集中在配置文件维护，两处消费方（Filter 层和授权层）引用同一数据源，新增路径只改 yaml 即可，无需重新编译。

@@ -10,6 +10,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -35,6 +36,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private SecurityPorperties securityPorperties;
+
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
     /**
@@ -52,7 +56,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         // 白名单路径直接放行，不做任何 Token 校验
         String uri = request.getRequestURI();
-        for (String pattern : SecurityConfig.WHITELIST_PATHS) {
+        for (String pattern : securityPorperties.getWritelist()) {
             if (PATH_MATCHER.match(pattern, uri)) {
                 filterChain.doFilter(request, response);
                 return;
@@ -72,14 +76,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             claims = jwtUtil.parseToken(token);
         } catch (ExpiredJwtException e) {
-            response.setStatus(401);
-            response.setContentType("application/json;charset=UTF-8");
-            objectMapper.writeValue(response.getWriter(), Result.error("Token已过期"));
+            writeUnauthorized(response, "Token已过期");
             return;
         } catch (JwtException e) {
-            response.setStatus(401);
-            response.setContentType("application/json;charset=UTF-8");
-            objectMapper.writeValue(response.getWriter(), Result.error("Token无效"));
+            writeUnauthorized(response, "Token无效");
             return;
         }
 
@@ -92,31 +92,23 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
             userId = Long.valueOf(subject);
         } catch (NumberFormatException e) {
-            response.setStatus(401);
-            response.setContentType("application/json;charset=UTF-8");
-            objectMapper.writeValue(response.getWriter(), Result.error("Token无效"));
+            writeUnauthorized(response, "Token无效");
             return;
         }
         String username = claims.get("username", String.class);
         if (username == null || username.isBlank()) {
-            response.setStatus(401);
-            response.setContentType("application/json;charset=UTF-8");
-            objectMapper.writeValue(response.getWriter(), Result.error("Token无效"));
+            writeUnauthorized(response, "Token无效");
             return;
         }
 
         // 4. 校验 Token 类型：缺失/空视为格式无效，非 access 视为类型错误
         String tokenType = claims.get("type", String.class);
         if (tokenType == null || tokenType.isBlank()) {
-            response.setStatus(401);
-            response.setContentType("application/json;charset=UTF-8");
-            objectMapper.writeValue(response.getWriter(), Result.error("Token无效"));
+            writeUnauthorized(response, "Token无效");
             return;
         }
         if (!JwtUtil.TokenType.ACCESS.claimValue().equals(tokenType)) {
-            response.setStatus(401);
-            response.setContentType("application/json;charset=UTF-8");
-            objectMapper.writeValue(response.getWriter(), Result.error("Token类型错误，请使用AccessToken"));
+            writeUnauthorized(response, "Token类型错误，请使用AccessToken");
             return;
         }
 
@@ -130,5 +122,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * 向响应写出 401 + 统一 Result JSON，集中管理响应头与序列化逻辑
+     *
+     * @param response HTTP 响应
+     * @param message  返回给客户端的错误描述
+     * @Author: taciturn-hg
+     * @Date: 5/23/2026
+     */
+    private void writeUnauthorized(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
+        objectMapper.writeValue(response.getWriter(), Result.error(message));
     }
 }
