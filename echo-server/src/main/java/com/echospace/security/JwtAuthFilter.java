@@ -37,7 +37,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private SecurityPorperties securityPorperties;
+    private SecurityProperties securityProperties;
 
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
@@ -56,7 +56,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         // 白名单路径直接放行，不做任何 Token 校验
         String uri = request.getRequestURI();
-        for (String pattern : securityPorperties.getWritelist()) {
+        for (String pattern : securityProperties.getWhitelist()) {
             if (PATH_MATCHER.match(pattern, uri)) {
                 filterChain.doFilter(request, response);
                 return;

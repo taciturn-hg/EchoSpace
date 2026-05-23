@@ -638,7 +638,7 @@ return;
 
 ```yaml
 security:
-  writelist:
+  whitelist:
     - /api/auth/login
     - /api/auth/register
     - /api/auth/refresh
@@ -650,8 +650,8 @@ security:
 ```java
 @ConfigurationProperties(prefix = "security")
 @Data
-public class SecurityPorperties {
-    private List<String> writelist;
+public class SecurityProperties {
+    private List<String> whitelist;
 }
 ```
 
@@ -659,10 +659,10 @@ public class SecurityPorperties {
 
 ```java
 // SecurityConfig — 授权层白名单
-.requestMatchers(securityPorperties.getWritelist().toArray(new String[0])).permitAll()
+.requestMatchers(securityProperties.getWhitelist().toArray(new String[0])).permitAll()
 
 // JwtAuthFilter — Filter 层白名单
-for (String pattern : securityPorperties.getWritelist()) {
+for (String pattern : securityProperties.getWhitelist()) {
     if (PATH_MATCHER.match(pattern, uri)) { ... }
 }
 ```

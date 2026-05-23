@@ -14,7 +14,7 @@ import java.util.List;
  **/
 @ConfigurationProperties(prefix = "security")
 @Data
-public class SecurityPorperties {
+public class SecurityProperties {
 
-    private List<String> writelist;
+    private List<String> whitelist = List.of();
 }

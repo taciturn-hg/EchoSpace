@@ -33,7 +33,7 @@ public class SecurityConfig {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private SecurityPorperties securityPorperties;
+    private SecurityProperties securityProperties;
 
     /**
      * 配置 Security 过滤器链
@@ -58,7 +58,7 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // 接口授权：白名单放行，其余需认证
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(securityPorperties.getWritelist().toArray(new String[0])).permitAll()
+                        .requestMatchers(securityProperties.getWhitelist().toArray(new String[0])).permitAll()
                         .anyRequest().authenticated()
                 )
                 // 未认证/无权限统一返回标准 JSON，避免默认 403 HTML 响应

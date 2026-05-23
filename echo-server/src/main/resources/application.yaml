@@ -46,7 +46,7 @@ oss:
   bucket-name: echospace
 
 security:
-  writelist:
+  whitelist:
     - /api/auth/login
     - /api/auth/register
     - /api/auth/refresh
