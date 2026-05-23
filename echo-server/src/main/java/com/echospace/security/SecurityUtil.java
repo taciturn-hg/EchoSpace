@@ -10,7 +10,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
  * @Author: taciturn-hg
  * @Date: 5/22/2026 9:57 下午
  */
-public class SecurityUtil {
+public final class SecurityUtil {
+
+    private SecurityUtil(){}
 
     /**
      * 获取当前用户 ID
@@ -27,8 +29,8 @@ public class SecurityUtil {
             return null;
         }
         Object principal = auth.getPrincipal();
-        if (principal instanceof Long id) {
-            return id;
+        if (principal instanceof UserPrincipal up) {
+            return up.userId();
         }
         return null;
     }
@@ -47,9 +49,9 @@ public class SecurityUtil {
                 || auth instanceof AnonymousAuthenticationToken) {
             return null;
         }
-        Object details = auth.getDetails();
-        if (details instanceof String username) {
-            return username;
+        Object principal = auth.getPrincipal();
+        if (principal instanceof UserPrincipal up) {
+            return up.username();
         }
         return null;
     }

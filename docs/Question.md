@@ -375,7 +375,68 @@ public static String getCurrentUsername() {
 
 > **关键点**：`AuthenticationEntryPoint` 和 `AccessDeniedHandler` 工作在 Security 异常处理层，与 `@ControllerAdvice` 全局异常处理器无关——Security 层的异常不会流转到 Spring MVC，必须在这里单独处理。
 
-### 5.9 Spring Security 过滤器链执行顺序（整体流程）
+### 5.9 JWT 未携带/校验 Token 类型，RefreshToken 可冒充 AccessToken
+
+**问题**
+
+`generateToken` 仅用 `type` 参数决定过期时间，但如果不把 `type` 写入 JWT payload，`JwtAuthFilter` 就无法区分收到的是 AccessToken 还是 RefreshToken。这意味着：
+- RefreshToken（7 天有效期）可以直接放在 `Authorization` Header 里访问受保护接口
+- 一旦 RefreshToken 泄露，攻击者拥有长达 7 天的访问窗口，而非 AccessToken 的 30 分钟
+
+**修复点**
+
+两步：
+
+1. **生成时写入 type claim**（已在 `JwtUtil.generateToken` 中完成）：
+
+```java
+.claim("type", type)   // "access" 或 "refresh"
+```
+
+2. **过滤器中校验 type**：解析 claims 后，读取 `type` 字段，非 `"access"` 一律拒绝：
+
+```java
+String tokenType = claims.get("type", String.class);
+if (!"access".equals(tokenType)) {
+    response.setStatus(401);
+    response.setContentType("application/json;charset=UTF-8");
+    objectMapper.writeValue(response.getWriter(), Result.error("Token类型错误，请使用AccessToken"));
+    return;
+}
+```
+
+> **关键点**：`/api/auth/refresh` 接口在白名单中（`permitAll()`），不经过 `JwtAuthFilter`，所以 RefreshToken 仍然可以正常提交给刷新接口。类型校验只影响受保护接口，不影响刷新流程。
+
+### 5.10 白名单接口携带过期 Token 被 Filter 拦截返回 401
+
+**问题**
+
+前端 Axios 请求拦截器会对所有请求无差别注入 `Authorization: Bearer {token}` Header。当 Token 已过期时，即使请求的是 `/api/auth/login`、`/api/auth/refresh` 等白名单接口，`JwtAuthFilter` 也会先解析 Token，遇到 `ExpiredJwtException` 直接返回 401，导致登录/刷新请求被挡在 Filter 层，用户无法完成重新登录。
+
+**修复点**
+
+在 `JwtAuthFilter` 的 `doFilterInternal` 最开头，用 `AntPathMatcher` 匹配白名单路径，命中则直接 `filterChain.doFilter()` 放行，跳过所有 Token 校验逻辑：
+
+```java
+private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
+
+private static final String[] WHITELIST_PATHS = {
+        "/api/auth/login", "/api/auth/register", "/api/auth/refresh"
+};
+
+// doFilterInternal 最开头：
+String uri = request.getRequestURI();
+for (String pattern : WHITELIST_PATHS) {
+    if (PATH_MATCHER.match(pattern, uri)) {
+        filterChain.doFilter(request, response);
+        return;
+    }
+}
+```
+
+> **关键点**：`SecurityConfig` 中的 `permitAll()` 只控制 Spring Security 的授权层（认证通过后是否允许访问），不能阻止 `JwtAuthFilter` 在授权层之前执行。Filter 的白名单必须在 Filter 内部自己维护，两处配置各司其职、缺一不可。`AntPathMatcher` 声明为 `static final` 避免每次请求重复实例化。
+
+### 5.11 Spring Security 过滤器链执行顺序（整体流程）
 
 了解过滤器的执行顺序有助于理解上述修复的必要性：
 
@@ -390,3 +451,106 @@ public static String getCurrentUsername() {
 - **JwtAuthFilter** 在 `UsernamePasswordAuthenticationFilter` 之前执行，将 JWT 中的用户信息写入 `SecurityContextHolder`。
 - 后续的认证/授权组件从 `SecurityContextHolder` 中读取当前用户。
 - Filter 中未捕获的异常会绕过 Spring 全局异常处理器，直接返回 500 → 必须在 Filter 内部 try-catch。
+
+### 5.12 username 存入 details 字段，可能被其他组件覆盖
+
+**问题**
+
+`Authentication.details` 在 Spring Security 语义上用于存储请求级元数据（如 `WebAuthenticationDetails` 包含的 IP、SessionId），并非业务数据的存储位置。将 `username` 写入 `details` 存在两个风险：
+
+1. **被覆盖**：Spring Security 内置的 `WebAuthenticationDetailsSource` 会在认证流程中自动向 `details` 写入 `WebAuthenticationDetails`；若后续引入其他过滤器或审计组件也调用 `authentication.setDetails()`，username 会被静默覆盖，`SecurityUtil.getCurrentUsername()` 返回错误值或 `null`。
+2. **语义混乱**：`details` 是框架约定的基础设施字段，业务代码读取它会与框架行为产生隐式耦合，难以维护。
+
+**修复点**
+
+定义 `UserPrincipal` record，将 `userId` 和 `username` 一起封装进 `principal`，通过 `getPrincipal()` 读取：
+
+```java
+// UserPrincipal.java
+public record UserPrincipal(Long userId, String username) {}
+```
+
+```java
+// JwtAuthFilter — 写入 SecurityContextHolder
+UserPrincipal principal = new UserPrincipal(userId, username);
+UsernamePasswordAuthenticationToken authentication =
+        new UsernamePasswordAuthenticationToken(principal, null, List.of());
+SecurityContextHolder.getContext().setAuthentication(authentication);
+```
+
+```java
+// SecurityUtil — 从 principal 读取
+public static Long getCurrentUserId() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) return null;
+    if (auth.getPrincipal() instanceof UserPrincipal up) return up.userId();
+    return null;
+}
+
+public static String getCurrentUsername() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) return null;
+    if (auth.getPrincipal() instanceof UserPrincipal up) return up.username();
+    return null;
+}
+```
+
+> **关键点**：`principal` 是 Spring Security 中"当前认证主体"的标准存储位置，框架不会在认证完成后再修改它。将业务数据放在 `principal` 而非 `details`，既符合框架语义，也避免了被其他组件意外覆盖的风险。
+
+### 5.13 generateToken 用字符串分支决定过期时间，传错 type 静默生成长效 Token
+
+**问题**
+
+```java
+long expire = "access".equals(type) ? accessExpire : refreshExpire;
+```
+
+这段逻辑只要 `type` 不是 `"access"`（包括拼写错误、大小写错误、传入 `null`），就会静默走 `refreshExpire`（7 天），生成一个长效 Token。调用方不会收到任何错误提示，安全问题难以排查。
+
+同时，`JwtAuthFilter` 中校验 type 的 `"access"` 是魔法字符串，与生成侧的字符串字面量各自维护，一旦其中一处改动就会产生不一致。
+
+**修复点**
+
+两步：
+
+1. **将 `TokenType` 改为 `public` enum，并提供 `claimValue()` 方法**，统一管理写入 JWT payload 的字符串值：
+
+```java
+public enum TokenType {
+    ACCESS, REFRESH;
+
+    public String claimValue() {
+        return name().toLowerCase(); // "access" / "refresh"
+    }
+}
+```
+
+2. **拆分为 `generateAccessToken` / `generateRefreshToken` 两个公开方法**，内部共用 `private buildToken(TokenType, ...)`：
+
+```java
+public String generateAccessToken(String sub, String username) {
+    return buildToken(TokenType.ACCESS, sub, username);
+}
+
+public String generateRefreshToken(String sub, String username) {
+    return buildToken(TokenType.REFRESH, sub, username);
+}
+
+private String buildToken(TokenType type, String sub, String username) {
+    long expire = type == TokenType.ACCESS ? accessExpire : refreshExpire;
+    return Jwts.builder()
+            .subject(sub)
+            .claim("username", username)
+            .claim("type", type.claimValue())
+            // ...
+            .compact();
+}
+```
+
+3. **`JwtAuthFilter` 中用 enum 替换魔法字符串**：
+
+```java
+if (!JwtUtil.TokenType.ACCESS.claimValue().equals(tokenType)) { ... }
+```
+
+> **关键点**：拆成两个方法后，调用方在编译期就被约束只能选择 `generateAccessToken` 或 `generateRefreshToken`，不存在传错字符串的可能。`claimValue()` 集中维护 payload 中的字符串值，生成侧和校验侧引用同一个来源，彻底消除魔法字符串不一致的风险。

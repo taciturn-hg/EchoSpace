@@ -29,6 +29,14 @@ public class JwtUtil {
     @Value("${jwt.refresh-token-expiration:604800000}")
     private long refreshExpire;
 
+    public enum TokenType {
+        ACCESS, REFRESH;
+
+        public String claimValue() {
+            return name().toLowerCase();
+        }
+    }
+
     private SecretKey secretKey;
 
     /**
@@ -43,20 +51,47 @@ public class JwtUtil {
     }
 
     /**
-     * 生成 JWT Token
+     * 生成 AccessToken（短效，30 分钟）
      *
-     * @param type     "access" 生成 AccessToken，"refresh" 生成 RefreshToken
-     * @param sub      主题（用户ID）
+     * @param sub      主题（用户 ID）
      * @param username 用户名，存入 claims 便于后续读取
-     * @return 签发的 JWT 字符串
+     * @return 签发的 AccessToken 字符串
      * @Author: taciturn-hg
      * @Date: 5/22/2026 10:51 下午
      */
-    public String generateToken(String type, String sub, String username) {
-        long expire = "access".equals(type) ? accessExpire : refreshExpire;
+    public String generateAccessToken(String sub, String username) {
+        return buildToken(TokenType.ACCESS, sub, username);
+    }
+
+    /**
+     * 生成 RefreshToken（长效，7 天）
+     *
+     * @param sub      主题（用户 ID）
+     * @param username 用户名，存入 claims 便于后续读取
+     * @return 签发的 RefreshToken 字符串
+     * @Author: taciturn-hg
+     * @Date: 5/22/2026 10:51 下午
+     */
+    public String generateRefreshToken(String sub, String username) {
+        return buildToken(TokenType.REFRESH, sub, username);
+    }
+
+    /**
+     * 构建 JWT Token（内部公共逻辑）
+     *
+     * @param type     Token 类型，决定过期时间和写入 payload 的 type claim
+     * @param sub      主题（用户 ID）
+     * @param username 用户名，存入 claims 便于后续读取
+     * @return 签发的 JWT 字符串
+     * @Author: taciturn-hg
+     * @Date: 5/23/2026
+     */
+    private String buildToken(TokenType type, String sub, String username) {
+        long expire = type == TokenType.ACCESS ? accessExpire : refreshExpire;
         return Jwts.builder()
                 .subject(sub)
                 .claim("username", username)
+                .claim("type", type.claimValue())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expire))
                 .signWith(secretKey, Jwts.SIG.HS256)

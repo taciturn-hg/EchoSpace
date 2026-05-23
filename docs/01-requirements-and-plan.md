@@ -262,6 +262,7 @@ JWT Payload 设计：
 {
   "sub": "用户ID",
   "username": "用户名",
+  "type": "access | refresh",
   "iat": "签发时间戳",
   "exp": "过期时间戳"
 }

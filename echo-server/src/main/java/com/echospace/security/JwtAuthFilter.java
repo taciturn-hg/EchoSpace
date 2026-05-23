@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -34,6 +35,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Autowired
     private ObjectMapper objectMapper;
 
+    private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
+
+    private static final String[] WHITELIST_PATHS = {
+            "/api/auth/login", "/api/auth/register", "/api/auth/refresh"
+    };
+
     /**
      * 过滤器核心逻辑
      *
@@ -47,6 +54,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
+        // 白名单路径直接放行，不做任何 Token 校验
+        String uri = request.getRequestURI();
+        for (String pattern : WHITELIST_PATHS) {
+            if (PATH_MATCHER.match(pattern, uri)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+        }
 
         // 1. 从 Header 取 Token
         String authHeader = request.getHeader("Authorization");
@@ -88,13 +103,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
         String username = claims.get("username", String.class);
 
-        // 4. 可选：查 Redis/MySQL 校验用户状态（是否被禁用）
+        // 4. 校验 Token 类型：只允许 accessToken 访问受保护接口
+        String tokenType = claims.get("type", String.class);
+        if (!JwtUtil.TokenType.ACCESS.claimValue().equals(tokenType)) {
+            response.setStatus(401);
+            response.setContentType("application/json;charset=UTF-8");
+            objectMapper.writeValue(response.getWriter(), Result.error("Token类型错误，请使用AccessToken"));
+            return;
+        }
+
+        // 5. 可选：查 Redis/MySQL 校验用户状态（是否被禁用）
         // if (redisTemplate.opsForValue().get("user:ban:" + userId) != null) { ... }
 
-        // 5. 写入 SecurityContextHolder（无密码的认证信息）
+        // 6. 写入 SecurityContextHolder（无密码的认证信息）
+        UserPrincipal principal = new UserPrincipal(userId, username);
         UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(userId, null, List.of());
-        authentication.setDetails(username);
+                new UsernamePasswordAuthenticationToken(principal, null, List.of());
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         filterChain.doFilter(request, response);
