@@ -835,7 +835,119 @@ if (store.refreshingPromise) {
 
 > **关键点**：拦截器是**绑定在实例上**的——任何走该实例发起的请求都会触发拦截器。在拦截器内再用同一实例发起请求，等于把当前调用路径再嵌套一次，极易形成「等待自己 / 重入死循环 / 栈失控」。要在拦截器里发起辅助请求（刷新 Token、上报错误等），固定做法是另起一个干净的 axios 实例（或直接用 `axios.request`），物理隔离拦截链。另一种等价做法是给请求 config 打一个标记（如 `config._skipAuthRefresh`），拦截器里看到标记直接跳过 401 自刷逻辑——本质都是断开递归路径。最后，普通 DTO 不需要 `ref` 包裹，直接构造对象传入即可。
 
-## 8、Vue Router 子路由无法继承父路由 meta，需用 to.matched.some 匹配
+## 8、success 分支同时弹消息又 reject，导致提示重复风险与调用方被迫写空 catch
+
+**问题**
+
+`result.ts` 的 success 拦截器在 `code !== 1` 时既调用 `ElMessage.error(...)` 弹了消息，又 `Promise.reject(new Error(...))` 把错误抛出去。看似合理，实际埋了两个问题：
+
+1. **未来注册第二个响应拦截器就会触发「同一错误弹两次」**。axios 拦截器是链式的：**前一个节点的 success 抛错 → 下一个节点的 error 触发**。当前文件只注册了一个拦截器，所以暂时不会真重复弹。但只要再追加一个用于埋点 / 重试 / 日志的拦截器，业务码错误就会同时命中第一节点的 success 提示和后续节点的 error 提示。
+2. **调用方被迫写空 `catch {}`**。因为提示在拦截器里已经弹过了，页面只是为了不让 `unhandledrejection` 飘出去而被迫写一个空 catch 吞掉，意图模糊；同时页面里写的 `if (res.code !== 1)` 防御兜底实际是死代码（success 拦截器已经把它从 `await` 里转成 throw 了，根本拿不到 `res`）。
+
+**解决方案**
+
+让「弹消息」和「reject」**只一处发生**，并把所有错误（HTTP / 业务）汇到 error 分支统一提示。具体做法：
+
+1. success 分支只负责把业务错误转成 reject，不弹消息；同时给抛出的 Error 打一个 `__business` 标记。
+2. error 分支在最前面识别 `__business`：是业务错误就在这里弹一次然后 reject；否则按原有逻辑（401 触发刷新 / 其它错误从 `error.response?.data?.msg` 取消息）走。
+
+```ts
+result.interceptors.response.use(
+  (response) => {
+    const data = response.data
+    if (data?.code !== 1) {
+      const err = new Error(data?.msg || '请求失败') as Error & { __business?: boolean }
+      err.__business = true
+      return Promise.reject(err)
+    }
+    return data
+  },
+  async (error) => {
+    // 业务码错误（来自 success 分支 reject）：在此处统一弹一次后向上抛
+    if (error?.__business) {
+      ElMessage.error(error.message)
+      return Promise.reject(error)
+    }
+
+    if (error.response?.status !== 401) {
+      const msg = error.response?.data?.msg || error.message || '请求失败'
+      ElMessage.error(msg)
+      return Promise.reject(error)
+    }
+    // ...401 → 刷新 Token 流程
+  },
+)
+```
+
+> **关键点**：axios 拦截器的真实模型是「**上一个节点的 success 失败 → 下一个节点的 error**」，**同一个 `use(onFulfilled, onRejected)` 自己的 success 失败不会触发自己的 error**。所以在只有一个拦截器时不会真的弹两次——但「弹消息」和「reject 错误」分散在 success / error 两个回调里，只要后续多挂一个拦截器就会立刻翻车。把提示集中到 error 分支、success 只做「成功 / 失败转换」，不仅修掉这个潜在 bug，也让调用方不需要再写空 catch 来吞重复事件——`await` 拿到的要么是成功数据，要么走自身的 catch 处理流程性失败。
+
+## 10、callRefresh 遇到 HTTP 错误时丢失后端 msg
+
+**问题**
+
+`callRefresh` 直接 `await refreshClient.post(...)`，当 `/auth/refresh` 返回 HTTP 400/401 时，axios 会 reject 一个 `AxiosError`，其 `.message` 是通用的 `"Request failed with status code 400"`。后端实际返回的 `msg`（如"refreshToken 已过期"）藏在 `error.response.data.msg` 里，上层 catch 拿不到，只能展示无意义的通用提示。
+
+**解决方案：catch + 提取 msg 后 rethrow**
+
+在 `callRefresh` 内部 catch `AxiosError`，用 `axios.isAxiosError()` 类型收窄后提取 `error.response?.data?.msg`，再 throw 一个携带真实 msg 的普通 `Error`，保持函数签名 `Promise<ApiResult<RefreshVO>>` 不变（只在成功时 resolve）：
+
+```typescript
+async function callRefresh(refreshTokenStr: string): Promise<ApiResult<RefreshVO>> {
+  const dto: RefreshDTO = { refreshToken: refreshTokenStr }
+  try {
+    const response = await refreshClient.post<ApiResult<RefreshVO>>('/auth/refresh', dto)
+    return response.data
+  } catch (e) {
+    const msg = axios.isAxiosError(e) ? e.response?.data?.msg : undefined
+    throw new Error(msg || '登录已过期，请重新登录')
+  }
+}
+```
+
+上层 catch 已有 `e instanceof Error ? e.message : '...'` 的处理，后端 msg 自然透传到 `ElMessage.error`。
+
+> **为什么不用 `validateStatus: () => true`**：该方案让 axios 对所有 HTTP 状态码都 resolve，函数返回类型就必须同时表达成功和失败两种形态，调用方需要额外判断，契约变复杂。HTTP 错误本就是异常路径，用 throw 表达更自然；`validateStatus` 适合需要统一处理所有状态码的场景（如代理转发），不适合这里。
+
+## 11、Swagger 全局 addSecurityItem 导致匿名接口显示为需要授权
+
+**问题**
+
+`SwaggerConfig` 通过 `.addSecurityItem(new SecurityRequirement().addList("BearerAuth"))` 在 OpenAPI 全局声明了 BearerAuth，导致 `login`、`register`、`refresh` 等匿名接口在 Swagger UI 中也显示为需要授权（右上角锁图标为锁定状态）。这会误导接口调用者，也会影响客户端代码生成工具（如 OpenAPI Generator）为这些接口错误地生成携带 Token 的请求代码。
+
+原有的 `@SecurityRequirement(name = "")` 是非标准 workaround——OpenAPI 规范要求 security requirement 的 name 必须对应 `components.securitySchemes` 中已声明的 scheme，空字符串是无效值，springdoc 对它的处理行为在不同版本间不一致，有些版本会渲染成一个空的 security 条目而非真正清空。
+
+**解决方案：用 `@SecurityRequirements`（复数）显式覆盖为空**
+
+`@SecurityRequirements`（无参数，value 为空数组）对应 OpenAPI 3 规范中的 `security: []`，明确表示"此操作覆盖全局 security，且不需要任何鉴权"，是规范定义的正确用法：
+
+```java
+// 匿名接口：显式覆盖全局 security 为空
+@Operation(summary = "用户注册")
+@PostMapping("/register")
+@SecurityRequirements
+public Result<Void> register(...) { ... }
+
+@Operation(summary = "用户登录")
+@PostMapping("/login")
+@SecurityRequirements
+public Result<LoginVO> login(...) { ... }
+
+@Operation(summary = "刷新 Token")
+@PostMapping("/refresh")
+@SecurityRequirements
+public Result<LoginVO> refresh(...) { ... }
+
+// 需要鉴权的接口：不加注解，继承全局 BearerAuth
+@Operation(summary = "获取当前用户信息")
+@GetMapping("/me")
+public Result<UserInfoVO> me() { ... }
+```
+
+同时将 import 从 `SecurityRequirement` 改为 `SecurityRequirements`。
+
+> **关键点**：全局 `addSecurityItem` 是"默认需要鉴权"的声明，适合大多数接口都需要 Token 的场景，不需要在每个 Controller 上重复声明。少数匿名接口用 `@SecurityRequirements`（空数组）显式覆盖，比逐一添加 `@SecurityRequirement` 更简洁，也比 `name = ""` 的 workaround 更符合规范。
+
+## 9、Vue Router 子路由无法继承父路由 meta，需用 to.matched.some 匹配
 
 **问题**
 

@@ -96,11 +96,8 @@ async function handleLogin() {
   loading.value = true
   try {
     const res = await login(form.value)
-    if (res.code !== 1 || !res.data) {
-      ElMessage.error(res.msg || '登录失败')
-      return
-    }
-    const { accessToken, refreshToken } = res.data
+    const accessToken = res.data?.accessToken
+    const refreshToken = res.data?.refreshToken
     if (!accessToken || !refreshToken) {
       ElMessage.error('登录响应数据不完整')
       return
@@ -109,7 +106,7 @@ async function handleLogin() {
     ElMessage.success('登录成功')
     router.push('/')
   } catch {
-    // 异常已在 axios 响应拦截器中统一提示，这里仅吞掉避免 unhandledrejection
+    // 业务/HTTP 错误已由 result 拦截器统一弹出，此处仅吞异常防 unhandledrejection
   } finally {
     loading.value = false
   }

@@ -161,15 +161,11 @@ async function handleRegister() {
 
   loading.value = true
   try {
-    const res = await register(form.value)
-    if (res.code !== 1) {
-      ElMessage.error(res.msg || '注册失败')
-      return
-    }
+    await register(form.value)
     ElMessage.success('注册成功，请登录')
     router.push('/login')
   } catch {
-    // 异常已在 axios 响应拦截器中统一提示，这里仅吞掉避免 unhandledrejection
+    // 业务/HTTP 错误已由 result 拦截器统一弹出，此处仅吞异常防 unhandledrejection
   } finally {
     loading.value = false
   }

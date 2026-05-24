@@ -8,6 +8,7 @@ import com.echospace.service.AuthService;
 import com.echospace.vo.LoginVO;
 import com.echospace.vo.UserInfoVO;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,7 @@ public class AuthController {
      */
     @Operation(summary = "用户注册")
     @PostMapping("/register")
+    @SecurityRequirements
     public Result<Void> register(@Valid @RequestBody RegisterDTO registerDTO) {
         authService.register(registerDTO);
         return Result.success("注册成功");
@@ -53,6 +55,7 @@ public class AuthController {
      */
     @Operation(summary = "用户登录", description = "支持用户名 / 邮箱 / 手机号登录，返回 JWT Token 对")
     @PostMapping("/login")
+    @SecurityRequirements
     public Result<LoginVO> login(@Valid @RequestBody LoginDTO loginDTO) {
         return Result.success(authService.login(loginDTO));
     }
@@ -65,6 +68,7 @@ public class AuthController {
      */
     @Operation(summary = "刷新 Token", description = "用 refreshToken 换取新的 accessToken 和 refreshToken")
     @PostMapping("/refresh")
+    @SecurityRequirements
     public Result<LoginVO> refresh(@Valid @RequestBody RefreshTokenDTO refreshTokenDTO) {
         return Result.success(authService.refresh(refreshTokenDTO));
     }

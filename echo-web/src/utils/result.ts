@@ -28,8 +28,13 @@ const refreshClient = axios.create({
 
 async function callRefresh(refreshTokenStr: string): Promise<ApiResult<RefreshVO>> {
   const dto: RefreshDTO = { refreshToken: refreshTokenStr }
-  const response = await refreshClient.post<ApiResult<RefreshVO>>('/auth/refresh', dto)
-  return response.data
+  try {
+    const response = await refreshClient.post<ApiResult<RefreshVO>>('/auth/refresh', dto)
+    return response.data
+  } catch (e) {
+    const msg = axios.isAxiosError(e) ? e.response?.data?.msg : undefined
+    throw new Error(msg || '登录已过期，请重新登录')
+  }
 }
 
 // 请求拦截器：注入 Token
@@ -44,17 +49,26 @@ result.interceptors.request.use(
   (error) => Promise.reject(error),
 )
 
-// 响应拦截器：Token 过期自动刷新（Promise 锁 + _retry 防无限循环）
+// 响应拦截器：业务错误与 HTTP 错误统一在 error 分支提示，避免「弹两次」
+// 同时 401 触发自动刷新（Promise 锁 + _retry 防无限循环）
 result.interceptors.response.use(
   (response) => {
     const data = response.data
     if (data?.code !== 1) {
-      ElMessage.error(data?.msg || '请求失败')
-      return Promise.reject(new Error(data?.msg || '请求失败'))
+      // 仅 reject，不在此处弹消息；error 分支会通过 __business 标记识别并统一提示
+      const err = new Error(data?.msg || '请求失败') as Error & { __business?: boolean }
+      err.__business = true
+      return Promise.reject(err)
     }
     return data
   },
   async (error) => {
+    // 业务码错误（来自 success 分支 reject）：在此处统一弹一次后向上抛
+    if (error?.__business) {
+      ElMessage.error(error.message)
+      return Promise.reject(error)
+    }
+
     if (error.response?.status !== 401) {
       const msg = error.response?.data?.msg || error.message || '请求失败'
       ElMessage.error(msg)
