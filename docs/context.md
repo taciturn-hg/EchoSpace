@@ -118,6 +118,7 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | PostCreate.vue | `/post/create` | 占位 |
 | SearchPage.vue | `/search` | 占位 |
 | UserProfile.vue | `/user/:id` | 占位 |
+| ProfileSettingsPage.vue | `/settings/profile` | 占位，待开发 |
 | SettingsPage.vue | `/settings` | 占位 |
 
 ### 数据库实体（已建 Entity）
