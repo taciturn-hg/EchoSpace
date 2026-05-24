@@ -89,6 +89,7 @@ const rules: FormRules = {
 }
 
 async function handleLogin() {
+  if (!formRef.value) return
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
 

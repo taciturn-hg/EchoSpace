@@ -52,7 +52,7 @@
           <el-input
             v-model="form.password"
             type="password"
-            placeholder="密码（8-20 位）"
+            placeholder="密码（6-20 位）"
             size="large"
             :prefix-icon="LockIcon"
             show-password
@@ -155,6 +155,7 @@ const rules: FormRules = {
 }
 
 async function handleRegister() {
+  if (!formRef.value) return
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
 
@@ -176,6 +177,7 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+@use 'sass:color';
 $primary: #4f6ef7;
 $primary-hover: #3b5bdb;
 $gray: #6b7280;
@@ -259,7 +261,7 @@ $radius-input: 8px;
     background: #fafafa;
 
     &:hover {
-      box-shadow: 0 0 0 1px darken($border, 10%);
+      box-shadow: 0 0 0 1px color.adjust($border, $lightness: 10%);
     }
 
     &.is-focus {
@@ -307,7 +309,7 @@ $radius-input: 8px;
 
   &:hover {
     color: $gray-hover;
-    border-color: darken($border, 12%);
+    border-color: color.adjust($border, $lightness: 12%);
     background: #f9fafb;
   }
 }

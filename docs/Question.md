@@ -763,7 +763,79 @@ protected boolean shouldNotFilter(HttpServletRequest request) {
 
 > **关键点**：`getRequestURI()` 返回含 context-path 的完整路径，`getServletPath()` 返回去掉 context-path 后的路径。Spring Security 的 `requestMatchers` 内部使用的是 Servlet 路径，Filter 中应统一使用 `getServletPath()` 而非 `getRequestURI()`，避免 context-path 带来的路径偏移。
 
-## 7、Vue Router 子路由无法继承父路由 meta，需用 to.matched.some 匹配
+## 7、刷新 Token 复用 result 实例导致拦截器递归 + 成功拦截器吃掉 code 分支 + 误用 ref 包裹 DTO
+
+**问题**
+
+`result.ts` 的 401 拦截器内部调用了 `refresh()`，而 `refresh()` 又是基于同一个 `result` axios 实例发起的，刷新请求自然会再次进入这套拦截器。三个隐患叠加：
+
+1. **拦截器递归 / 死锁**：`/auth/refresh` 自身返回 401 时，刷新请求进入 401 分支，看到 `store.refreshingPromise` 已存在（就是它自己），于是 `await store.refreshingPromise`——等待自己完成，必然死锁。即便 refresh 不返回 401，业务码 `code !== 1` 时成功拦截器会 `Promise.reject`，触发外层的 catch 分支链路，逻辑分裂、难以推理。
+2. **成功拦截器吃掉 `else` 分支**：成功拦截器对 `code !== 1` 直接 reject，因此 `await refresh(...)` 拿到的 `res` 必然 `code === 1`。下游 `if (res?.code) { ... } else { ... }` 的 else 分支永远不可达，刷新失败的清理逻辑实际上写在了死代码里。
+3. **错误地用 Vue 的 `ref` 包裹 DTO**：`refreshDTO` 只是个普通对象，没有响应式需求；`ref({ ... })` 之后还要 `.value` 取值，徒增复杂度和噪音。
+
+**解决方案**
+
+刷新 Token 走一个**不挂任何拦截器**的独立 axios 实例，与业务 `result` 实例彻底解耦；同时用原生抛错驱动外层 try/catch，不再依赖死代码分支。
+
+```typescript
+// 独立 axios 实例：用于刷新 Token，不挂任何拦截器
+const refreshClient = axios.create({
+  baseURL: '/api',
+  timeout: 15000,
+})
+
+async function callRefresh(refreshTokenStr: string): Promise<ApiResult<RefreshVO>> {
+  const dto: RefreshDTO = { refreshToken: refreshTokenStr }
+  const response = await refreshClient.post<ApiResult<RefreshVO>>('/auth/refresh', dto)
+  return response.data
+}
+```
+
+刷新 Promise 内部业务码不为 1 时直接 throw，让外层 catch 集中处理清理与跳转，避免死分支：
+
+```typescript
+const promise = (async () => {
+  const res = await callRefresh(store.refreshToken)
+  if (res?.code !== 1 || !res.data) {
+    throw new Error(res?.msg || '登录已过期，请重新登录')
+  }
+  const { accessToken, refreshToken: newRefreshToken } = res.data
+  store.setToken(accessToken, newRefreshToken)
+})()
+
+store.refreshingPromise = promise
+
+try {
+  await promise
+} catch (e) {
+  store.clearAuth()
+  router.push('/login')
+  ElMessage.error(e instanceof Error ? e.message : '登录已过期，请重新登录')
+  return Promise.reject(error)
+} finally {
+  store.refreshingPromise = null
+}
+```
+
+等待方也要捕获共享 Promise 的拒绝，防止首个刷新失败时其它请求未捕获导致 `unhandledrejection`：
+
+```typescript
+if (store.refreshingPromise) {
+  try {
+    await store.refreshingPromise
+  } catch {
+    return Promise.reject(error)
+  }
+  if (!store.token) return Promise.reject(error)
+  error.config._retry = true
+  setHeader(error.config, 'Authorization', `Bearer ${store.token}`)
+  return result(error.config)
+}
+```
+
+> **关键点**：拦截器是**绑定在实例上**的——任何走该实例发起的请求都会触发拦截器。在拦截器内再用同一实例发起请求，等于把当前调用路径再嵌套一次，极易形成「等待自己 / 重入死循环 / 栈失控」。要在拦截器里发起辅助请求（刷新 Token、上报错误等），固定做法是另起一个干净的 axios 实例（或直接用 `axios.request`），物理隔离拦截链。另一种等价做法是给请求 config 打一个标记（如 `config._skipAuthRefresh`），拦截器里看到标记直接跳过 401 自刷逻辑——本质都是断开递归路径。最后，普通 DTO 不需要 `ref` 包裹，直接构造对象传入即可。
+
+## 8、Vue Router 子路由无法继承父路由 meta，需用 to.matched.some 匹配
 
 **问题**
 
