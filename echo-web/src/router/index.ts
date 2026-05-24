@@ -23,6 +23,12 @@ const router = createRouter({
       meta: { guest: true },
     },
     {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('@/views/ResetPassword.vue'),
+      meta: { guest: true },
+    },
+    {
       // TODO: 替换为独立的 NotFound.vue 页面，带返回首页按钮，而非静默重定向
       path: '/:pathMatch(.*)*',
       redirect: '/',
@@ -30,6 +36,7 @@ const router = createRouter({
     {
       path: '/',
       component: () => import('@/components/LayoutPage.vue'),
+      meta: { requiresAuth: true },
       children: [
         {
           path: '',
@@ -45,7 +52,6 @@ const router = createRouter({
           path: 'post/create',
           name: 'post-create',
           component: () => import('@/views/PostCreate.vue'),
-          meta: { requiresAuth: true },
         },
         {
           path: 'search',
@@ -61,7 +67,6 @@ const router = createRouter({
           path: 'settings',
           name: 'settings',
           component: () => import('@/views/SettingsPage.vue'),
-          meta: { requiresAuth: true },
         },
       ],
     },
@@ -78,7 +83,7 @@ router.beforeEach((to, from, next) => {
   }
 
   // 未登录用户访问需认证页面 → 跳转登录页
-  if (to.meta.requiresAuth && !store.isLoggedIn) {
+  if (to.matched.some((r) => r.meta.requiresAuth) && !store.isLoggedIn) {
     return next('/login')
   }
 

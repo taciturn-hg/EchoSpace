@@ -17,6 +17,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -38,11 +39,13 @@ public class AuthServiceImpl implements AuthService {
     @Autowired
     private JwtUtil jwtUtil;
 
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
     /**
      * 用户注册
      * <p>
-     * 流程：两次密码一致性 → 用户名/手机号/邮箱唯一性 → 写库。
-     * nickname 默认与 username 相同，用户后续可在设置页修改。
+     * 流程：两次密码一致性 → 用户名/手机号/邮箱唯一性 → BCrypt 加密密码 → 写库。
+     * nickname 默认由系统生成随机值（格式为 Echo_ + UUID 子串），用户后续可在设置页修改。
      * </p>
      */
     @Override
@@ -66,8 +69,7 @@ public class AuthServiceImpl implements AuthService {
         user.setNickname("Echo_" + UUID.randomUUID().toString().substring(0, 8));
         user.setPhone(dto.getPhone());
         user.setEmail(dto.getEmail());
-        // TODO: 后续引入 BCrypt 时替换为加密存储
-        user.setPassword(dto.getPassword());
+        user.setPassword(passwordEncoder.encode(dto.getPassword()));
         user.setStatus(1);
         authMapper.insert(user);
     }
@@ -77,6 +79,7 @@ public class AuthServiceImpl implements AuthService {
      * <p>
      * account 字段由 MyBatis-Plus OR 条件同时匹配 username / email / phone，
      * 加 limit 1 避免极端情况下多行返回。
+     * 密码通过 BCrypt matches 校验，不做明文比对。
      * expiresIn 以秒为单位返回，与接口文档保持一致。
      * </p>
      */
@@ -93,8 +96,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException("用户不存在");
         }
 
-        // 明文比对，后续引入 BCrypt 时替换此处
-        if (!user.getPassword().equals(loginDTO.getPassword())) {
+        if (!passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())) {
             throw new BusinessException("密码错误");
         }
 

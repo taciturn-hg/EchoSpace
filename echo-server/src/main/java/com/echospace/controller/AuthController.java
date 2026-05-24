@@ -19,7 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 认证模块控制器：注册、登录、刷新 Token
- * <p>以下接口均在 Security 白名单内，无需携带 Authorization Header。</p>
+ * <p>{@code /auth/register}、{@code /auth/login}、{@code /auth/refresh} 在 Security 白名单内，无需携带 Authorization Header；</p>
+ * <p>{@code /auth/me} 需要在请求头携带有效的 {@code Authorization: Bearer <accessToken>}。</p>
  *
  * @Author: taciturn-hg
  */

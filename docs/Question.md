@@ -719,34 +719,24 @@ protected boolean shouldNotFilter(HttpServletRequest request) {
 
 > **关键点**：`OncePerRequestFilter.shouldNotFilter` 在框架层面决定是否执行过滤器，返回 `true` 时整个 filter 被跳过，比在方法体内 `return` 更彻底。白名单路径的请求不再进入 `doFilterInternal`，也不会触发任何 JWT 解析逻辑。
 
-## 6、白名单路径含 context-path 前缀导致 Security 放行失效
+## 6、白名单路径与 context-path 的匹配对齐
 
 **问题**
 
-`application.yaml` 中配置了 `server.servlet.context-path: /api`，白名单路径写成了带前缀的形式：
+`application.yaml` 中配置了 `server.servlet.context-path: /api`，白名单路径最初写成了带前缀的形式（`/api/auth/register`），导致 Spring Security 的 `requestMatchers` 匹配失败返回 401。
 
-```yaml
-security:
-  whitelist:
-    - /api/auth/login
-    - /api/auth/register
-    - /api/auth/refresh
-```
-
-但 Spring Security 的 `requestMatchers` 匹配的是**去掉 context-path 之后的 Servlet 路径**（即 `/auth/register`），而 `JwtAuthFilter.shouldNotFilter` 调用的 `request.getRequestURI()` 返回的是**含 context-path 的完整路径**（即 `/api/auth/register`）。
-
-两处消费方对路径的理解不一致：
+根本原因是两处消费方对路径的理解不一致：
 
 | 消费方 | 路径来源 | 实际值 |
 |--------|----------|--------|
 | `SecurityConfig.requestMatchers` | Servlet 路径（不含 context-path） | `/auth/register` |
-| `JwtAuthFilter.shouldNotFilter` | `getRequestURI()`（含 context-path） | `/api/auth/register` |
-
-白名单写 `/api/auth/register`：`requestMatchers` 匹配不上（它期望 `/auth/register`），Security 授权层拦截请求返回 401。
+| `JwtAuthFilter.shouldNotFilter`（修复前） | `getRequestURI()`（含 context-path） | `/api/auth/register` |
 
 **解决方案**
 
-白名单路径统一去掉 `/api` 前缀，只写 Servlet 路径：
+分两步对齐：
+
+1. **白名单路径统一去掉 `/api` 前缀**，只写 Servlet 路径，与 `requestMatchers` 保持一致：
 
 ```yaml
 security:
@@ -759,6 +749,59 @@ security:
     - /v3/api-docs/**
 ```
 
-`requestMatchers` 和 `shouldNotFilter` 的 `getRequestURI()` 此时行为不一致（前者匹配 `/auth/register`，后者看到 `/api/auth/register`），但实际上 `shouldNotFilter` 用 `AntPathMatcher` 匹配 `/auth/register` 模式对 `/api/auth/register` 路径会失败——这意味着白名单路径的请求仍会进入 `doFilterInternal`，但因为没有 `Authorization` Header 会直接 `filterChain.doFilter` 放行，不影响功能。Security 授权层的 `requestMatchers` 才是真正决定是否放行的关卡，只要它匹配正确即可。
+2. **`JwtAuthFilter.shouldNotFilter` 改用 `getServletPath()` 取路径**，与 `requestMatchers` 使用同一路径来源，彻底消除不一致：
 
-> **关键点**：`server.servlet.context-path` 只影响 URL 路由，不影响 Spring Security 内部的路径匹配。`requestMatchers` 始终基于去掉 context-path 后的路径工作，白名单配置时不要加 context-path 前缀。
+```java
+@Override
+protected boolean shouldNotFilter(HttpServletRequest request) {
+    String servletPath = request.getServletPath();
+    return whitelist.stream().anyMatch(pattern -> PATH_MATCHER.match(pattern, servletPath));
+}
+```
+
+修复后两处消费方均基于 Servlet 路径（不含 context-path）匹配，白名单配置只需维护一份，行为完全一致。
+
+> **关键点**：`getRequestURI()` 返回含 context-path 的完整路径，`getServletPath()` 返回去掉 context-path 后的路径。Spring Security 的 `requestMatchers` 内部使用的是 Servlet 路径，Filter 中应统一使用 `getServletPath()` 而非 `getRequestURI()`，避免 context-path 带来的路径偏移。
+
+## 7、Vue Router 子路由无法继承父路由 meta，需用 to.matched.some 匹配
+
+**问题**
+
+Vue Router 中，子路由不会自动继承父路由的 `meta` 字段。在路由守卫里直接读 `to.meta.requiresAuth`，只能拿到当前匹配路由自身的 meta，父路由上定义的 `requiresAuth: true` 对子路由不可见：
+
+```typescript
+// ❌ 只读当前路由的 meta，父路由的 requiresAuth 对子路由无效
+if (to.meta.requiresAuth && !store.isLoggedIn) {
+  return next('/login')
+}
+```
+
+例如将 `requiresAuth: true` 设置在 `/` 父路由上，期望其下所有子路由（`/`、`/post/:id`、`/settings` 等）都需要登录，但子路由的 `to.meta.requiresAuth` 为 `undefined`，守卫不会触发，未登录用户可以直接访问。
+
+**解决方案**
+
+用 `to.matched.some()` 遍历当前路由的完整匹配链（从根路由到当前路由的所有层级），只要链上任意一层声明了 `requiresAuth: true` 即触发守卫：
+
+```typescript
+// ✅ 遍历匹配链，父路由的 meta 对所有子路由生效
+if (to.matched.some((r) => r.meta.requiresAuth) && !store.isLoggedIn) {
+  return next('/login')
+}
+```
+
+路由配置只需在父路由声明一次，子路由无需重复：
+
+```typescript
+{
+  path: '/',
+  component: () => import('@/components/LayoutPage.vue'),
+  meta: { requiresAuth: true },   // 声明一次，所有子路由均受保护
+  children: [
+    { path: '', name: 'home', component: () => import('@/views/HomePage.vue') },
+    { path: 'settings', name: 'settings', component: () => import('@/views/SettingsPage.vue') },
+    // ...其他子路由无需重复声明 meta
+  ],
+}
+```
+
+> **关键点**：`to.meta` 只包含当前路由自身的 meta，`to.matched` 是从根到当前路由的完整路由记录数组。需要"继承"父路由 meta 的场景，必须用 `to.matched.some()` 或 `to.matched.find()` 遍历整条链，而不能直接读 `to.meta`。

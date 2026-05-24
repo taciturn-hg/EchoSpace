@@ -3,6 +3,7 @@ import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/userStore'
 import router from '@/router'
 import { setHeader } from './header.ts'
+import { refresh } from '../api/auth.js'
 
 let userStore: ReturnType<typeof useUserStore>
 
@@ -79,16 +80,14 @@ result.interceptors.response.use(
     // 发起刷新
     const promise = (async () => {
       try {
-        const res = await axios.post(`${result.defaults.baseURL}/auth/refresh`, {
-          refreshToken: store.refreshToken,
-        })
-        if (res.data?.code) {
-          const { accessToken, refreshToken: newRefreshToken } = res.data.data
+        const res = await refresh(store.refreshToken)
+        if (res?.code) {
+          const { accessToken, refreshToken: newRefreshToken } = res.data!
           store.setToken(accessToken, newRefreshToken)
         } else {
           store.clearAuth()
           router.push('/login')
-          ElMessage.error(res.data.msg)
+          ElMessage.error(res.msg)
         }
       } catch {
         store.clearAuth()

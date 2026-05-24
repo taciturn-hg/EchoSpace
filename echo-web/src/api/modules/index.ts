@@ -35,6 +35,23 @@ export interface RegisterDTO {
   confirmPassword: string
 }
 
+export interface RefreshVO {
+  accessToken: string
+  refreshToken: string
+  expiresIn: string
+}
+
+export interface meVO {
+  id: number
+  username: string
+  nickname: string
+  email: string
+  phone: string
+  avatar?: string
+  bio?: string
+  createdAt: string
+}
+
 export interface UserInfo {
   id: number
   username: string
