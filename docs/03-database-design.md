@@ -6,7 +6,7 @@
 |--------|------|------|--------|--------|------|------|
 | `id` | BIGINT | 是 | 否 | — | PRIMARY | 用户ID |
 | `username` | VARCHAR(50) | 否 | 否 | — | UNIQUE | 用户名，可用于登录 |
-| `nickname` | VARCHAR(50) | 否 | 否 | — | UNIQUE | 昵称（展示用，注册时随机生成，用户可自行修改） |
+| `nickname` | VARCHAR(50) | 否 | 否 | — | — | 昵称（展示用，注册时随机生成，用户可自行修改） |
 | `email` | VARCHAR(100) | 否 | 否 | — | INDEX UNIQUE | 邮箱，可用于登录 |
 | `phone` | VARCHAR(20) | 否 | 否 | — | UNIQUE | 手机号，可用于登录 |
 | `password` | VARCHAR(255) | 否 | 否 | — | — | 密码（BCrypt 加密） |
@@ -132,7 +132,7 @@
 CREATE TABLE user (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(50) NOT NULL UNIQUE COMMENT '用户名(可用于登录)',
-    nickname VARCHAR(50) NOT NULL UNIQUE COMMENT '昵称(展示用,注册时随机生成)',
+    nickname VARCHAR(50) NOT NULL COMMENT '昵称(展示用,注册时随机生成)',
     email VARCHAR(100) NOT NULL COMMENT '邮箱(可用于登录)',
     phone VARCHAR(20) NOT NULL UNIQUE COMMENT '手机号(可用于登录)',
     password VARCHAR(255) NOT NULL COMMENT 'BCrypt加密',
@@ -238,7 +238,7 @@ erDiagram
     user {
         BIGINT id PK "用户ID"
         VARCHAR username UK "用户名(可用于登录)"
-        VARCHAR nickname UK "昵称(展示用,必填)"
+        VARCHAR nickname "昵称(展示用,必填)"
         VARCHAR email "邮箱(可用于登录,必填)"
         VARCHAR phone UK "手机号(可用于登录)"
         VARCHAR password "密码(BCrypt)"

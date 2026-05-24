@@ -65,8 +65,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
      */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String uri = request.getRequestURI();
-        return whitelist.stream().anyMatch(pattern -> PATH_MATCHER.match(pattern, uri));
+        String servletPath = request.getServletPath();
+        return whitelist.stream().anyMatch(pattern -> PATH_MATCHER.match(pattern, servletPath));
     }
 
     /**

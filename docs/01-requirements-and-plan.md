@@ -14,6 +14,7 @@
 | **后端框架** | Spring Boot 3.x | 主流 Java 后端框架，生态成熟 |
 | **前端框架** | Vue 3 + Vite | 渐进式前端框架，上手友好 |
 | **前端 UI** | Element Plus | 成熟的 Vue 3 组件库 |
+| **CSS 预处理器** | SCSS | 变量、嵌套、混入，提升样式可维护性 |
 | **富文本编辑器** | Tiptap | 基于 ProseMirror，Vue 3 原生支持，插件化架构 |
 | **认证方案** | JWT（jjwt + Spring Security） | 无状态认证，适合前后端分离 |
 | **数据库** | MySQL 8.0 | 主力关系型存储 |
@@ -295,8 +296,8 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // 白名单：无需认证
-                .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/refresh").permitAll()
+                // 白名单：无需认证（路径不含 context-path 前缀）
+                .requestMatchers("/auth/register", "/auth/login", "/auth/refresh").permitAll()
                 // 其余全部需要认证
                 .anyRequest().authenticated()
             )
@@ -308,13 +309,20 @@ public class SecurityConfig {
 }
 ```
 
-> **注意**：以上为最简配置，仅开放认证接口。实际开发时，以下公开内容接口也应加入白名单（无需登录即可浏览）：`GET /api/posts`、`GET /api/posts/{id}`、`GET /api/posts/search`、`GET /api/users/{id}`、`GET /api/users/{id}/posts`、`GET /api/posts/{postId}/comments`、`GET /api/comments/{id}/replies`。
+> **注意**：白名单路径不含 `context-path`（`/api`）前缀。`requestMatchers` 匹配的是 Servlet 路径，`server.servlet.context-path` 不影响其匹配逻辑，详见 Question.md 第 6 章。
 
 ### 9.5 自定义 JWT 过滤器
 
 ```java
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        // 白名单路径直接跳过，不进行 JWT 解析
+        String servletPath = request.getServletPath();
+        return whitelist.stream().anyMatch(p -> PATH_MATCHER.match(p, servletPath));
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -329,18 +337,31 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
         String token = authHeader.substring(7);
 
-        // 2. 解析 JWT → userId + username
-        Long userId = JwtUtil.getUserId(token);
-        String username = JwtUtil.getUsername(token);
+        // 2. 解析 JWT → userId + username，异常时返回 401
+        Claims claims;
+        try {
+            claims = jwtUtil.parseToken(token);
+        } catch (ExpiredJwtException e) {
+            writeUnauthorized(response, "Token已过期");
+            return;
+        } catch (JwtException e) {
+            writeUnauthorized(response, "Token无效");
+            return;
+        }
 
-        // 3. 可选：查 Redis/MySQL 校验用户状态（是否被禁用）
-        // if (redisTemplate.opsForValue().get("user:ban:" + userId) != null) { ... }
+        // 3. 校验 Token 类型，必须是 access
+        if (!JwtUtil.TokenType.ACCESS.claimValue().equals(claims.get("type", String.class))) {
+            writeUnauthorized(response, "Token类型错误，请使用AccessToken");
+            return;
+        }
 
-        // 4. 写入 SecurityContextHolder（无密码的认证信息）
+        // 4. 写入 SecurityContextHolder（userId + username 封装进 UserPrincipal）
+        UserPrincipal principal = new UserPrincipal(
+            Long.valueOf(claims.getSubject()),
+            claims.get("username", String.class)
+        );
         UsernamePasswordAuthenticationToken authentication =
-            new UsernamePasswordAuthenticationToken(userId, null, List.of());
-        // 把 username 存到 details 里，方便 Controller 取
-        authentication.setDetails(username);
+            new UsernamePasswordAuthenticationToken(principal, null, List.of());
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         filterChain.doFilter(request, response);
@@ -350,39 +371,41 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
 ### 9.6 Controller 获取当前用户
 
-两种方式，推荐方式一（不用引入 UserDetailsService）：
+通过 `SecurityUtil` 工具类从 `SecurityContextHolder` 取当前用户，`userId` 和 `username` 封装在 `UserPrincipal` record 中：
 
 ```java
-// 方式一：直接从 SecurityContextHolder 取（推荐，不需要 UserDetailsService）
-@RestController
-public class PostController {
-
-    @PostMapping("/api/posts")
-    public Result<Void> createPost(@RequestBody CreatePostDTO dto) {
-        Long userId = (Long) SecurityContextHolder.getContext()
-                            .getAuthentication().getPrincipal();
-        String username = (String) SecurityContextHolder.getContext()
-                            .getAuthentication().getDetails();
-        // 业务逻辑...
-    }
-}
-```
-
-更优雅的做法是封装一个工具类：
-
-```java
+// SecurityUtil.java
 public class SecurityUtil {
     public static Long getCurrentUserId() {
-        return (Long) SecurityContextHolder.getContext()
-                    .getAuthentication().getPrincipal();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) return null;
+        if (auth.getPrincipal() instanceof UserPrincipal up) return up.userId();
+        return null;
     }
 
     public static String getCurrentUsername() {
-        return (String) SecurityContextHolder.getContext()
-                    .getAuthentication().getDetails();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) return null;
+        if (auth.getPrincipal() instanceof UserPrincipal up) return up.username();
+        return null;
     }
 }
+
+// UserPrincipal.java — 存入 principal 的自定义主体
+public record UserPrincipal(Long userId, String username) {}
 ```
+
+Controller 中直接调用：
+
+```java
+@PostMapping("/api/posts")
+public Result<Void> createPost(@RequestBody CreatePostDTO dto) {
+    Long userId = SecurityUtil.getCurrentUserId();
+    // 业务逻辑...
+}
+```
+
+> **注意**：`username` 存入 `UserPrincipal.principal` 而非 `details`，避免被 Spring Security 内置组件覆盖，详见 Question.md 5.12。
 
 ### 9.7 关键类一览
 
@@ -498,9 +521,11 @@ EchoSpace/
 | minio | 8.x | MinIO 对象存储客户端（第一阶段） |
 | aliyun-sdk-oss | 3.x | 阿里云 OSS 对象存储客户端（第二阶段） |
 | jsoup | 1.22.x | HTML 白名单清洗 + 纯文本提取 |
+| springdoc-openapi-starter-webmvc-ui | 2.8.x | OpenAPI 3 / Swagger UI 接口文档（开发环境） |
 | flyway-core | — | 数据库版本迁移 |
 | flyway-mysql | — | Flyway MySQL 8.0 支持（计划引入，当前暂未添加） |
 | lombok | — | 简化 Getter/Setter/Builder 等样板代码 |
+| spring-boot-starter-mail | — | 邮件发送（忘记密码重置链接，版本由父工程管理） |
 
 > **说明**：`jjwt` 从 0.12.x 起拆分为三个独立模块，`jjwt-api` 是编译期接口，`jjwt-impl` 和 `jjwt-jackson` 是运行期必需实现，三个都要引入、版本保持一致。
 

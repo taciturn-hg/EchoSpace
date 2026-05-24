@@ -7,13 +7,25 @@ const router = createRouter({
     {
       path: '/login',
       name: 'login',
-      component: () => import('@/views/Login.vue'),
+      component: () => import('@/views/LoginPage.vue'),
       meta: { guest: true },
     },
     {
       path: '/register',
       name: 'register',
-      component: () => import('@/views/Register.vue'),
+      component: () => import('@/views/RegisterPage.vue'),
+      meta: { guest: true },
+    },
+    {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: () => import('@/views/ForgotPasswordPage.vue'),
+      meta: { guest: true },
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('@/views/ResetPasswordPage..vue'),
       meta: { guest: true },
     },
     {
@@ -23,12 +35,13 @@ const router = createRouter({
     },
     {
       path: '/',
-      component: () => import('@/components/Layout.vue'),
+      component: () => import('@/components/LayoutPage.vue'),
+      meta: { requiresAuth: true },
       children: [
         {
           path: '',
           name: 'home',
-          component: () => import('@/views/Home.vue'),
+          component: () => import('@/views/HomePage.vue'),
         },
         {
           path: 'post/:id',
@@ -39,12 +52,11 @@ const router = createRouter({
           path: 'post/create',
           name: 'post-create',
           component: () => import('@/views/PostCreate.vue'),
-          meta: { requiresAuth: true },
         },
         {
           path: 'search',
           name: 'search',
-          component: () => import('@/views/Search.vue'),
+          component: () => import('@/views/SearchPage.vue'),
         },
         {
           path: 'user/:id',
@@ -54,8 +66,7 @@ const router = createRouter({
         {
           path: 'settings',
           name: 'settings',
-          component: () => import('@/views/Settings.vue'),
-          meta: { requiresAuth: true },
+          component: () => import('@/views/SettingsPage.vue'),
         },
       ],
     },
@@ -72,7 +83,7 @@ router.beforeEach((to, from, next) => {
   }
 
   // 未登录用户访问需认证页面 → 跳转登录页
-  if (to.meta.requiresAuth && !store.isLoggedIn) {
+  if (to.matched.some((r) => r.meta.requiresAuth) && !store.isLoggedIn) {
     return next('/login')
   }
 

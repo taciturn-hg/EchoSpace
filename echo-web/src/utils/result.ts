@@ -2,7 +2,8 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/userStore'
 import router from '@/router'
-import { setHeader } from './header.ts'
+import { setHeader } from './header'
+import type { ApiResult, RefreshDTO, RefreshVO } from '@/api/modules/index'
 
 let userStore: ReturnType<typeof useUserStore>
 
@@ -18,6 +19,24 @@ const result = axios.create({
   timeout: 15000,
 })
 
+// 独立 axios 实例：用于刷新 Token，不挂任何拦截器
+// 避免在 result 的 401 拦截器里再次走 result，造成拦截器递归 / 死锁
+const refreshClient = axios.create({
+  baseURL: '/api',
+  timeout: 15000,
+})
+
+async function callRefresh(refreshTokenStr: string): Promise<ApiResult<RefreshVO>> {
+  const dto: RefreshDTO = { refreshToken: refreshTokenStr }
+  try {
+    const response = await refreshClient.post<ApiResult<RefreshVO>>('/auth/refresh', dto)
+    return response.data
+  } catch (e) {
+    const msg = axios.isAxiosError(e) ? e.response?.data?.msg : undefined
+    throw new Error(msg || '登录已过期，请重新登录')
+  }
+}
+
 // 请求拦截器：注入 Token
 result.interceptors.request.use(
   (config) => {
@@ -30,10 +49,28 @@ result.interceptors.request.use(
   (error) => Promise.reject(error),
 )
 
-// 响应拦截器：Token 过期自动刷新（Promise 锁 + _retry 防无限循环）
+// 响应拦截器 1：将业务码错误转为 rejection，不弹消息
+// onFulfilled 的 reject 不会触发同一 use 的 onRejected，会流入下一个拦截器的 onRejected
+result.interceptors.response.use((response) => {
+  const data = response.data
+  if (data?.code !== 1) {
+    const err = new Error(data?.msg || '请求失败') as Error & { __business?: boolean }
+    err.__business = true
+    return Promise.reject(err)
+  }
+  return data
+})
+
+// 响应拦截器 2：统一处理所有错误（业务码 + HTTP + 401 刷新）
 result.interceptors.response.use(
-  (response) => response.data,
+  undefined,
   async (error) => {
+    // 业务码错误（来自拦截器 1 的 reject）：弹一次后向上抛
+    if (error?.__business) {
+      ElMessage.error(error.message)
+      return Promise.reject(error)
+    }
+
     if (error.response?.status !== 401) {
       const msg = error.response?.data?.msg || error.message || '请求失败'
       ElMessage.error(msg)
@@ -62,43 +99,39 @@ result.interceptors.response.use(
 
     // 已有刷新在进行中，等它完成
     if (store.refreshingPromise) {
-      await store.refreshingPromise
+      try {
+        await store.refreshingPromise
+      } catch {
+        return Promise.reject(error)
+      }
       if (!store.token) return Promise.reject(error)
       error.config._retry = true
       setHeader(error.config, 'Authorization', `Bearer ${store.token}`)
       return result(error.config)
     }
 
-    // 发起刷新
+    // 发起刷新（使用独立 refreshClient，避开 result 拦截器）
     const promise = (async () => {
-      try {
-        const res = await axios.post(`${result.defaults.baseURL}/auth/refresh`, {
-          refreshToken: store.refreshToken,
-        })
-        if (res.data?.code) {
-          const { accessToken, refreshToken: newRefreshToken } = res.data.data
-          store.setToken(accessToken, newRefreshToken)
-        } else {
-          store.clearAuth()
-          router.push('/login')
-          ElMessage.error(res.data.msg)
-        }
-      } catch {
-        store.clearAuth()
-        router.push('/login')
-        throw new Error('refresh failed')
+      const res = await callRefresh(store.refreshToken)
+      if (res?.code !== 1 || !res.data) {
+        throw new Error(res?.msg || '登录已过期，请重新登录')
       }
+      const { accessToken, refreshToken: newRefreshToken } = res.data
+      store.setToken(accessToken, newRefreshToken)
     })()
 
     store.refreshingPromise = promise
 
     try {
       await promise
+    } catch (e) {
+      store.clearAuth()
+      router.push('/login')
+      ElMessage.error(e instanceof Error ? e.message : '登录已过期，请重新登录')
+      return Promise.reject(error)
     } finally {
       store.refreshingPromise = null
     }
-
-    if (!store.token) return Promise.reject(error)
 
     error.config._retry = true
     setHeader(error.config, 'Authorization', `Bearer ${store.token}`)
