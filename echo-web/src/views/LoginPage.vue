@@ -96,10 +96,20 @@ async function handleLogin() {
   loading.value = true
   try {
     const res = await login(form.value)
-    const { accessToken, refreshToken } = res.data!
+    if (res.code !== 1 || !res.data) {
+      ElMessage.error(res.msg || '登录失败')
+      return
+    }
+    const { accessToken, refreshToken } = res.data
+    if (!accessToken || !refreshToken) {
+      ElMessage.error('登录响应数据不完整')
+      return
+    }
     userStore.setToken(accessToken, refreshToken)
     ElMessage.success('登录成功')
     router.push('/')
+  } catch {
+    // 异常已在 axios 响应拦截器中统一提示，这里仅吞掉避免 unhandledrejection
   } finally {
     loading.value = false
   }
@@ -163,14 +173,6 @@ $radius-input: 8px;
 .logo {
   width: 288px;
   object-fit: contain;
-}
-
-.brand {
-  font-size: 22px;
-  font-weight: 700;
-  color: $text-primary;
-  letter-spacing: -0.3px;
-  margin-bottom: 4px;
 }
 
 .tagline {

@@ -161,9 +161,15 @@ async function handleRegister() {
 
   loading.value = true
   try {
-    await register(form.value)
+    const res = await register(form.value)
+    if (res.code !== 1) {
+      ElMessage.error(res.msg || '注册失败')
+      return
+    }
     ElMessage.success('注册成功，请登录')
     router.push('/login')
+  } catch {
+    // 异常已在 axios 响应拦截器中统一提示，这里仅吞掉避免 unhandledrejection
   } finally {
     loading.value = false
   }
@@ -231,14 +237,6 @@ $radius-input: 8px;
   object-fit: contain;
 }
 
-.brand {
-  font-size: 22px;
-  font-weight: 700;
-  color: $text-primary;
-  letter-spacing: -0.3px;
-  margin-bottom: 4px;
-}
-
 .tagline {
   font-size: 32px;
   font-weight: 700;
@@ -291,27 +289,6 @@ $radius-input: 8px;
   display: flex;
   gap: 10px;
   margin-top: 8px;
-}
-
-.back-btn {
-  flex: 0 0 80px;
-  height: 44px;
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: $radius-input;
-  color: $gray;
-  border-color: $border;
-  background: #ffffff;
-  transition:
-    color 0.2s ease,
-    border-color 0.2s ease,
-    background 0.2s ease;
-
-  &:hover {
-    color: $gray-hover;
-    border-color: color.adjust($border, $lightness: 12%);
-    background: #f9fafb;
-  }
 }
 
 .register-btn {
