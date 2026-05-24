@@ -49,21 +49,23 @@ result.interceptors.request.use(
   (error) => Promise.reject(error),
 )
 
-// 响应拦截器：业务错误与 HTTP 错误统一在 error 分支提示，避免「弹两次」
-// 同时 401 触发自动刷新（Promise 锁 + _retry 防无限循环）
+// 响应拦截器 1：将业务码错误转为 rejection，不弹消息
+// onFulfilled 的 reject 不会触发同一 use 的 onRejected，会流入下一个拦截器的 onRejected
+result.interceptors.response.use((response) => {
+  const data = response.data
+  if (data?.code !== 1) {
+    const err = new Error(data?.msg || '请求失败') as Error & { __business?: boolean }
+    err.__business = true
+    return Promise.reject(err)
+  }
+  return data
+})
+
+// 响应拦截器 2：统一处理所有错误（业务码 + HTTP + 401 刷新）
 result.interceptors.response.use(
-  (response) => {
-    const data = response.data
-    if (data?.code !== 1) {
-      // 仅 reject，不在此处弹消息；error 分支会通过 __business 标记识别并统一提示
-      const err = new Error(data?.msg || '请求失败') as Error & { __business?: boolean }
-      err.__business = true
-      return Promise.reject(err)
-    }
-    return data
-  },
+  undefined,
   async (error) => {
-    // 业务码错误（来自 success 分支 reject）：在此处统一弹一次后向上抛
+    // 业务码错误（来自拦截器 1 的 reject）：弹一次后向上抛
     if (error?.__business) {
       ElMessage.error(error.message)
       return Promise.reject(error)

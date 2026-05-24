@@ -1,93 +1,10 @@
 # EchoSpace 开发问题与解决方案
 
-## 1、并发 401 导致重复刷新 Token
+---
 
-**问题**
+## 后端：Spring Security 构建
 
-多个请求同时返回 401 时，每个请求的响应拦截器都会检测到 401 并各自发起 `/auth/refresh` 调用，导致同一时刻多次刷新 Token，浪费资源且可能因竞态条件导致 Token 错乱。
-
-**解决方案：Promise 锁**
-
-在 Pinia userStore 中维护一个 `refreshingPromise`，首个 401 请求创建一个刷新 Promise 并存入 store，后续 401 请求检测到该 Promise 已存在时直接 `await` 等待它完成，然后复用新 Token 重试，避免重复刷新。
-
-```typescript
-// 已有刷新在进行中，等它完成
-if (store.refreshingPromise) {
-  await store.refreshingPromise
-  // 刷新完成后用新 Token 重试
-  error.config._retry = true
-  setHeader(error.config, 'Authorization', `Bearer ${store.token}`)
-  return result(error.config)
-}
-
-// 发起刷新（首个 401）
-const promise = (async () => { /* 调用 /auth/refresh */ })()
-store.refreshingPromise = promise
-try { await promise } finally { store.refreshingPromise = null }
-```
-
-## 2、Token 刷新失败后重试导致无限循环
-
-**问题**
-
-Token 刷新成功后，拦截器会用新 Token 自动重试原请求。但如果 refresh token 本身也已过期，刷新接口返回失败（或重试后再次 401），拦截器会再次进入 401 分支 → 再次尝试刷新 → 再次失败 → 无限循环。
-
-**解决方案：`_retry` 标记 + 类型扩展 + 判空**
-
-在 `api/modules/index.ts` 中通过 `declare module 'axios'` 扩展 `InternalAxiosRequestConfig`，为其增加可选的 `_retry?: boolean` 属性，解决 TypeScript 类型报错。
-
-```typescript
-// api/modules/index.ts — Axios 类型扩展
-declare module 'axios' {
-  interface InternalAxiosRequestConfig {
-    /** 401 重试标记，防止无限循环刷新 Token */
-    _retry?: boolean
-  }
-}
-```
-
-在 result.ts 的 401 入口先对 `error.config` 判空（config 在 AxiosError 中为可选字段，可能为 undefined），再检查 `_retry` 标记。若已为 `true` 说明已走过一轮刷新，直接清除登录态并跳转登录页。重试前设置 `_retry = true`，确保每个请求最多重试一次。
-
-```typescript
-// config 不存在则无法重试，直接拒绝
-if (!error.config) {
-  return Promise.reject(error)
-}
-
-// 401 入口守卫：已重试过，直接踢到登录页
-if (error.config._retry) {
-  store.clearAuth()
-  router.push('/login')
-  return Promise.reject(error)
-}
-
-// 重试前打标
-error.config._retry = true
-setHeader(error.config, 'Authorization', `Bearer ${store.token}`)
-return result(error.config)
-```
-
-## 3、等待共享刷新时刷新失败，等待方仍用空 Token 重试
-
-**问题**
-
-当请求 A 正在刷新、请求 B 等待时，若 A 的刷新失败（store.token 被清空），B 在 `await` 之后直接用空 Token 重试，必然会再次 401，浪费一次请求。
-
-**解决方案：等待后增加 Token 有效性检查**
-
-等待共享刷新 Promise 完成后，先检查 `store.token` 是否存在。若刷新失败导致 Token 为空，直接 `Promise.reject`，不再发起无意义的重试。
-
-```typescript
-if (store.refreshingPromise) {
-  await store.refreshingPromise
-  if (!store.token) return Promise.reject(error) // 共享刷新失败，不再重试
-  error.config._retry = true
-  setHeader(error.config, 'Authorization', `Bearer ${store.token}`)
-  return result(error.config)
-}
-```
-
-## 4、Spring Security 开启后 CORS 失效，OPTIONS 预检被拦截
+### 1、Spring Security 开启后 CORS 失效，OPTIONS 预检被拦截
 
 **问题**
 
@@ -132,9 +49,9 @@ public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
 > Spring Security 的 `CorsFilter` 会在 `cors()` 开启后自动拾取容器中的 `CorsConfigurationSource` Bean。整个 CORS 校验在 Security 过滤器链的最前端完成，OPTIONS 预检请求不再被拦截。
 
-## 5、Spring Security 构建流程与常见问题
+### 2、Spring Security 构建流程与常见问题
 
-### 5.1 `@Value` 注入 static 字段无效
+#### 2.1 `@Value` 注入 static 字段无效
 
 **问题**
 
@@ -169,7 +86,7 @@ public class JwtUtil {
 }
 ```
 
-### 5.2 `parseEncryptedClaims` 误用于签名 JWT（JWS）
+#### 2.2 `parseEncryptedClaims` 误用于签名 JWT（JWS）
 
 **问题**
 
@@ -187,7 +104,7 @@ public class JwtUtil {
 .parseSignedClaims(token)
 ```
 
-### 5.3 jjwt API 演进：废弃的 `SignatureAlgorithm` 和参数顺序
+#### 2.3 jjwt API 演进：废弃的 `SignatureAlgorithm` 和参数顺序
 
 **问题**
 
@@ -203,7 +120,7 @@ jjwt 0.12.x 中 `SignatureAlgorithm.HS256` 已废弃，且 `signWith(Algorithm, 
 .signWith(secretKey, Jwts.SIG.HS256)
 ```
 
-### 5.4 JwtAuthFilter 未注册到 SecurityFilterChain
+#### 2.4 JwtAuthFilter 未注册到 SecurityFilterChain
 
 **问题**
 
@@ -228,7 +145,7 @@ public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 }
 ```
 
-### 5.5 Filter 中 JWT 解析异常未处理 → 500 而非 401，且响应体与统一 Result 格式不一致
+#### 2.5 Filter 中 JWT 解析异常未处理 → 500 而非 401，且响应体与统一 Result 格式不一致
 
 **问题**
 
@@ -263,7 +180,7 @@ private ObjectMapper objectMapper;
 
 > **关键点**：Filter 中不能像 Controller 那样直接 return `Result<T>`，因为 Filter 工作在 Servlet 层（Controller 之前），只能通过 `HttpServletResponse` 写入。使用 `ObjectMapper` 序列化 `Result` 对象可以保证格式与 Controller 返回的完全一致：`{"code":0,"msg":"Token已过期","data":null}`。
 
-### 5.6 JWT subject 解析为 Long 时未捕获 NumberFormatException
+#### 2.6 JWT subject 解析为 Long 时未捕获 NumberFormatException
 
 **问题**
 
@@ -295,7 +212,7 @@ try {
 
 > **关键点**：`NumberFormatException` 继承自 `IllegalArgumentException`，与 `JwtException` 无关，必须单独捕获。不要用 `catch (Exception e)` 大包——那会把真正的系统异常也吞掉，掩盖 bug。
 
-### 5.7 SecurityUtil 缺少 SecurityContext 空判断 + 强转风险
+#### 2.7 SecurityUtil 缺少 SecurityContext 空判断 + 强转风险
 
 **问题**
 
@@ -341,7 +258,7 @@ public static String getCurrentUsername() {
 
 > **关键点**：`auth.isAuthenticated()` 对 `AnonymousAuthenticationToken` 返回 `false`，但显式 `instanceof` 检查是最安全的做法——即使 Spring Security 未来版本改变行为也不会出错。`UserPrincipal` 的引入见 5.12，两处修复配合使用。
 
-### 5.8 未配置 exceptionHandling → 未认证访问返回默认 403 HTML 而非 401 JSON
+#### 2.8 未配置 exceptionHandling → 未认证访问返回默认 403 HTML 而非 401 JSON
 
 **问题**
 
@@ -375,7 +292,7 @@ public static String getCurrentUsername() {
 
 > **关键点**：`AuthenticationEntryPoint` 和 `AccessDeniedHandler` 工作在 Security 异常处理层，与 `@ControllerAdvice` 全局异常处理器无关——Security 层的异常不会流转到 Spring MVC，必须在这里单独处理。
 
-### 5.9 JWT 未携带/校验 Token 类型，RefreshToken 可冒充 AccessToken
+#### 2.9 JWT 未携带/校验 Token 类型，RefreshToken 可冒充 AccessToken
 
 **问题**
 
@@ -415,7 +332,7 @@ if (!JwtUtil.TokenType.ACCESS.claimValue().equals(tokenType)) {
 
 > **关键点**：`/api/auth/refresh` 接口在白名单中（`permitAll()`），不经过 `JwtAuthFilter`，所以 RefreshToken 仍然可以正常提交给刷新接口。类型校验只影响受保护接口，不影响刷新流程。
 
-### 5.10 白名单接口携带过期 Token 被 Filter 拦截返回 401
+#### 2.10 白名单接口携带过期 Token 被 Filter 拦截返回 401
 
 **问题**
 
@@ -444,7 +361,7 @@ for (String pattern : WHITELIST_PATHS) {
 
 > **关键点**：`SecurityConfig` 中的 `permitAll()` 只控制 Spring Security 的授权层（认证通过后是否允许访问），不能阻止 `JwtAuthFilter` 在授权层之前执行。Filter 的白名单必须在 Filter 内部自己维护，两处配置各司其职、缺一不可。`AntPathMatcher` 声明为 `static final` 避免每次请求重复实例化。
 
-### 5.11 Spring Security 过滤器链执行顺序（整体流程）
+#### 2.11 Spring Security 过滤器链执行顺序（整体流程）
 
 了解过滤器的执行顺序有助于理解上述修复的必要性：
 
@@ -460,7 +377,7 @@ for (String pattern : WHITELIST_PATHS) {
 - 后续的认证/授权组件从 `SecurityContextHolder` 中读取当前用户。
 - Filter 中未捕获的异常会绕过 Spring 全局异常处理器，直接返回 500 → 必须在 Filter 内部 try-catch。
 
-### 5.12 username 存入 details 字段，可能被其他组件覆盖
+#### 2.12 username 存入 details 字段，可能被其他组件覆盖
 
 **问题**
 
@@ -505,7 +422,7 @@ public static String getCurrentUsername() {
 
 > **关键点**：`principal` 是 Spring Security 中"当前认证主体"的标准存储位置，框架不会在认证完成后再修改它。将业务数据放在 `principal` 而非 `details`，既符合框架语义，也避免了被其他组件意外覆盖的风险。
 
-### 5.13 generateToken 用字符串分支决定过期时间，传错 type 静默生成长效 Token
+#### 2.13 generateToken 用字符串分支决定过期时间，传错 type 静默生成长效 Token
 
 **问题**
 
@@ -563,7 +480,7 @@ if (!JwtUtil.TokenType.ACCESS.claimValue().equals(tokenType)) { ... }
 
 > **关键点**：拆成两个方法后，调用方在编译期就被约束只能选择 `generateAccessToken` 或 `generateRefreshToken`，不存在传错字符串的可能。`claimValue()` 集中维护 payload 中的字符串值，生成侧和校验侧引用同一个来源，彻底消除魔法字符串不一致的风险。
 
-### 5.14 未显式禁用 formLogin / httpBasic / logout，默认行为偏离预期
+#### 2.14 未显式禁用 formLogin / httpBasic / logout，默认行为偏离预期
 
 **问题**
 
@@ -586,7 +503,7 @@ if (!JwtUtil.TokenType.ACCESS.claimValue().equals(tokenType)) { ... }
 
 > **关键点**：显式禁用比依赖"默认不触发"更安全——Spring Security 版本升级可能改变默认行为，显式配置让意图清晰且不受版本影响。禁用后，未认证请求完全由 `authenticationEntryPoint` 接管，统一返回 JSON 401，行为可预期。
 
-### 5.15 Filter 内 401 响应写出逻辑重复，散落多处难以统一维护
+#### 2.15 Filter 内 401 响应写出逻辑重复，散落多处难以统一维护
 
 **问题**
 
@@ -621,7 +538,7 @@ return;
 
 > **关键点**：使用 `HttpServletResponse.SC_UNAUTHORIZED`（值为 401）替代魔法数字，使用 `MediaType.APPLICATION_JSON_VALUE` 替代字符串字面量，语义更清晰。后续如需统一加响应头或切换序列化方式，只改一处即可。
 
-### 5.16 白名单硬编码为 public static final String[]，数组内容可被外部篡改
+#### 2.16 白名单硬编码为 public static final String[]，数组内容可被外部篡改
 
 **问题**
 
@@ -671,7 +588,7 @@ public void init() {
 
 > **关键点**：`List<String>` 由 Spring 绑定，外部无法通过静态字段直接访问，消除了数组元素被篡改的风险。白名单集中在配置文件维护，两处消费方（Filter 层和授权层）引用同一数据源，新增路径只改 yaml 即可，无需重新编译。
 
-### 5.17 白名单匹配在 doFilterInternal 内遍历，per-request 开销随白名单增长
+#### 2.17 白名单匹配在 doFilterInternal 内遍历，per-request 开销随白名单增长
 
 **问题**
 
@@ -719,7 +636,7 @@ protected boolean shouldNotFilter(HttpServletRequest request) {
 
 > **关键点**：`OncePerRequestFilter.shouldNotFilter` 在框架层面决定是否执行过滤器，返回 `true` 时整个 filter 被跳过，比在方法体内 `return` 更彻底。白名单路径的请求不再进入 `doFilterInternal`，也不会触发任何 JWT 解析逻辑。
 
-## 6、白名单路径与 context-path 的匹配对齐
+### 3、白名单路径与 context-path 的匹配对齐
 
 **问题**
 
@@ -763,7 +680,11 @@ protected boolean shouldNotFilter(HttpServletRequest request) {
 
 > **关键点**：`getRequestURI()` 返回含 context-path 的完整路径，`getServletPath()` 返回去掉 context-path 后的路径。Spring Security 的 `requestMatchers` 内部使用的是 Servlet 路径，Filter 中应统一使用 `getServletPath()` 而非 `getRequestURI()`，避免 context-path 带来的路径偏移。
 
-## 7、刷新 Token 复用 result 实例导致拦截器递归 + 成功拦截器吃掉 code 分支 + 误用 ref 包裹 DTO
+---
+
+## 前端：axios 拦截器
+
+### 4、刷新 Token 复用 result 实例导致拦截器递归 + 成功拦截器吃掉 code 分支 + 误用 ref 包裹 DTO
 
 **问题**
 
@@ -835,40 +756,43 @@ if (store.refreshingPromise) {
 
 > **关键点**：拦截器是**绑定在实例上**的——任何走该实例发起的请求都会触发拦截器。在拦截器内再用同一实例发起请求，等于把当前调用路径再嵌套一次，极易形成「等待自己 / 重入死循环 / 栈失控」。要在拦截器里发起辅助请求（刷新 Token、上报错误等），固定做法是另起一个干净的 axios 实例（或直接用 `axios.request`），物理隔离拦截链。另一种等价做法是给请求 config 打一个标记（如 `config._skipAuthRefresh`），拦截器里看到标记直接跳过 401 自刷逻辑——本质都是断开递归路径。最后，普通 DTO 不需要 `ref` 包裹，直接构造对象传入即可。
 
-## 8、success 分支同时弹消息又 reject，导致提示重复风险与调用方被迫写空 catch
+### 5、单拦截器内 onFulfilled reject 无法触发同一 use 的 onRejected，导致业务码错误无提示
 
 **问题**
 
-`result.ts` 的 success 拦截器在 `code !== 1` 时既调用 `ElMessage.error(...)` 弹了消息，又 `Promise.reject(new Error(...))` 把错误抛出去。看似合理，实际埋了两个问题：
+`result.ts` 最初将业务码转换和错误提示写在同一个 `use(onFulfilled, onRejected)` 里：`onFulfilled` 对 `code !== 1` 打上 `__business` 标记后 `Promise.reject`，期望同一个 `use` 的 `onRejected` 捕获并弹出提示。
 
-1. **未来注册第二个响应拦截器就会触发「同一错误弹两次」**。axios 拦截器是链式的：**前一个节点的 success 抛错 → 下一个节点的 error 触发**。当前文件只注册了一个拦截器，所以暂时不会真重复弹。但只要再追加一个用于埋点 / 重试 / 日志的拦截器，业务码错误就会同时命中第一节点的 success 提示和后续节点的 error 提示。
-2. **调用方被迫写空 `catch {}`**。因为提示在拦截器里已经弹过了，页面只是为了不让 `unhandledrejection` 飘出去而被迫写一个空 catch 吞掉，意图模糊；同时页面里写的 `if (res.code !== 1)` 防御兜底实际是死代码（success 拦截器已经把它从 `await` 里转成 throw 了，根本拿不到 `res`）。
+这是对 axios 拦截器链模型的误解，导致业务码错误**完全不弹提示**，用户无感失败：
 
-**解决方案**
+- `use(onFulfilled, onRejected)` 本质是 `.then(onFulfilled, onRejected)`
+- `onFulfilled` 返回 `Promise.reject` 时，拒绝会传给**链上下一个节点**的 `onRejected`，而不是同一个 `use` 的 `onRejected`
+- 当前只注册了一个拦截器，没有"下一个节点"，`__business` 错误直接穿透到调用方
+- 调用方写了空 `catch {}`，错误被吞掉，用户看不到任何提示
 
-让「弹消息」和「reject」**只一处发生**，并把所有错误（HTTP / 业务）汇到 error 分支统一提示。具体做法：
+**解决方案：拆成两个拦截器**
 
-1. success 分支只负责把业务错误转成 reject，不弹消息；同时给抛出的 Error 打一个 `__business` 标记。
-2. error 分支在最前面识别 `__business`：是业务错误就在这里弹一次然后 reject；否则按原有逻辑（401 触发刷新 / 其它错误从 `error.response?.data?.msg` 取消息）走。
+第一个拦截器只做转换（`onFulfilled` 把 `code !== 1` 转为带 `__business` 标记的 reject），第一个的 reject 自然流入第二个拦截器的 `onRejected`，在那里统一弹消息：
 
 ```ts
+// 拦截器 1：转换，不弹消息
+result.interceptors.response.use((response) => {
+  const data = response.data
+  if (data?.code !== 1) {
+    const err = new Error(data?.msg || '请求失败') as Error & { __business?: boolean }
+    err.__business = true
+    return Promise.reject(err)
+  }
+  return data
+})
+
+// 拦截器 2：统一处理所有错误（业务码 + HTTP + 401 刷新）
 result.interceptors.response.use(
-  (response) => {
-    const data = response.data
-    if (data?.code !== 1) {
-      const err = new Error(data?.msg || '请求失败') as Error & { __business?: boolean }
-      err.__business = true
-      return Promise.reject(err)
-    }
-    return data
-  },
+  undefined,
   async (error) => {
-    // 业务码错误（来自 success 分支 reject）：在此处统一弹一次后向上抛
     if (error?.__business) {
       ElMessage.error(error.message)
       return Promise.reject(error)
     }
-
     if (error.response?.status !== 401) {
       const msg = error.response?.data?.msg || error.message || '请求失败'
       ElMessage.error(msg)
@@ -879,9 +803,11 @@ result.interceptors.response.use(
 )
 ```
 
-> **关键点**：axios 拦截器的真实模型是「**上一个节点的 success 失败 → 下一个节点的 error**」，**同一个 `use(onFulfilled, onRejected)` 自己的 success 失败不会触发自己的 error**。所以在只有一个拦截器时不会真的弹两次——但「弹消息」和「reject 错误」分散在 success / error 两个回调里，只要后续多挂一个拦截器就会立刻翻车。把提示集中到 error 分支、success 只做「成功 / 失败转换」，不仅修掉这个潜在 bug，也让调用方不需要再写空 catch 来吞重复事件——`await` 拿到的要么是成功数据，要么走自身的 catch 处理流程性失败。
+拦截器 2 的 `onFulfilled` 传 `undefined`，表示成功路径直接透传，不做任何处理。
 
-## 10、callRefresh 遇到 HTTP 错误时丢失后端 msg
+> **关键点**：axios 拦截器链的传递规则——`onFulfilled` 返回 reject（或 throw）时，错误流向**下一个**拦截器的 `onRejected`，而非同一个 `use` 的 `onRejected`。同一个 `use` 的 `onRejected` 只处理**上一个**节点传来的拒绝。要让业务码错误被 `onRejected` 捕获，必须把转换和处理拆到两个 `use` 里，形成真正的链式传递。
+
+### 6、callRefresh 遇到 HTTP 错误时丢失后端 msg
 
 **问题**
 
@@ -908,7 +834,98 @@ async function callRefresh(refreshTokenStr: string): Promise<ApiResult<RefreshVO
 
 > **为什么不用 `validateStatus: () => true`**：该方案让 axios 对所有 HTTP 状态码都 resolve，函数返回类型就必须同时表达成功和失败两种形态，调用方需要额外判断，契约变复杂。HTTP 错误本就是异常路径，用 throw 表达更自然；`validateStatus` 适合需要统一处理所有状态码的场景（如代理转发），不适合这里。
 
-## 11、Swagger 全局 addSecurityItem 导致匿名接口显示为需要授权
+### 7、并发 401 导致重复刷新 Token
+
+**问题**
+
+多个请求同时返回 401 时，每个请求的响应拦截器都会检测到 401 并各自发起 `/auth/refresh` 调用，导致同一时刻多次刷新 Token，浪费资源且可能因竞态条件导致 Token 错乱。
+
+**解决方案：Promise 锁**
+
+在 Pinia userStore 中维护一个 `refreshingPromise`，首个 401 请求创建一个刷新 Promise 并存入 store，后续 401 请求检测到该 Promise 已存在时直接 `await` 等待它完成，然后复用新 Token 重试，避免重复刷新。
+
+```typescript
+// 已有刷新在进行中，等它完成
+if (store.refreshingPromise) {
+  await store.refreshingPromise
+  // 刷新完成后用新 Token 重试
+  error.config._retry = true
+  setHeader(error.config, 'Authorization', `Bearer ${store.token}`)
+  return result(error.config)
+}
+
+// 发起刷新（首个 401）
+const promise = (async () => { /* 调用 /auth/refresh */ })()
+store.refreshingPromise = promise
+try { await promise } finally { store.refreshingPromise = null }
+```
+
+### 8、Token 刷新失败后重试导致无限循环
+
+**问题**
+
+Token 刷新成功后，拦截器会用新 Token 自动重试原请求。但如果 refresh token 本身也已过期，刷新接口返回失败（或重试后再次 401），拦截器会再次进入 401 分支 → 再次尝试刷新 → 再次失败 → 无限循环。
+
+**解决方案：`_retry` 标记 + 类型扩展 + 判空**
+
+在 `api/modules/index.ts` 中通过 `declare module 'axios'` 扩展 `InternalAxiosRequestConfig`，为其增加可选的 `_retry?: boolean` 属性，解决 TypeScript 类型报错。
+
+```typescript
+// api/modules/index.ts — Axios 类型扩展
+declare module 'axios' {
+  interface InternalAxiosRequestConfig {
+    /** 401 重试标记，防止无限循环刷新 Token */
+    _retry?: boolean
+  }
+}
+```
+
+在 result.ts 的 401 入口先对 `error.config` 判空（config 在 AxiosError 中为可选字段，可能为 undefined），再检查 `_retry` 标记。若已为 `true` 说明已走过一轮刷新，直接清除登录态并跳转登录页。重试前设置 `_retry = true`，确保每个请求最多重试一次。
+
+```typescript
+// config 不存在则无法重试，直接拒绝
+if (!error.config) {
+  return Promise.reject(error)
+}
+
+// 401 入口守卫：已重试过，直接踢到登录页
+if (error.config._retry) {
+  store.clearAuth()
+  router.push('/login')
+  return Promise.reject(error)
+}
+
+// 重试前打标
+error.config._retry = true
+setHeader(error.config, 'Authorization', `Bearer ${store.token}`)
+return result(error.config)
+```
+
+### 9、等待共享刷新时刷新失败，等待方仍用空 Token 重试
+
+**问题**
+
+当请求 A 正在刷新、请求 B 等待时，若 A 的刷新失败（store.token 被清空），B 在 `await` 之后直接用空 Token 重试，必然会再次 401，浪费一次请求。
+
+**解决方案：等待后增加 Token 有效性检查**
+
+等待共享刷新 Promise 完成后，先检查 `store.token` 是否存在。若刷新失败导致 Token 为空，直接 `Promise.reject`，不再发起无意义的重试。
+
+```typescript
+if (store.refreshingPromise) {
+  await store.refreshingPromise
+  if (!store.token) return Promise.reject(error) // 共享刷新失败，不再重试
+  error.config._retry = true
+  setHeader(error.config, 'Authorization', `Bearer ${store.token}`)
+  return result(error.config)
+}
+```
+
+---
+
+## 后端：其他
+
+### 10、Swagger 全局 addSecurityItem 导致匿名接口显示为需要授权
 
 **问题**
 
@@ -947,7 +964,11 @@ public Result<UserInfoVO> me() { ... }
 
 > **关键点**：全局 `addSecurityItem` 是"默认需要鉴权"的声明，适合大多数接口都需要 Token 的场景，不需要在每个 Controller 上重复声明。少数匿名接口用 `@SecurityRequirements`（空数组）显式覆盖，比逐一添加 `@SecurityRequirement` 更简洁，也比 `name = ""` 的 workaround 更符合规范。
 
-## 9、Vue Router 子路由无法继承父路由 meta，需用 to.matched.some 匹配
+---
+
+## 前端：其他
+
+### 11、Vue Router 子路由无法继承父路由 meta，需用 to.matched.some 匹配
 
 **问题**
 

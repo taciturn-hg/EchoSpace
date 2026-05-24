@@ -19,13 +19,13 @@ const router = createRouter({
     {
       path: '/forgot-password',
       name: 'forgot-password',
-      component: () => import('@/views/ForgotPassword.vue'),
+      component: () => import('@/views/ForgotPasswordPage.vue'),
       meta: { guest: true },
     },
     {
       path: '/reset-password',
       name: 'reset-password',
-      component: () => import('@/views/ResetPassword.vue'),
+      component: () => import('@/views/ResetPasswordPage..vue'),
       meta: { guest: true },
     },
     {

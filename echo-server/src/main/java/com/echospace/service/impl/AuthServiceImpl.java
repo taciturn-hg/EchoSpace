@@ -147,6 +147,9 @@ public class AuthServiceImpl implements AuthService {
     public UserInfoVO getMe() {
         Long userId = SecurityUtil.getCurrentUserId();
         User user = authMapper.selectById(userId);
+        if (userId == null) {
+            throw BusinessException.unauthorized("未登录或登录已过期");
+        }
         if (user == null) {
             throw BusinessException.notFound("用户不存在");
         }
