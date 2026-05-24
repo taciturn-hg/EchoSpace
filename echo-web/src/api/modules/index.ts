@@ -35,13 +35,17 @@ export interface RegisterDTO {
   confirmPassword: string
 }
 
+export interface RefreshDTO {
+  refreshToken: string
+}
+
 export interface RefreshVO {
   accessToken: string
   refreshToken: string
-  expiresIn: string
+  expiresIn: number
 }
 
-export interface meVO {
+export interface MeVO {
   id: number
   username: string
   nickname: string

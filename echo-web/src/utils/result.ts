@@ -2,8 +2,10 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/userStore'
 import router from '@/router'
-import { setHeader } from './header.ts'
-import { refresh } from '../api/auth.js'
+import { setHeader } from './header'
+import type { RefreshDTO } from '@/api/modules/index'
+import { ref } from 'vue'
+import { refresh } from '@/api/auth'
 
 let userStore: ReturnType<typeof useUserStore>
 
@@ -80,7 +82,8 @@ result.interceptors.response.use(
     // 发起刷新
     const promise = (async () => {
       try {
-        const res = await refresh(store.refreshToken)
+        const refreshDTO = ref<RefreshDTO>({ refreshToken: store.refreshToken })
+        const res = await refresh(refreshDTO.value)
         if (res?.code) {
           const { accessToken, refreshToken: newRefreshToken } = res.data!
           store.setToken(accessToken, newRefreshToken)

@@ -50,7 +50,8 @@
       </el-form>
 
       <div class="card-footer">
-        <router-link to="/forgot-password" class="link">忘记密码？</router-link>
+        <!-- <router-link to="/forgot-password" class="link">忘记密码？</router-link> -->
+        <span class="link link--disabled">忘记密码？</span>
         <span class="divider">·</span>
         <router-link to="/register" class="link">去注册</router-link>
       </div>
@@ -111,6 +112,7 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+@use 'sass:color';
 $primary: #4f6ef7;
 $primary-hover: #3b5bdb;
 $text-primary: #1a1a2e;
@@ -192,7 +194,7 @@ $radius-input: 8px;
     background: #fafafa;
 
     &:hover {
-      box-shadow: 0 0 0 1px darken($border, 10%);
+      box-shadow: 0 0 0 1px color.adjust($border, $lightness: 10%);
     }
 
     &.is-focus {
@@ -268,6 +270,12 @@ $radius-input: 8px;
     color: $primary-hover;
     text-decoration: underline;
   }
+}
+
+.link--disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+  font-weight: 500;
 }
 
 .divider {

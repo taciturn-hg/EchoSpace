@@ -1,5 +1,13 @@
 import result from '@/utils/result'
-import type { ApiResult, LoginDTO, LoginVO, meVO, RefreshVO, RegisterDTO } from './modules'
+import type {
+  ApiResult,
+  LoginDTO,
+  LoginVO,
+  MeVO,
+  RefreshDTO,
+  RefreshVO,
+  RegisterDTO,
+} from './modules'
 
 export const login = (loginDTO: LoginDTO) =>
   result.post<unknown, ApiResult<LoginVO>>('/auth/login', loginDTO)
@@ -7,7 +15,7 @@ export const login = (loginDTO: LoginDTO) =>
 export const register = (registerDTO: RegisterDTO) =>
   result.post<unknown, ApiResult<void>>('/auth/register', registerDTO)
 
-export const refresh = (refresh: string) =>
-  result.post<unknown, ApiResult<RefreshVO>>('/auth/refresh', refresh)
+export const refresh = (refreshDTO: RefreshDTO) =>
+  result.post<unknown, ApiResult<RefreshVO>>('/auth/refresh', refreshDTO)
 
-export const me = () => result.get<unknown, ApiResult<meVO>>('/auth/me')
+export const me = () => result.get<unknown, ApiResult<MeVO>>('/auth/me')

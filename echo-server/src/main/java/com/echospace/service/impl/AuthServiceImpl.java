@@ -93,11 +93,11 @@ public class AuthServiceImpl implements AuthService {
                         .last("limit 1")
         );
         if (user == null) {
-            throw new BusinessException("用户不存在");
+            throw new BusinessException("账号或密码错误");
         }
 
         if (!passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())) {
-            throw new BusinessException("密码错误");
+            throw new BusinessException("账号或密码错误");
         }
 
         String access = jwtUtil.generateAccessToken(user.getId().toString(), user.getUsername());
