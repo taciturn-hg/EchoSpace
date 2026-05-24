@@ -135,11 +135,13 @@ refreshToken 过期 → 清除 store → 跳转 /login
 
 ## 当前进度
 
-**Sprint 1 — 认证基础（已完成）**
+**Sprint 1 — 认证基础（已完成，已合并至 dev）**
 - 后端：注册、登录、刷新 Token、获取当前用户信息
 - 前端：登录页、注册页、路由守卫、Token 自动刷新
+- feature/login-register → dev（PR #3 已合并）
 
 **Sprint 2 — 基础功能页面（进行中）**
+- 当前分支：dev
 - 所有业务页面当前为占位状态，尚未实现具体功能
 - 忘记密码 / 重置密码流程已规划，等待 Redis 接入后实现
 
@@ -202,4 +204,4 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | `echo-web/src/router/index.ts` | 路由定义与守卫 |
 | `docs/roadmap.md` | 待开发功能方案设计 |
 | `docs/01-requirements-and-plan.md` | 需求与技术方案文档 |
-| `docs/Question.md` | 开发过程中的问题记录与解决方案 |
+| `docs/Question.md` | 开发问题记录（按主题分组：后端 Security 构建 / 前端 axios 拦截器 / 后端其他 / 前端其他） |
