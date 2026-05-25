@@ -147,13 +147,16 @@ refreshToken 过期 → 清除 store → 跳转 /login
 **Sprint 2 — 用户认证与账号管理（进行中）**
 - 当前分支：feature/user-settings
 - 完成了 LayoutPage.vue 布局系统：固定顶栏、可折叠左侧导航、搜索框、用户卡片、发布帖子按钮、下拉菜单（资料设置/账号设置/修改密码/退出登录）
-- 新增 ProfileSettingsPage.vue 完整实现：头像上传（前端校验→MinIO上传→即时回显）、昵称编辑、个人简介编辑（Element Plus textarea，6行固定高度）、取消按钮（重新拉取服务器数据覆盖本地）、保存按钮（绿色渐变，仅脏数据可点击）
+- 新增 ProfileSettingsPage.vue 完整实现：头像上传（前端校验，上传接口 TODO）、昵称编辑、个人简介编辑（Element Plus textarea，6行固定高度）、取消按钮（重新拉取服务器数据覆盖本地，失败时提示"还原失败"）、保存按钮（绿色渐变，仅脏数据可点击）
 - 新增 ChangePasswordPage.vue 完整实现：旧密码/新密码/确认密码三输入（show-password 切换），el-form rules 校验（必填、长度 6~20、新旧密码不同、两次输入一致），修改密码按钮 PUT /api/users/me/password 后端返回消息提示，清空按钮重置表单与校验状态，绿色渐变按钮仅脏数据可点击
-- 新增 SettingsPage.vue 完整实现：手机号/邮箱编辑，取消回拉服务器脱敏数据，保存 PUT /api/users/me/settings 并同步 Pinia store
-- 前端 API 层新增 `echo-web/src/api/users.ts`（getProfile / updateProfile / uploadAvatar / getSettings / updateSettings / changePassword），类型新增 UserProfileVO / UpdateProfileDTO / UploadAvatarVO / UserSettingsVO / UpdateSettingsDTO / ChangePasswordDTO
-- 接口文档 02-api-documentation.md 已更新：文件上传模块拆为 4 个接口（MinIO 图片/头像 + OSS 图片/头像），附录接口总数由 30→32
-- 开发计划 04-development-plan.md 已同步：MinIO 文件上传接口前置到 Sprint 2（累计接口数 9→11），OSS 上传留在 Sprint 3，全景图接口数联级更新
-- 功能流程图 05-feature-flows.md 已更新：新增 2.4 文件上传流程（MinIO / OSS 两阶段），覆盖前后端双校验→场景分流→存储方案分岔→URL 回显全链路
+- 新增 SettingsPage.vue 完整实现：手机号/邮箱编辑（el-form rules 必填 + 格式校验），取消回拉服务器数据（失败时提示"还原失败"），保存 PUT /api/users/me/settings 并同步 Pinia store
+- 前端 API 层新增 `echo-web/src/api/users.ts`（getProfile / updateProfile / getSettings / updateSettings / changePassword），类型新增 UserProfileVO / UpdateProfileDTO / UserSettingsVO / UpdateSettingsDTO / ChangePasswordDTO；文件上传函数（uploadAvatar / uploadImage）以 TODO 注释占位，待 Sprint 2 后期实现
+- 后端 UserSettingsVO 取消手机号/邮箱脱敏，直接返回原始值（前端展示用，与 /api/auth/me 保持一致）
+- 用户表 nickname 字段改为可为空，前端 LayoutPage/ProfileSettingsPage 已适配：昵称为空时展示 username
+- 接口文档 02-api-documentation.md 已更新：文件上传模块 2 个通用接口（/api/upload/image + /api/upload/avatar），底层由 FileService 按 storage.type 切换 MinIO/OSS 实现；nickname 响应字段标注"非必须（可为空）"；附录接口总数 30
+- 开发计划 04-development-plan.md 已同步：文件上传接口在 Sprint 2（累计接口数 9→11），OSS 存储实现（OssFileServiceImpl）留在 Sprint 3，全景图接口数联级更新（最终 30）
+- 功能流程图 05-feature-flows.md 已更新：新增 2.4 文件上传流程，修正 MinIO/OSS SDK 兼容性说明（OSS 官方 SDK 非 S3 协议，需 FileService 接口抽象切换）
+- 需求文档 01-requirements-and-plan.md 已修正：图片存储阶段策略中 MinIO→OSS 切换方案由"改配置"改为"FileService 接口 + OssFileServiceImpl 实现"
 - 系统设计文档已产出：`docs/《EchoSpace》系统设计.md` + `.docx`，含系统架构、六大功能模块设计、E-R 图、6 张数据库表定义、设计要点总结
 - 后端已实现接口 2.2~2.6（资料设置 GET/PUT、账号设置 GET/PUT、修改密码 PUT），编译通过
 - 后端 Controller / Service 已添加 @Slf4j 业务日志，logback.xml 日志配置已就绪（控制台 + 滚动文件输出到 logs/）
@@ -227,7 +230,7 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | `echo-server/.../controller/UserController.java` | 用户模块控制器（资料设置/账号设置/修改密码） |
 | `echo-server/.../service/impl/UserServiceImpl.java` | 用户模块业务逻辑（含手机/邮箱唯一性校验、BCrypt 改密） |
 | `echo-server/.../mapper/UserMapper.java` | 用户模块 Mapper（与 AuthMapper 按业务拆分） |
-| `echo-web/src/api/users.ts` | 用户模块前端 API（getProfile / updateProfile / uploadAvatar / getSettings / updateSettings） |
+| `echo-web/src/api/users.ts` | 用户模块前端 API（getProfile / updateProfile / getSettings / updateSettings / changePassword；uploadAvatar/uploadImage TODO） |
 | `echo-web/src/utils/result.ts` | Axios 封装，含 401 自动刷新逻辑 |
 | `echo-web/src/stores/userStore.ts` | 用户状态（Token + 用户信息） |
 | `echo-web/src/router/index.ts` | 路由定义与守卫 |

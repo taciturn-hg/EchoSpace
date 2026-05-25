@@ -25,7 +25,7 @@
 | **时间线** | 关注用户的帖子时间线（按时间倒序） | 1 个（复用 posts list） | P2 |
 | **通知系统** | 评论通知、点赞通知、关注通知（RabbitMQ 异步推送） | 新增 0 个（MQ 消费端） | P2 |
 | **个人主页** | 用户主页（帖子列表、基本信息、统计数据） | 0 个（前端页面，后端接口已在第一阶段完成） | P1 |
-| **对象存储升级** | MinIO 切换为阿里云 OSS | 0（改配置） | P2 |
+| **对象存储升级** | MinIO 切换为阿里云 OSS | 0（新增 OssFileServiceImpl，按配置切换实现） | P2 |
 
 > 第二阶段共新增 3 个接口，2 个消费端任务，主要增强社交属性。
 
@@ -146,7 +146,7 @@ flowchart TD
 
 ### 2.4 文件上传流程（MinIO / OSS 两阶段）
 
-> 文件上传模块按部署阶段区分存储后端：第一阶段本地 MinIO，第二阶段切换阿里云 OSS。切换时仅需修改 `application.yml` 中 endpoint、accessKey、secretKey 三个配置项，业务代码无需改动。
+> 文件上传模块按部署阶段区分存储后端：第一阶段本地 MinIO，第二阶段切换阿里云 OSS。业务侧通过 `FileService` 接口统一抽象，`application.yml` 中 `storage.type` 配置项决定注入 `MinioFileServiceImpl` 还是 `OssFileServiceImpl`；上层调用方只依赖接口，无需感知底层实现。
 
 ```mermaid
 flowchart TD
@@ -195,7 +195,7 @@ flowchart TD
     Y --> Z2[用户继续编辑资料]
 ```
 
-> **切换要点**：MinIO Java SDK 与 OSS SDK 均兼容 S3 协议。切换时仅需修改配置项，无需改动 Service 层代码。已有图片数据通过 `mc mirror` 命令从 MinIO 同步到 OSS。
+> **切换要点**：MinIO Java SDK 兼容 S3 协议，但阿里云 OSS 官方 Java SDK 使用自有 API 而非 S3 协议。因此不能简单通过改配置切换，需要在 Service 层定义 `FileService` 接口，分别提供 `MinioFileServiceImpl` 和 `OssFileServiceImpl` 两种实现，由 `storage.type` 配置决定注入哪个 Bean。已有图片数据通过 `mc mirror` 命令从 MinIO 同步到 OSS。
 
 ### 2.5 评论流程（一级评论 + 二级回复）
 
@@ -517,7 +517,7 @@ flowchart TD
 | 用户 | #5 ~ #12 | 8 |
 | 帖子 | #13 ~ #21 | 9 |
 | 评论 | #22 ~ #26 | 5 |
-| 文件上传 | #27 ~ #28 | 2 |
+| 文件上传 | #29 ~ #30 | 2 |
 
 ---
 

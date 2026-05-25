@@ -22,8 +22,8 @@ public class UpdateProfileDTO {
     @Size(max = 500, message = "头像 URL 长度不能超过 500")
     private String avatar;
 
-    @Schema(description = "昵称，长度 1~50", example = "张三")
-    @Size(min = 1, max = 50, message = "昵称长度须在 1~50 之间")
+    @Schema(description = "昵称，最长 50 字", example = "张三")
+    @Size(max = 50, message = "昵称长度最长 50 字")
     private String nickname;
 
     @Schema(description = "个人简介，最长 500 字", example = "新个性签名")

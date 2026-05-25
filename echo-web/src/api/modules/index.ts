@@ -48,7 +48,7 @@ export interface RefreshVO {
 export interface MeVO {
   id: number
   username: string
-  nickname: string
+  nickname: string | null
   email: string
   phone: string
   avatar?: string
@@ -59,7 +59,7 @@ export interface MeVO {
 export interface UserInfo {
   id: number
   username: string
-  nickname: string
+  nickname: string | null
   email: string
   phone: string
   avatar?: string

@@ -21,7 +21,7 @@
 | **缓存** | Redis 7 | 缓存/点赞/分布式锁/排行榜 |
 | **搜索引擎** | Elasticsearch 8 | 帖子全文搜索，ik 中文分词 |
 | **对象存储（第一阶段）** | MinIO（本地启动） | 兼容 S3 API，零成本本地开发，直接下载二进制启动 |
-| **对象存储（第二阶段）** | 阿里云 OSS | 线上部署后切换，仅改 endpoint |
+| **对象存储（第二阶段）** | 阿里云 OSS | 线上部署后切换，新增 OssFileServiceImpl 实现 FileService 接口 |
 | **消息队列** | RabbitMQ（预留） | 异步解耦，ES 数据同步、通知推送 |
 | **容器化（第三阶段）** | Docker + Docker Compose | 学完 Docker 后，将所有基础服务容器化，便于部署 |
 
@@ -30,11 +30,11 @@
 | 阶段 | 方案 | 说明 |
 |------|------|------|
 | **第一阶段（开发+MVP）** | MinIO（本地直接启动） | 下载 MinIO 二进制文件直接运行，无需 Docker |
-| **第二阶段（上线部署）** | 阿里云 OSS | 部署到服务器后切换为 OSS，MinIO Client API 与 OSS 兼容，只需修改 endpoint、accessKey、secretKey 三个配置即可 |
+| **第二阶段（上线部署）** | 阿里云 OSS | 部署到服务器后切换为 OSS。MinIO SDK 兼容 S3 协议，但 OSS 官方 SDK 使用自有 API，无法通过改配置直接切换；需新增 OssFileServiceImpl 实现 FileService 接口，由 storage.type 配置决定注入哪个实现 |
 
 切换时需要做的改动：
-- `application.yml` 中修改 MinIO 配置为 OSS 配置
-- 无需改代码逻辑（MinIO Java SDK 兼容 S3 协议）
+- `application.yml` 中修改 `storage.type` 配置（minio → oss），并配置 OSS 的 endpoint、accessKey、secretKey
+- 新增 `OssFileServiceImpl` 实现 `FileService` 接口，上层业务代码无需改动（依赖接口而非实现）
 - 已有图片数据需要迁移：用 `mc mirror` 命令从 MinIO 同步到 OSS
 
 ### 为什么不选别的

@@ -41,7 +41,7 @@ public class UserServiceImpl implements UserService {
 
     /**
      * 获取当前登录用户的资料设置信息
-     * <p>从 SecurityContext 取出 userId，按主键查库后转换为脱敏 VO（仅 avatar / nickname / bio）。</p>
+     * <p>从 SecurityContext 取出 userId，按主键查库后转换为 VO（仅 avatar / nickname / bio）。</p>
      */
     @Override
     public UserProfileVO getMyProfile() {
@@ -52,12 +52,11 @@ public class UserServiceImpl implements UserService {
 
     /**
      * 获取当前登录用户的账号设置信息
-     * <p>VO 内部已对手机号、邮箱做脱敏处理，避免敏感信息明文返回。</p>
      */
     @Override
     public UserSettingsVO getMySettings() {
         User user = requireCurrentUser();
-        log.debug("查询账号设置回显完成（已脱敏） userId={}", user.getId());
+        log.debug("查询账号设置回显完成 userId={}", user.getId());
         return UserSettingsVO.from(user);
     }
 
@@ -159,6 +158,7 @@ public class UserServiceImpl implements UserService {
 
     /**
      * 取当前登录用户实体；token 有效但库中已无对应用户时视为账号被删除
+     *
      */
     private User requireCurrentUser() {
         Long userId = currentUserIdOrThrow();

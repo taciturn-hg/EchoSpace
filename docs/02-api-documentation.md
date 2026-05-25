@@ -287,7 +287,7 @@
 | msg | string | 非必须 | 提示信息 |
 | data | object | 非必须 | 返回的数据 |
 | \|- id | number | 必须 | 用户ID |
-| \|- nickname | string | 必须 | 昵称 |
+| \|- nickname | string | 非必须 | 昵称（可为空） |
 | \|- avatar | string | 非必须 | 头像 URL |
 | \|- bio | string | 非必须 | 个人简介 |
 | \|- postCount | number | 必须 | 发帖总数 |
@@ -342,7 +342,7 @@
 | msg | string | 非必须 | 提示信息 |
 | data | object | 非必须 | 返回的数据 |
 | \|- avatar | string | 非必须 | 头像 URL |
-| \|- nickname | string | 必须 | 昵称 |
+| \|- nickname | string | 非必须 | 昵称（可为空） |
 | \|- bio | string | 非必须 | 个人简介 |
 
 响应数据样例：
@@ -386,8 +386,8 @@
 | code | number | 必须 | 响应码，1 代表成功，0 代表失败 |
 | msg | string | 非必须 | 提示信息 |
 | data | object | 非必须 | 返回的数据 |
-| \|- phone | string | 必须 | 手机号（脱敏显示） |
-| \|- email | string | 必须 | 邮箱（脱敏显示） |
+| \|- phone | string | 非必须 | 手机号 |
+| \|- email | string | 非必须 | 邮箱 |
 
 响应数据样例：
 
@@ -396,8 +396,8 @@
   "code": 1,
   "msg": "success",
   "data": {
-    "phone": "138****8000",
-    "email": "zha***@example.com"
+    "phone": "13800138000",
+    "email": "zhangsan@example.com"
   }
 }
 ```
@@ -423,7 +423,7 @@
 | 参数名 | 类型 | 是否必须 | 备注 |
 |--------|------|----------|------|
 | avatar | string | 非必须 | 头像 URL |
-| nickname | string | 非必须 | 昵称，长度 1~50 |
+| nickname | string | 非必须 | 昵称，最长 50 字 |
 | bio | string | 非必须 | 个人简介，最长 500 字 |
 
 请求参数样例：
@@ -750,7 +750,7 @@
 | \|- size | number | 必须 | 每页条数 |
 | \|- records | object[] | 必须 | 粉丝列表 |
 | \|- records[].id | number | 必须 | 用户ID |
-| \|- records[].nickname | string | 必须 | 昵称 |
+| \|- records[].nickname | string | 非必须 | 昵称（可为空） |
 | \|- records[].avatar | string | 非必须 | 头像 URL |
 | \|- records[].followedAt | string | 必须 | 关注时间 |
 
@@ -823,7 +823,7 @@
 | \|- size | number | 必须 | 每页条数 |
 | \|- records | object[] | 必须 | 关注列表 |
 | \|- records[].id | number | 必须 | 用户ID |
-| \|- records[].nickname | string | 必须 | 昵称 |
+| \|- records[].nickname | string | 非必须 | 昵称（可为空） |
 | \|- records[].avatar | string | 非必须 | 头像 URL |
 | \|- records[].followedAt | string | 必须 | 关注时间 |
 
@@ -953,7 +953,7 @@
 | \|- author | object | 必须 | 作者信息 |
 | \|- author.id | number | 必须 | 作者ID |
 | \|- author.username | string | 必须 | 作者用户名 |
-| \|- author.nickname | string | 必须 | 作者昵称 |
+| \|- author.nickname | string | 非必须 | 作者昵称（可为空） |
 | \|- author.avatar | string | 非必须 | 作者头像 URL |
 | \|- likeCount | number | 必须 | 点赞数 |
 | \|- commentCount | number | 必须 | 评论数 |
@@ -1158,7 +1158,7 @@
 | \|- records[].author | object | 必须 | 作者信息 |
 | \|- records[].author.id | number | 必须 | 作者ID |
 | \|- records[].author.username | string | 必须 | 作者用户名 |
-| \|- records[].author.nickname | string | 必须 | 作者昵称 |
+| \|- records[].author.nickname | string | 非必须 | 作者昵称（可为空） |
 | \|- records[].author.avatar | string | 非必须 | 作者头像 URL |
 | \|- records[].likeCount | number | 必须 | 点赞数 |
 | \|- records[].commentCount | number | 必须 | 评论数 |
@@ -1376,7 +1376,7 @@
 | \|- records[].author | object | 必须 | 作者信息 |
 | \|- records[].author.id | number | 必须 | 作者ID |
 | \|- records[].author.username | string | 必须 | 作者用户名 |
-| \|- records[].author.nickname | string | 必须 | 作者昵称 |
+| \|- records[].author.nickname | string | 非必须 | 作者昵称（可为空） |
 | \|- records[].author.avatar | string | 非必须 | 作者头像 URL |
 | \|- records[].likeCount | number | 必须 | 点赞数 |
 | \|- records[].commentCount | number | 必须 | 评论数 |
@@ -1809,19 +1809,19 @@
 
 ## 5. 文件上传模块
 
-> 文件上传按部署阶段区分存储后端：第一阶段使用本地 MinIO，第二阶段切换阿里云 OSS。前后端约定 4 个独立接口。
+> 文件上传提供 2 个通用接口：上传图片（帖子用）和上传头像。底层存储由 `storage.type` 配置决定注入 `MinioFileServiceImpl` 还是 `OssFileServiceImpl`，前端无需感知后端存储方案。
 
 ---
 
-### 5.1 MinIO 上传图片
+### 5.1 上传图片
 
 #### 5.1.1 基本信息
 
-> 请求路径：/api/upload/minio/image
+> 请求路径：/api/upload/image
 >
 > 请求方式：POST
 >
-> 接口描述：该接口用于第一阶段（MinIO）上传帖子中的图片（Tiptap 编辑器使用），前端拿到返回的 URL 后自动插入编辑器
+> 接口描述：上传帖子中的图片（Tiptap 编辑器使用），前端拿到返回的 URL 后自动插入编辑器。底层存储方案由后端配置决定。
 
 #### 5.1.2 请求参数
 
@@ -1844,7 +1844,7 @@
 | code | number | 必须 | 响应码，1 代表成功，0 代表失败 |
 | msg | string | 非必须 | 提示信息 |
 | data | object | 非必须 | 返回的数据 |
-| \|- url | string | 必须 | MinIO 上的图片访问 URL |
+| \|- url | string | 必须 | 图片访问 URL |
 
 响应数据样例：
 
@@ -1860,15 +1860,15 @@
 
 ---
 
-### 5.2 MinIO 上传头像
+### 5.2 上传头像
 
 #### 5.2.1 基本信息
 
-> 请求路径：/api/upload/minio/avatar
+> 请求路径：/api/upload/avatar
 >
 > 请求方式：POST
 >
-> 接口描述：该接口用于第一阶段（MinIO）上传用户头像
+> 接口描述：上传用户头像。底层存储方案由后端配置决定。
 
 #### 5.2.2 请求参数
 
@@ -1891,7 +1891,7 @@
 | code | number | 必须 | 响应码，1 代表成功，0 代表失败 |
 | msg | string | 非必须 | 提示信息 |
 | data | object | 非必须 | 返回的数据 |
-| \|- url | string | 必须 | MinIO 上的头像访问 URL |
+| \|- url | string | 必须 | 头像访问 URL |
 
 响应数据样例：
 
@@ -1901,100 +1901,6 @@
   "msg": "上传成功",
   "data": {
     "url": "http://localhost:9000/echospace/avatars/1/abc456.jpg"
-  }
-}
-```
-
----
-
-### 5.3 OSS 上传图片
-
-#### 5.3.1 基本信息
-
-> 请求路径：/api/upload/oss/image
->
-> 请求方式：POST
->
-> 接口描述：该接口用于第二阶段（阿里云 OSS）上传帖子中的图片（Tiptap 编辑器使用），前端拿到返回的 URL 后自动插入编辑器
-
-#### 5.3.2 请求参数
-
-参数格式：multipart/form-data
-
-参数说明：
-
-| 参数名 | 类型 | 是否必须 | 备注 |
-|--------|------|----------|------|
-| file | file | 必须 | 图片文件，限制 jpg/png/gif/webp，最大 10MB |
-
-#### 5.3.3 响应数据
-
-参数格式：application/json
-
-参数说明：
-
-| 参数名 | 类型 | 是否必须 | 备注 |
-|--------|------|----------|------|
-| code | number | 必须 | 响应码，1 代表成功，0 代表失败 |
-| msg | string | 非必须 | 提示信息 |
-| data | object | 非必须 | 返回的数据 |
-| \|- url | string | 必须 | OSS 上的图片访问 URL（HTTPS） |
-
-响应数据样例：
-
-```json
-{
-  "code": 1,
-  "msg": "上传成功",
-  "data": {
-    "url": "https://echospace.oss-cn-hangzhou.aliyuncs.com/images/2026/05/abc123.jpg"
-  }
-}
-```
-
----
-
-### 5.4 OSS 上传头像
-
-#### 5.4.1 基本信息
-
-> 请求路径：/api/upload/oss/avatar
->
-> 请求方式：POST
->
-> 接口描述：该接口用于第二阶段（阿里云 OSS）上传用户头像
-
-#### 5.4.2 请求参数
-
-参数格式：multipart/form-data
-
-参数说明：
-
-| 参数名 | 类型 | 是否必须 | 备注 |
-|--------|------|----------|------|
-| file | file | 必须 | 图片，限制 jpg/png，最大 2MB |
-
-#### 5.4.3 响应数据
-
-参数格式：application/json
-
-参数说明：
-
-| 参数名 | 类型 | 是否必须 | 备注 |
-|--------|------|----------|------|
-| code | number | 必须 | 响应码，1 代表成功，0 代表失败 |
-| msg | string | 非必须 | 提示信息 |
-| data | object | 非必须 | 返回的数据 |
-| \|- url | string | 必须 | OSS 上的头像访问 URL（HTTPS） |
-
-响应数据样例：
-
-```json
-{
-  "code": 1,
-  "msg": "上传成功",
-  "data": {
-    "url": "https://echospace.oss-cn-hangzhou.aliyuncs.com/avatars/1/abc456.jpg"
   }
 }
 ```
@@ -2033,7 +1939,5 @@
 | 26 | GET | /api/comments/{id}/replies | 加载更多二级回复 | 评论 |
 | 27 | DELETE | /api/comments/{id} | 删除评论 | 评论 |
 | 28 | POST | /api/comments/{id}/like | 评论点赞/取消（toggle） | 评论 |
-| 29 | POST | /api/upload/minio/image | MinIO 上传图片 | 文件 |
-| 30 | POST | /api/upload/minio/avatar | MinIO 上传头像 | 文件 |
-| 31 | POST | /api/upload/oss/image | OSS 上传图片 | 文件 |
-| 32 | POST | /api/upload/oss/avatar | OSS 上传头像 | 文件 |
+| 29 | POST | /api/upload/image | 上传图片 | 文件 |
+| 30 | POST | /api/upload/avatar | 上传头像 | 文件 |

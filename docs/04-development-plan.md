@@ -48,7 +48,7 @@ echo-web/src/
 - [x] 更新资料设置接口 (PUT /api/users/me/profile)
 - [x] 更新账号设置接口 (PUT /api/users/me/settings)
 - [x] 修改密码接口 (PUT /api/users/me/password)
-- [ ] MinIO 文件上传接口（帖子图片上传：POST /api/upload/minio/image + 头像上传：POST /api/upload/minio/avatar）
+- [ ] 文件上传接口（帖子图片上传：POST /api/upload/image + 头像上传：POST /api/upload/avatar）
 - [x] 前端登录/注册页面 + Axios 拦截器（Token 注入 + 过期刷新）
 
 ### Sprint 2 产出物
@@ -65,7 +65,7 @@ echo-server/src/main/java/com/echospace/
 ├── controller/
 │   ├── AuthController.java             # /api/auth/register, login, refresh, me
 │   ├── UserController.java             # /api/users/me/profile, /api/users/me/settings (GET/PUT), /api/users/me/password
-│   └── UploadController.java           # /api/upload/minio/image, /api/upload/minio/avatar
+│   └── UploadController.java           # /api/upload/image, /api/upload/avatar
 ├── service/
 │   ├── AuthService.java
 │   ├── UserService.java
@@ -84,7 +84,7 @@ echo-server/src/main/java/com/echospace/
 └── vo/
     ├── LoginVO.java                    # {accessToken, refreshToken, expiresIn}
     ├── UserProfileVO.java              # {avatar, nickname, bio}
-    └── UserSettingsVO.java             # {phone, email}（脱敏）
+    └── UserSettingsVO.java             # {phone, email}
 
 echo-web/src/
 ├── views/
@@ -94,7 +94,7 @@ echo-web/src/
 │   └── SettingsPage.vue                  # 账号设置（手机号/邮箱/修改密码）
 ├── api/
 │   ├── auth.ts                        # Axios 拦截器 + 认证相关请求
-│   └── user.ts                        # 用户设置相关请求
+│   └── users.ts                        # 用户设置相关请求
 └── stores/
     └── userStore.ts                    # 用户登录态管理
 ```
@@ -103,7 +103,7 @@ echo-web/src/
 
 ## Sprint 3（2-3天）：帖子核心
 
-- [ ] OSS 文件上传接口（帖子图片上传：POST /api/upload/oss/image + 头像上传：POST /api/upload/oss/avatar）
+- [ ] OSS 存储实现（新增 OssFileServiceImpl 实现 FileService 接口，由 storage.type 配置切换）
 - [ ] 帖子 CRUD 接口
 - [ ] 前端 Tiptap 富文本编辑器集成（含图片上传 extension）
 - [ ] 前端帖子发布页 + 帖子列表页 + 帖子详情页
@@ -116,14 +116,13 @@ echo-server/src/main/java/com/echospace/
 ├── config/
 │   └── OssConfig.java                   # 阿里云 OSS 客户端配置
 ├── controller/
-│   ├── PostController.java             # /api/posts CRUD
-│   └── UploadController.java           # /api/upload/oss/image, /api/upload/oss/avatar
+│   └── PostController.java             # /api/posts CRUD
 ├── service/
 │   ├── PostService.java
 │   ├── FileService.java
 │   └── impl/
 │       ├── PostServiceImpl.java
-│       └── FileServiceImpl.java        # OSS 上传逻辑
+│       └── OssFileServiceImpl.java        # OSS 上传逻辑（实现 FileService 接口）
 ├── dto/
 │   └── CreatePostDTO.java
 ├── vo/
@@ -280,9 +279,9 @@ docker/
 | Sprint | 周期 | 主题 | 模块 | 累计接口数 |
 |--------|------|------|------|-----------|
 | 1 | 1-2天 | 项目脚手架 | 基础框架、数据库 | 0 |
-| 2 | 2-3天 | 用户认证与账号管理 | 注册/登录/JWT/资料设置/账号设置/改密/MinIO上传 | 11 |
-| 3 | 2-3天 | 帖子核心 | 帖子 CRUD + OSS 上传 + 富文本 | 18 |
-| 4 | 2天 | 评论+互动 | 评论/点赞/收藏 | 26 |
-| 5 | 2天 | 搜索 | ES 全文搜索 | 27 |
-| 6 | 1-2天 | 关注+主页 | 关注/粉丝/个人主页/时间线 | 32 |
-| 7 | 后续 | 部署上线 | Docker/Nginx/OSS 迁移 | 32 |
+| 2 | 2-3天 | 用户认证与账号管理 | 注册/登录/JWT/资料设置/账号设置/改密/文件上传 | 11 |
+| 3 | 2-3天 | 帖子核心 | 帖子 CRUD + 富文本 | 16 |
+| 4 | 2天 | 评论+互动 | 评论/点赞/收藏 | 24 |
+| 5 | 2天 | 搜索 | ES 全文搜索 | 25 |
+| 6 | 1-2天 | 关注+主页 | 关注/粉丝/个人主页/时间线 | 30 |
+| 7 | 后续 | 部署上线 | Docker/Nginx/OSS 存储切换 | 30 |

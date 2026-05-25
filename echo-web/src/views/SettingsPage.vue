@@ -13,6 +13,7 @@ const formRef = ref<FormInstance>()
 
 const rules: FormRules = {
   phone: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
     {
       validator: (_rule, value: unknown, callback) => {
         if (!value) return callback()
@@ -23,6 +24,7 @@ const rules: FormRules = {
     },
   ],
   email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
     {
       validator: (_rule, value: unknown, callback) => {
         if (!value) return callback()
@@ -63,9 +65,12 @@ async function fetchSettings() {
     const res = await getSettings()
     if (res.code === 1 && res.data) {
       applySettings(res.data)
+      return true
     }
+    return false
   } catch {
     // 拦截器统一处理
+    return false
   } finally {
     loading.value = false
   }
@@ -112,9 +117,13 @@ async function handleSave() {
 
 async function handleCancel() {
   loading.value = true
-  await fetchSettings()
+  const ok = await fetchSettings()
   formRef.value?.clearValidate()
-  ElMessage.info('已还原为服务器数据')
+  if (ok) {
+    ElMessage.info('已还原为服务器数据')
+  } else {
+    ElMessage.warning('还原失败，请稍后重试')
+  }
 }
 
 onMounted(() => {

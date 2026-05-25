@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElIcon, ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { Upload, EditPen, Plus } from '@element-plus/icons-vue'
-import { getProfile, updateProfile, uploadAvatar } from '@/api/users'
+import { getProfile, updateProfile } from '@/api/users'
 import { useUserStore } from '@/stores/userStore'
 import type { UpdateProfileDTO, UserProfileVO } from '@/api/modules'
 
@@ -12,12 +12,8 @@ const fileInput = ref<HTMLInputElement>()
 const profileFormRef = ref<FormInstance>()
 
 const rules: FormRules = {
-  nickname: [
-    { max: 50, message: '昵称不能超过 50 个字符', trigger: 'blur' },
-  ],
-  bio: [
-    { max: 500, message: '简介不能超过 500 个字符', trigger: 'blur' },
-  ],
+  nickname: [{ max: 50, message: '昵称不能超过 50 个字符', trigger: 'blur' }],
+  bio: [{ max: 500, message: '简介不能超过 500 个字符', trigger: 'blur' }],
 }
 
 const form = reactive<UpdateProfileDTO>({
@@ -45,8 +41,11 @@ const avatarFallback = computed(() => {
   return name.charAt(0).toUpperCase()
 })
 
-const isDirty = computed(() =>
-  form.avatar !== original.avatar || form.nickname !== original.nickname || form.bio !== original.bio,
+const isDirty = computed(
+  () =>
+    form.avatar !== original.avatar ||
+    form.nickname !== original.nickname ||
+    form.bio !== original.bio,
 )
 
 function applyProfile(p: UserProfileVO) {
@@ -63,9 +62,12 @@ async function fetchProfile() {
     const res = await getProfile()
     if (res.code === 1 && res.data) {
       applyProfile(res.data)
+      return true
     }
+    return false
   } catch {
     // 拦截器统一处理
+    return false
   } finally {
     loading.value = false
   }
@@ -80,9 +82,9 @@ async function handleFileChange(e: Event) {
   const file = input.files?.[0]
   if (!file) return
 
-  const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+  const allowed = ['image/jpeg', 'image/png']
   if (!allowed.includes(file.type)) {
-    ElMessage.error('仅支持 JPG、PNG、GIF、WebP 格式')
+    ElMessage.error('仅支持 JPG、PNG 格式')
     return
   }
   if (file.size > 2 * 1024 * 1024) {
@@ -92,10 +94,11 @@ async function handleFileChange(e: Event) {
 
   uploading.value = true
   try {
-    const res = await uploadAvatar(file)
-    if (res.code === 1 && res.data) {
-      form.avatar = res.data.url
-    }
+    // TODO：后续补上头像上传接口请求逻辑
+    // const res = await uploadAvatar(file)
+    // if (res.code === 1 && res.data) {
+    //   form.avatar = res.data.url
+    // }
   } catch {
     // 拦截器统一处理
   } finally {
@@ -148,9 +151,13 @@ async function handleSave() {
 
 async function handleCancel() {
   loading.value = true
-  await fetchProfile()
+  const ok = await fetchProfile()
   profileFormRef.value?.clearValidate()
-  ElMessage.info('已还原为服务器数据')
+  if (ok) {
+    ElMessage.info('已还原为服务器数据')
+  } else {
+    ElMessage.warning('还原失败，请稍后重试')
+  }
 }
 
 onMounted(() => {
@@ -170,12 +177,7 @@ onMounted(() => {
             <el-icon class="spin"><Upload /></el-icon>
           </div>
         </div>
-        <button
-          class="upload-btn"
-          type="button"
-          :disabled="uploading"
-          @click="triggerUpload"
-        >
+        <button class="upload-btn" type="button" :disabled="uploading" @click="triggerUpload">
           <el-icon><Plus /></el-icon>
           <span>{{ uploading ? '上传中…' : '更换头像' }}</span>
         </button>
@@ -220,12 +222,7 @@ onMounted(() => {
 
       <!-- 操作按钮 -->
       <div class="form-actions">
-        <button
-          class="btn btn-cancel"
-          type="button"
-          :disabled="loading"
-          @click="handleCancel"
-        >
+        <button class="btn btn-cancel" type="button" :disabled="loading" @click="handleCancel">
           <el-icon><EditPen /></el-icon>
           <span>取消</span>
         </button>
@@ -345,7 +342,9 @@ $radius-full: 999px;
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .upload-btn {
