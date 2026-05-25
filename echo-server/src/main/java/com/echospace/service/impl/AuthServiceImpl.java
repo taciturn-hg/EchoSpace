@@ -10,11 +10,13 @@ import com.echospace.mapper.AuthMapper;
 import com.echospace.security.JwtUtil;
 import com.echospace.security.SecurityUtil;
 import com.echospace.service.AuthService;
+import com.echospace.util.MaskUtil;
 import com.echospace.vo.LoginVO;
 import com.echospace.vo.UserInfoVO;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -27,6 +29,7 @@ import java.util.UUID;
  *
  * @Author: taciturn-hg
  */
+@Slf4j
 @Service
 public class AuthServiceImpl implements AuthService {
 
@@ -50,17 +53,22 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     public void register(RegisterDTO dto) {
+        log.debug("注册校验开始 username={}", dto.getUsername());
         if (!dto.getPassword().equals(dto.getConfirmPassword())) {
+            log.warn("注册失败：两次密码不一致 username={}", dto.getUsername());
             throw new BusinessException("两次密码输入不一致");
         }
 
         if (authMapper.exists(new LambdaQueryWrapper<User>().eq(User::getUsername, dto.getUsername()))) {
+            log.warn("注册失败：用户名已存在 username={}", dto.getUsername());
             throw BusinessException.conflict("用户名已存在");
         }
         if (authMapper.exists(new LambdaQueryWrapper<User>().eq(User::getPhone, dto.getPhone()))) {
+            log.warn("注册失败：手机号已被注册 phone={}", MaskUtil.maskPhone(dto.getPhone()));
             throw BusinessException.conflict("手机号已被注册");
         }
         if (authMapper.exists(new LambdaQueryWrapper<User>().eq(User::getEmail, dto.getEmail()))) {
+            log.warn("注册失败：邮箱已被注册 email={}", MaskUtil.maskEmail(dto.getEmail()));
             throw BusinessException.conflict("邮箱已被注册");
         }
 
@@ -72,6 +80,7 @@ public class AuthServiceImpl implements AuthService {
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
         user.setStatus(1);
         authMapper.insert(user);
+        log.info("新用户注册完成 userId={}, username={}", user.getId(), user.getUsername());
     }
 
     /**
@@ -85,6 +94,7 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     public LoginVO login(LoginDTO loginDTO) {
+        log.debug("登录查询用户 account={}", MaskUtil.maskAccount(loginDTO.getAccount()));
         User user = authMapper.selectOne(
                 new LambdaQueryWrapper<User>()
                         .eq(User::getUsername, loginDTO.getAccount())
@@ -93,15 +103,18 @@ public class AuthServiceImpl implements AuthService {
                         .last("limit 1")
         );
         if (user == null) {
+            log.warn("登录失败：账号不存在 account={}", MaskUtil.maskAccount(loginDTO.getAccount()));
             throw new BusinessException("账号或密码错误");
         }
 
         if (!passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())) {
+            log.warn("登录失败：密码错误 userId={}, account={}", user.getId(), MaskUtil.maskAccount(loginDTO.getAccount()));
             throw new BusinessException("账号或密码错误");
         }
 
         String access = jwtUtil.generateAccessToken(user.getId().toString(), user.getUsername());
         String refresh = jwtUtil.generateRefreshToken(user.getId().toString(), user.getUsername());
+        log.info("用户登录签发 Token 成功 userId={}, username={}", user.getId(), user.getUsername());
         return new LoginVO(access, refresh, accessExpire / 1000);
     }
 
@@ -118,13 +131,16 @@ public class AuthServiceImpl implements AuthService {
         try {
             claims = jwtUtil.parseToken(dto.getRefreshToken());
         } catch (ExpiredJwtException e) {
+            log.warn("刷新失败：refreshToken 已过期");
             throw new BusinessException("refreshToken 已过期，请重新登录");
         } catch (JwtException e) {
+            log.warn("刷新失败：refreshToken 无效 reason={}", e.getMessage());
             throw new BusinessException("refreshToken 无效");
         }
 
         String tokenType = claims.get("type", String.class);
         if (!JwtUtil.TokenType.REFRESH.claimValue().equals(tokenType)) {
+            log.warn("刷新失败：Token 类型错误 expected=refresh, actual={}", tokenType);
             throw new BusinessException("Token 类型错误，请使用 refreshToken");
         }
 
@@ -133,6 +149,7 @@ public class AuthServiceImpl implements AuthService {
 
         String newAccess = jwtUtil.generateAccessToken(userId, username);
         String newRefresh = jwtUtil.generateRefreshToken(userId, username);
+        log.info("刷新 Token 成功 userId={}, username={}", userId, username);
         return new LoginVO(newAccess, newRefresh, accessExpire / 1000);
     }
 
@@ -146,11 +163,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public UserInfoVO getMe() {
         Long userId = SecurityUtil.getCurrentUserId();
-        User user = authMapper.selectById(userId);
+        log.debug("获取当前登录用户信息 userId={}", userId);
         if (userId == null) {
+            log.warn("获取当前用户失败：未登录或登录已过期");
             throw BusinessException.unauthorized("未登录或登录已过期");
         }
+        User user = authMapper.selectById(userId);
         if (user == null) {
+            log.warn("获取当前用户失败：用户不存在 userId={}", userId);
             throw BusinessException.notFound("用户不存在");
         }
         return UserInfoVO.from(user);

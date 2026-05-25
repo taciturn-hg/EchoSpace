@@ -25,7 +25,7 @@
 | **时间线** | 关注用户的帖子时间线（按时间倒序） | 1 个（复用 posts list） | P2 |
 | **通知系统** | 评论通知、点赞通知、关注通知（RabbitMQ 异步推送） | 新增 0 个（MQ 消费端） | P2 |
 | **个人主页** | 用户主页（帖子列表、基本信息、统计数据） | 0 个（前端页面，后端接口已在第一阶段完成） | P1 |
-| **对象存储升级** | MinIO 切换为阿里云 OSS | 0（改配置） | P2 |
+| **对象存储升级** | MinIO 切换为阿里云 OSS | 0（新增 OssFileServiceImpl，按配置切换实现） | P2 |
 
 > 第二阶段共新增 3 个接口，2 个消费端任务，主要增强社交属性。
 
@@ -144,7 +144,60 @@ flowchart TD
     T --> U[前端跳转帖子详情页]
 ```
 
-### 2.4 评论流程（一级评论 + 二级回复）
+### 2.4 文件上传流程（MinIO / OSS 两阶段）
+
+> 文件上传模块按部署阶段区分存储后端：第一阶段本地 MinIO，第二阶段切换阿里云 OSS。业务侧通过 `FileService` 接口统一抽象，`application.yml` 中 `storage.type` 配置项决定注入 `MinioFileServiceImpl` 还是 `OssFileServiceImpl`；上层调用方只依赖接口，无需感知底层实现。
+
+```mermaid
+flowchart TD
+    A[用户上传图片] --> B{上传场景?}
+    B -->|帖子图片| C[Tiptap Image Extension 拦截]
+    B -->|用户头像| D[头像上传组件]
+
+    C --> E["前端校验<br>类型: jpg/png/gif/webp, ≤10MB"]
+    D --> F["前端校验<br>类型: jpg/png, ≤2MB"]
+
+    E --> G{校验通过?}
+    F --> G
+    G -->|否| H[前端提示错误信息]
+    H --> A
+
+    G -->|是| I[构建 FormData 包装文件]
+    I --> J{上传类型?}
+    J -->|帖子图片| K[POST /api/upload/image]
+    J -->|用户头像| L[POST /api/upload/avatar]
+
+    K --> M["后端校验<br>文件类型（魔数）+ 大小 + 扩展名"]
+    L --> M
+
+    M --> N{校验通过?}
+    N -->|否| O["返回 Result(code=0, msg=错误原因)"]
+    O --> A
+
+    N -->|是| P["生成存储路径<br>images: echospace/images/{yyyy}/{MM}/{uuid}.{ext}<br>avatars: echospace/avatars/{userId}/{uuid}.{ext}"]
+
+    P --> Q{当前存储方案<br>application.yml 配置?}
+
+    Q -->|"第一阶段: MinIO"| R["MinIOClient.putObject()<br>本地 http://localhost:9000"]
+    R --> S["返回 URL<br>http://localhost:9000/{bucket}/{path}"]
+
+    Q -->|"第二阶段: 阿里云 OSS"| T["OSSClient.putObject()<br>Endpoint: oss-cn-xxx.aliyuncs.com"]
+    T --> U["返回 URL<br>https://{bucket}.oss-cn-xxx.aliyuncs.com/{path}"]
+
+    S --> V["封装 Result(code=1, data={url}) 返回前端"]
+    U --> V
+
+    V --> W{上传场景?}
+    W -->|帖子图片| X["Tiptap 插入 img 标签<br>图片即时回显在编辑器"]
+    W -->|用户头像| Y["更新 user.avatar 字段<br>头像即时回显"]
+
+    X --> Z1[用户继续编辑帖子]
+    Y --> Z2[用户继续编辑资料]
+```
+
+> **切换要点**：MinIO Java SDK 兼容 S3 协议，但阿里云 OSS 官方 Java SDK 使用自有 API 而非 S3 协议。因此不能简单通过改配置切换，需要在 Service 层定义 `FileService` 接口，分别提供 `MinioFileServiceImpl` 和 `OssFileServiceImpl` 两种实现，由 `storage.type` 配置决定注入哪个 Bean。已有图片数据通过 `mc mirror` 命令从 MinIO 同步到 OSS。
+
+### 2.5 评论流程（一级评论 + 二级回复）
 
 ```mermaid
 flowchart TD
@@ -189,7 +242,7 @@ flowchart TD
     AD --> N
 ```
 
-### 2.5 点赞/取消流程
+### 2.6 点赞/取消流程
 
 ```mermaid
 flowchart TD
@@ -221,7 +274,7 @@ flowchart TD
     Q -->|否 成功| S[同步完成]
 ```
 
-### 2.6 收藏/取消流程
+### 2.7 收藏/取消流程
 
 ```mermaid
 flowchart TD
@@ -242,7 +295,7 @@ flowchart TD
     N --> O[返回收藏的帖子列表]
 ```
 
-### 2.7 搜索流程
+### 2.8 搜索流程
 
 ```mermaid
 flowchart TD
@@ -266,7 +319,7 @@ flowchart TD
     M -->|修改关键词| A
 ```
 
-### 2.8 关注/取关流程
+### 2.9 关注/取关流程
 
 ```mermaid
 flowchart TD
@@ -296,7 +349,7 @@ flowchart TD
     S --> T[查询 user_follow WHERE followed_id = id]
 ```
 
-### 2.9 个人主页 + 时间线流程
+### 2.10 个人主页 + 时间线流程
 
 ```mermaid
 flowchart TD
@@ -318,7 +371,7 @@ flowchart TD
     N --> O[全站最新帖子列表]
 ```
 
-### 2.10 系统全景流程
+### 2.11 系统全景流程
 
 ```mermaid
 flowchart LR
@@ -464,7 +517,7 @@ flowchart TD
 | 用户 | #5 ~ #12 | 8 |
 | 帖子 | #13 ~ #21 | 9 |
 | 评论 | #22 ~ #26 | 5 |
-| 文件上传 | #27 ~ #28 | 2 |
+| 文件上传 | #29 ~ #30 | 2 |
 
 ---
 

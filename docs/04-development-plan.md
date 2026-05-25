@@ -43,10 +43,13 @@ echo-web/src/
 - [x] 注册/登录接口（BCrypt 加密密码，登录支持用户名/邮箱/手机号，返回 accessToken + refreshToken）
 - [x] 刷新 Token 接口
 - [x] 获取当前用户信息接口 (GET /api/auth/me)
-- [ ] 账号设置信息接口 (GET /api/users/me/settings)
-- [ ] 更新个人信息接口 (PUT /api/users/{id})
-- [ ] 修改密码接口 (PUT /api/users/me/password)
-- [ ] 前端登录/注册页面 + Axios 拦截器（Token 注入 + 过期刷新）
+- [x] 资料设置信息接口 (GET /api/users/me/profile)
+- [x] 账号设置信息接口 (GET /api/users/me/settings)
+- [x] 更新资料设置接口 (PUT /api/users/me/profile)
+- [x] 更新账号设置接口 (PUT /api/users/me/settings)
+- [x] 修改密码接口 (PUT /api/users/me/password)
+- [ ] 文件上传接口（帖子图片上传：POST /api/upload/image + 头像上传：POST /api/upload/avatar）
+- [x] 前端登录/注册页面 + Axios 拦截器（Token 注入 + 过期刷新）
 
 ### Sprint 2 产出物
 
@@ -57,32 +60,41 @@ echo-server/src/main/java/com/echospace/
 │   ├── JwtAuthFilter.java              # OncePerRequestFilter 实现
 │   ├── SecurityConfig.java             # SecurityFilterChain 配置
 │   └── SecurityUtil.java               # 取当前用户工具类
+├── config/
+│   └── MinioConfig.java                # MinIO 客户端配置
 ├── controller/
 │   ├── AuthController.java             # /api/auth/register, login, refresh, me
-│   └── UserController.java             # /api/users/me/settings, /api/users/{id} (PUT), /api/users/me/password
+│   ├── UserController.java             # /api/users/me/profile, /api/users/me/settings (GET/PUT), /api/users/me/password
+│   └── UploadController.java           # /api/upload/image, /api/upload/avatar
 ├── service/
 │   ├── AuthService.java
 │   ├── UserService.java
+│   ├── FileService.java
 │   └── impl/
 │       ├── AuthServiceImpl.java
-│       └── UserServiceImpl.java
+│       ├── UserServiceImpl.java
+│       └── FileServiceImpl.java        # MinIO 上传逻辑
 ├── dto/
 │   ├── RegisterDTO.java                # 含 username, phone, email, password
 │   ├── LoginDTO.java
 │   ├── RefreshTokenDTO.java
-│   ├── UpdateProfileDTO.java           # avatar, nickname, phone, email, bio
+│   ├── UpdateProfileDTO.java           # avatar, nickname, bio
+│   ├── UpdateSettingsDTO.java          # phone, email
 │   └── ChangePasswordDTO.java          # oldPassword, newPassword, confirmPassword
 └── vo/
     ├── LoginVO.java                    # {accessToken, refreshToken, expiresIn}
-    └── UserSettingsVO.java             # {avatar, nickname, phone, email, bio}
+    ├── UserProfileVO.java              # {avatar, nickname, bio}
+    └── UserSettingsVO.java             # {phone, email}
 
 echo-web/src/
 ├── views/
 │   ├── Login.vue
 │   ├── Register.vue
-│   └── Settings.vue                      # 账号设置 / 编辑资料 / 修改密码
+│   ├── ProfileSettingsPage.vue           # 资料设置（头像/昵称/简介）
+│   └── SettingsPage.vue                  # 账号设置（手机号/邮箱/修改密码）
 ├── api/
 │   ├── auth.ts                        # Axios 拦截器 + 认证相关请求
+│   └── users.ts                        # 用户设置相关请求
 └── stores/
     └── userStore.ts                    # 用户登录态管理
 ```
@@ -91,7 +103,7 @@ echo-web/src/
 
 ## Sprint 3（2-3天）：帖子核心
 
-- [ ] MinIO 文件上传接口（帖子图片上传 + 头像上传）
+- [ ] OSS 存储实现（新增 OssFileServiceImpl 实现 FileService 接口，由 storage.type 配置切换）
 - [ ] 帖子 CRUD 接口
 - [ ] 前端 Tiptap 富文本编辑器集成（含图片上传 extension）
 - [ ] 前端帖子发布页 + 帖子列表页 + 帖子详情页
@@ -102,16 +114,15 @@ echo-web/src/
 ```text
 echo-server/src/main/java/com/echospace/
 ├── config/
-│   └── MinioConfig.java                # MinIO 客户端配置
+│   └── OssConfig.java                   # 阿里云 OSS 客户端配置
 ├── controller/
-│   ├── PostController.java             # /api/posts CRUD
-│   └── UploadController.java           # /api/upload/image（帖子图片）, /api/upload/avatar（头像）
+│   └── PostController.java             # /api/posts CRUD
 ├── service/
 │   ├── PostService.java
 │   ├── FileService.java
 │   └── impl/
 │       ├── PostServiceImpl.java
-│       └── FileServiceImpl.java
+│       └── OssFileServiceImpl.java        # OSS 上传逻辑（实现 FileService 接口）
 ├── dto/
 │   └── CreatePostDTO.java
 ├── vo/
@@ -268,9 +279,9 @@ docker/
 | Sprint | 周期 | 主题 | 模块 | 累计接口数 |
 |--------|------|------|------|-----------|
 | 1 | 1-2天 | 项目脚手架 | 基础框架、数据库 | 0 |
-| 2 | 2-3天 | 用户认证与账号管理 | 注册/登录/JWT/账号设置/改密 | 7 |
-| 3 | 2-3天 | 帖子核心 | 帖子 CRUD + 图片上传 + 富文本 | 14 |
-| 4 | 2天 | 评论+互动 | 评论/点赞/收藏 | 22 |
-| 5 | 2天 | 搜索 | ES 全文搜索 | 23 |
-| 6 | 1-2天 | 关注+主页 | 关注/粉丝/个人主页/时间线 | 28 |
-| 7 | 后续 | 部署上线 | Docker/Nginx/OSS 迁移 | 28 |
+| 2 | 2-3天 | 用户认证与账号管理 | 注册/登录/JWT/资料设置/账号设置/改密/文件上传 | 11 |
+| 3 | 2-3天 | 帖子核心 | 帖子 CRUD + 富文本 | 16 |
+| 4 | 2天 | 评论+互动 | 评论/点赞/收藏 | 24 |
+| 5 | 2天 | 搜索 | ES 全文搜索 | 25 |
+| 6 | 1-2天 | 关注+主页 | 关注/粉丝/个人主页/时间线 | 30 |
+| 7 | 后续 | 部署上线 | Docker/Nginx/OSS 存储切换 | 30 |

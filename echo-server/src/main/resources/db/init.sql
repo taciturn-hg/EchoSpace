@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS user
 (
     id         BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '用户ID',
     username   VARCHAR(50)  NOT NULL UNIQUE COMMENT '用户名(可用于登录)',
-    nickname   VARCHAR(50)  NOT NULL COMMENT '昵称(展示用,注册时随机生成)',
+    nickname   VARCHAR(50) COMMENT '昵称(展示用,注册时随机生成)',
     email      VARCHAR(100) NOT NULL UNIQUE COMMENT '邮箱(可用于登录)',
     phone      VARCHAR(20)  NOT NULL UNIQUE COMMENT '手机号(可用于登录)',
     password   VARCHAR(255) NOT NULL COMMENT 'BCrypt加密',

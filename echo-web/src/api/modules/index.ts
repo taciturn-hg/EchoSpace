@@ -48,7 +48,7 @@ export interface RefreshVO {
 export interface MeVO {
   id: number
   username: string
-  nickname: string
+  nickname: string | null
   email: string
   phone: string
   avatar?: string
@@ -59,11 +59,39 @@ export interface MeVO {
 export interface UserInfo {
   id: number
   username: string
-  nickname: string
+  nickname: string | null
   email: string
   phone: string
   avatar?: string
   bio?: string
+}
+
+// ===== 用户资料相关 =====
+export interface UserProfileVO {
+  avatar: string | null
+  nickname: string | null
+  bio: string | null
+}
+
+export interface UpdateProfileDTO {
+  avatar?: string
+  nickname?: string
+  bio?: string
+}
+
+export interface UploadAvatarVO {
+  url: string
+}
+
+// ===== 用户账号设置相关 =====
+export interface UserSettingsVO {
+  phone: string | null
+  email: string | null
+}
+
+export interface UpdateSettingsDTO {
+  phone?: string
+  email?: string
 }
 
 // ===== Axios 类型扩展 =====
@@ -73,6 +101,13 @@ declare module 'axios' {
     /** 401 重试标记，防止无限循环刷新 Token */
     _retry?: boolean
   }
+}
+
+// ===== 修改密码 =====
+export interface ChangePasswordDTO {
+  oldPassword: string
+  newPassword: string
+  confirmPassword: string
 }
 
 // ===== 后续 Sprint 按需补充 =====

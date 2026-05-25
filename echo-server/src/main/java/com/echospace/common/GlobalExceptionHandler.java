@@ -1,6 +1,7 @@
 package com.echospace.common;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  *   <li>{@link MethodArgumentNotValidException} — @Valid 参数校验失败，400</li>
  *   <li>{@link IllegalArgumentException} — 非法参数，400</li>
  *   <li>{@link BusinessException} — 业务异常，状态码由异常自身携带</li>
+ *   <li>{@link DuplicateKeyException} — 数据库唯一键冲突（并发写入），409</li>
  *   <li>{@link Exception} — 兜底，500，仅返回通用错误信息，不暴露内部细节</li>
  * </ol>
  * </p>
@@ -54,6 +56,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<Result<Void>> handleBusiness(BusinessException e) {
         return ResponseEntity.status(e.getStatus()).body(Result.error(e.getMessage()));
+    }
+
+    /**
+     * 处理数据库唯一键冲突：并发写入同一唯一值时由数据库 UNIQUE 约束触发。
+     * 映射为 409 Conflict，语义明确且不暴露数据库内部细节。
+     */
+    @ExceptionHandler(DuplicateKeyException.class)
+    public ResponseEntity<Result<Void>> handleDuplicateKey(DuplicateKeyException e) {
+        log.warn("数据库唯一键冲突", e);
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Result.error("数据冲突，请稍后重试"));
     }
 
     /**

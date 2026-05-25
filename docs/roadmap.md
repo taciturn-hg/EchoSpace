@@ -8,6 +8,7 @@
 ## 功能列表
 
 - [ ] [忘记密码 / 重置密码](#一忘记密码--重置密码)
+- [ ] [日志系统改造为 AOP](#二日志系统改造为-aop)
 
 ---
 
@@ -128,3 +129,48 @@ spring:
 - [x] 配置 SMTP 邮箱账号（环境变量注入）
 - [ ] Redis 已接入（用于存储 resetToken）
 - [x] 前端路由已有 `/forgot-password` 占位页（当前已存在 `ForgotPassword.vue`）
+
+---
+
+## 二、日志系统改造为 AOP
+
+### 背景
+
+当前日志通过在每个 Controller / Service 方法中手动写 `log.info` / `log.warn` 来实现业务追踪。
+随着接口增多，手动日志面临以下问题：
+
+- **代码侵入性强**：每个方法都需要写日志代码，与业务逻辑混杂
+- **日志格式不统一**：不同开发者写法各异，排查时难以关联
+- **容易遗漏**：新增接口时可能忘记加日志
+- **维护成本高**：修改日志格式需要逐个方法改动
+
+### 方案
+
+采用 **Spring AOP 切面** 统一拦截 Controller 和 Service 方法，自动记录入参、出参、异常，不再在各方法中手动写日志。
+
+### 技术选型
+
+- **Spring AOP**（`spring-boot-starter-aop`，Spring Boot 已自带，无需额外依赖）
+- 自定义 `@Log` 注解标记需要日志追踪的类或方法（也可直接按包路径切 Controller/Service 层）
+
+### 计划实现
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | 创建 `@Log` 注解（`annotation/Log.java`），支持按方法/类级别控制 |
+| 2 | 创建 `LogAspect` 切面类（`aspect/LogAspect.java`），环绕通知统一记录入参、耗时、出参、异常 |
+| 3 | 移除现有 Controller / Service 中的 `log.info` / `log.warn` 手动日志 |
+| 4 | 保留必要的 `log.warn`（如业务校验失败的关键路径），避免切面日志噪音过大 |
+
+### 切面日志格式
+
+```
+INFO  [>] 请求进入：UserController.login(account=zhangsan)
+INFO  [<] 响应返回：UserController.login -> LoginVO(expiresIn=1800) 耗时=45ms
+ERROR [!] 异常捕获：UserController.login -> BusinessException: 账号或密码错误 耗时=12ms
+```
+
+### 参考
+
+- [Spring AOP 官方文档](https://docs.spring.io/spring-framework/reference/core/aop.html)
+- `@Around` 环绕通知 + `ProceedingJoinPoint` 获取方法签名和参数

@@ -1,34 +1,44 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { EditPen } from '@element-plus/icons-vue'
-import { getSettings, updateSettings } from '@/api/users'
-import { useUserStore } from '@/stores/userStore'
-import type { UpdateSettingsDTO, UserSettingsVO } from '@/api/modules'
-
-const userStore = useUserStore()
+import { changePassword } from '@/api/users'
+import type { ChangePasswordDTO } from '@/api/modules'
 
 const formRef = ref<FormInstance>()
 
+const form = reactive<ChangePasswordDTO>({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: '',
+})
+
 const rules: FormRules = {
-  phone: [
-    { required: true, message: '请输入手机号', trigger: 'blur' },
+  oldPassword: [
+    { required: true, message: '请输入原密码', trigger: 'blur' },
+  ],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '新密码长度不能少于 6 位', trigger: 'blur' },
+    { max: 20, message: '新密码长度不能超过 20 位', trigger: 'blur' },
     {
       validator: (_rule, value: unknown, callback) => {
-        if (!value) return callback()
-        if (!/^1[3-9]\d{9}$/.test(value as string)) return callback(new Error('手机号格式不正确'))
+        if (value && value === form.oldPassword) {
+          return callback(new Error('新密码不能与原密码相同'))
+        }
         callback()
       },
       trigger: 'blur',
     },
   ],
-  email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
+  confirmPassword: [
+    { required: true, message: '请再次输入新密码', trigger: 'blur' },
     {
       validator: (_rule, value: unknown, callback) => {
-        if (!value) return callback()
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value as string)) return callback(new Error('邮箱格式不正确'))
+        if (value && value !== form.newPassword) {
+          return callback(new Error('两次输入的密码不一致'))
+        }
         callback()
       },
       trigger: 'blur',
@@ -36,44 +46,28 @@ const rules: FormRules = {
   ],
 }
 
-const form = reactive<UpdateSettingsDTO>({
-  phone: undefined,
-  email: undefined,
-})
-
-const original = reactive<UpdateSettingsDTO>({
-  phone: undefined,
-  email: undefined,
+const initial = reactive<ChangePasswordDTO>({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: '',
 })
 
 const saving = ref(false)
-const loading = ref(true)
 
 const isDirty = computed(() =>
-  form.phone !== original.phone || form.email !== original.email,
+  form.oldPassword !== initial.oldPassword
+  || form.newPassword !== initial.newPassword
+  || form.confirmPassword !== initial.confirmPassword,
 )
 
-function applySettings(s: UserSettingsVO) {
-  form.phone = s.phone ?? undefined
-  form.email = s.email ?? undefined
-  original.phone = s.phone ?? undefined
-  original.email = s.email ?? undefined
-}
-
-async function fetchSettings() {
-  try {
-    const res = await getSettings()
-    if (res.code === 1 && res.data) {
-      applySettings(res.data)
-      return true
-    }
-    return false
-  } catch {
-    // 拦截器统一处理
-    return false
-  } finally {
-    loading.value = false
-  }
+function resetForm() {
+  form.oldPassword = ''
+  form.newPassword = ''
+  form.confirmPassword = ''
+  initial.oldPassword = ''
+  initial.newPassword = ''
+  initial.confirmPassword = ''
+  formRef.value?.clearValidate()
 }
 
 async function handleSave() {
@@ -83,30 +77,12 @@ async function handleSave() {
     return
   }
 
-  const dto: UpdateSettingsDTO = {}
-  if (form.phone !== original.phone) dto.phone = form.phone
-  if (form.email !== original.email) dto.email = form.email
-
-  if (Object.keys(dto).length === 0) {
-    ElMessage.info('没有修改的内容')
-    return
-  }
-
   saving.value = true
   try {
-    const res = await updateSettings(dto)
+    const res = await changePassword({ ...form })
     if (res.code === 1) {
-      ElMessage.success('账号信息已更新')
-      const info = userStore.userInfo
-      if (info) {
-        userStore.setUserInfo({
-          ...info,
-          phone: dto.phone ?? info.phone,
-          email: dto.email ?? info.email,
-        })
-      }
-      original.phone = form.phone
-      original.email = form.email
+      ElMessage.success(res.msg || '密码修改成功')
+      resetForm()
     }
   } catch {
     // 拦截器统一处理
@@ -115,69 +91,79 @@ async function handleSave() {
   }
 }
 
-async function handleCancel() {
-  loading.value = true
-  const ok = await fetchSettings()
-  formRef.value?.clearValidate()
-  if (ok) {
-    ElMessage.info('已还原为服务器数据')
-  } else {
-    ElMessage.warning('还原失败，请稍后重试')
-  }
+function handleCancel() {
+  resetForm()
+  ElMessage.info('已清空表单')
 }
-
-onMounted(() => {
-  fetchSettings()
-})
 </script>
 
 <template>
-  <div class="settings-page">
+  <div class="change-password-page">
     <div class="settings-card">
       <el-form
         ref="formRef"
         :model="form"
         :rules="rules"
         label-position="top"
-        class="settings-form"
+        class="password-form"
       >
-        <el-form-item label="手机号" prop="phone">
+        <el-form-item label="原密码" prop="oldPassword">
           <el-input
-            v-model="form.phone"
-            maxlength="11"
-            placeholder="输入手机号"
-            autocomplete="off"
+            v-model="form.oldPassword"
+            type="password"
+            show-password
+            maxlength="20"
+            placeholder="输入当前密码"
+            autocomplete="current-password"
           />
         </el-form-item>
 
-        <el-form-item label="邮箱" prop="email">
+        <el-form-item label="新密码" prop="newPassword">
           <el-input
-            v-model="form.email"
-            maxlength="320"
-            placeholder="输入邮箱地址"
-            autocomplete="off"
+            v-model="form.newPassword"
+            type="password"
+            show-password
+            maxlength="20"
+            placeholder="输入新密码（6~20 位）"
+            autocomplete="new-password"
+          />
+        </el-form-item>
+
+        <el-form-item label="确认新密码" prop="confirmPassword">
+          <el-input
+            v-model="form.confirmPassword"
+            type="password"
+            show-password
+            maxlength="20"
+            placeholder="再次输入新密码"
+            autocomplete="new-password"
           />
         </el-form-item>
       </el-form>
 
       <div class="form-actions">
-        <button
-          class="btn btn-cancel"
-          type="button"
-          :disabled="loading"
-          @click="handleCancel"
-        >
-          <el-icon><EditPen /></el-icon>
-          <span>取消</span>
-        </button>
-        <button
-          class="btn btn-save"
-          type="button"
-          :disabled="!isDirty || saving"
-          @click="handleSave"
-        >
-          <span>{{ saving ? '保存中…' : '保存' }}</span>
-        </button>
+        <!-- TODO: 忘记密码功能待 Redis 接入后启用 -->
+        <!-- <router-link to="/forgot-password" class="forgot-link">忘记密码？</router-link> -->
+        <span class="forgot-link forgot-link--disabled">忘记密码？</span>
+        <div class="actions-right">
+          <button
+            class="btn btn-cancel"
+            type="button"
+            :disabled="saving"
+            @click="handleCancel"
+          >
+            <el-icon><EditPen /></el-icon>
+            <span>清空</span>
+          </button>
+          <button
+            class="btn btn-save"
+            type="button"
+            :disabled="!isDirty || saving"
+            @click="handleSave"
+          >
+            <span>{{ saving ? '保存中…' : '修改密码' }}</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -191,11 +177,13 @@ $text-secondary: #4b5563;
 $text-muted: #9ca3af;
 $border: #e5e7eb;
 $border-focus: #6366f1;
+$green: #10b981;
+$green-hover: #059669;
 $radius-sm: 8px;
 $radius-md: 10px;
 
 // ---------- Page ----------
-.settings-page {
+.change-password-page {
   display: flex;
   justify-content: center;
   padding: 40px 24px 80px;
@@ -223,7 +211,7 @@ $radius-md: 10px;
 }
 
 // ---------- Form ----------
-.settings-form {
+.password-form {
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -283,9 +271,37 @@ $radius-md: 10px;
 // ---------- Actions ----------
 .form-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
   padding-top: 4px;
+}
+
+.actions-right {
+  display: flex;
+  gap: 12px;
+}
+
+.forgot-link {
+  font-size: 13px;
+  color: #6366f1;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: #4f46e5;
+    text-decoration: underline;
+  }
+}
+
+.forgot-link--disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+
+  &:hover {
+    color: #9ca3af;
+    text-decoration: none;
+  }
 }
 
 .btn {

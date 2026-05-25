@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+	<!-- 控制台输出 -->
+	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<!-- 格式化输出：%d 日期，%thread 线程名，%-5level 级别左对齐5字符，%logger{36} 类名最长36字符，%msg 消息，%n 换行 -->
+			<pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+		</encoder>
+	</appender>
+
+	<!-- 按照每天生成日志文件 -->
+	<appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<!-- 当前活动日志文件路径 -->
+		<file>logs/echospace.log</file>
+		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+			<!-- 归档日志文件名模式，%i 表示序号 -->
+			<FileNamePattern>logs/echospace-%d{yyyy-MM-dd}-%i.log</FileNamePattern>
+			<!-- 最多保留的历史日志文件数量 -->
+			<MaxHistory>30</MaxHistory>
+			<!-- 单个日志文件最大大小，超过后滚动到新文件 -->
+			<maxFileSize>10MB</maxFileSize>
+			<!-- 所有归档日志文件总大小上限，超过后删除最旧的 -->
+			<totalSizeCap>1GB</totalSizeCap>
+		</rollingPolicy>
+
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+		</encoder>
+	</appender>
+
+	<!-- 日志输出级别 -->
+	<root level="info">
+		<appender-ref ref="STDOUT" />
+		<appender-ref ref="FILE" />
+	</root>
+</configuration>
