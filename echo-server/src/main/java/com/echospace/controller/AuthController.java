@@ -5,6 +5,7 @@ import com.echospace.dto.LoginDTO;
 import com.echospace.dto.RefreshTokenDTO;
 import com.echospace.dto.RegisterDTO;
 import com.echospace.service.AuthService;
+import com.echospace.util.MaskUtil;
 import com.echospace.vo.LoginVO;
 import com.echospace.vo.UserInfoVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -62,9 +63,9 @@ public class AuthController {
     @PostMapping("/login")
     @SecurityRequirements
     public Result<LoginVO> login(@Valid @RequestBody LoginDTO loginDTO) {
-        log.info("用户登录请求 account={}", loginDTO.getAccount());
+        log.info("用户登录请求 account={}", MaskUtil.maskAccount(loginDTO.getAccount()));
         LoginVO vo = authService.login(loginDTO);
-        log.info("用户登录成功 account={}", loginDTO.getAccount());
+        log.info("用户登录成功 account={}", MaskUtil.maskAccount(loginDTO.getAccount()));
         return Result.success(vo);
     }
 

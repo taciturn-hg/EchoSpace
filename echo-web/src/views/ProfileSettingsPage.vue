@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { Upload, EditPen, Plus } from '@element-plus/icons-vue'
+import { EditPen, Plus } from '@element-plus/icons-vue'
 import { getProfile, updateProfile } from '@/api/users'
 import { useUserStore } from '@/stores/userStore'
 import type { UpdateProfileDTO, UserProfileVO } from '@/api/modules'
@@ -28,13 +28,14 @@ const original = reactive<UpdateProfileDTO>({
   bio: '',
 })
 
-const uploading = ref(false)
+const selectedFile = ref<File | null>(null)
+const previewUrl = ref<string>('')
 const saving = ref(false)
 const loading = ref(true)
 
 const userInfo = computed(() => userStore.userInfo)
 
-const avatarSrc = computed(() => form.avatar || userInfo.value?.avatar || '')
+const avatarSrc = computed(() => previewUrl.value || form.avatar || userInfo.value?.avatar || '')
 
 const avatarFallback = computed(() => {
   const name = form.nickname || userInfo.value?.nickname || userInfo.value?.username || 'E'
@@ -43,12 +44,22 @@ const avatarFallback = computed(() => {
 
 const isDirty = computed(
   () =>
+    selectedFile.value !== null ||
     form.avatar !== original.avatar ||
     form.nickname !== original.nickname ||
     form.bio !== original.bio,
 )
 
+function revokePreview() {
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = ''
+  }
+  selectedFile.value = null
+}
+
 function applyProfile(p: UserProfileVO) {
+  revokePreview()
   form.avatar = p.avatar ?? undefined
   form.nickname = p.nickname ?? ''
   form.bio = p.bio ?? ''
@@ -77,39 +88,27 @@ function triggerUpload() {
   fileInput.value?.click()
 }
 
-async function handleFileChange(e: Event) {
+function handleFileChange(e: Event) {
   const input = e.target as HTMLInputElement
-  try {
-    const file = input.files?.[0]
-    if (!file) return
+  const file = input.files?.[0]
+  if (!file) return
 
-    const allowed = ['image/jpeg', 'image/png']
-    if (!allowed.includes(file.type)) {
-      ElMessage.error('仅支持 JPG、PNG 格式')
-      return
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      ElMessage.error('头像大小不能超过 2MB')
-      return
-    }
-
-    uploading.value = true
-    try {
-      // TODO：后续补上头像上传接口请求逻辑
-      // const res = await uploadAvatar(file)
-      // if (res.code === 1 && res.data) {
-      //   form.avatar = res.data.url
-      // }
-    } catch {
-      // 拦截器统一处理
-    } finally {
-      uploading.value = false
-    }
-  } catch {
-    // 拦截器统一处理
-  } finally {
+  const allowed = ['image/jpeg', 'image/png']
+  if (!allowed.includes(file.type)) {
+    ElMessage.error('仅支持 JPG、PNG 格式')
     input.value = ''
+    return
   }
+  if (file.size > 2 * 1024 * 1024) {
+    ElMessage.error('头像大小不能超过 2MB')
+    input.value = ''
+    return
+  }
+
+  revokePreview()
+  previewUrl.value = URL.createObjectURL(file)
+  selectedFile.value = file
+  input.value = ''
 }
 
 async function handleSave() {
@@ -119,18 +118,30 @@ async function handleSave() {
     return
   }
 
-  const dto: UpdateProfileDTO = {}
-  if (form.avatar !== original.avatar) dto.avatar = form.avatar
-  if (form.nickname !== original.nickname) dto.nickname = form.nickname
-  if (form.bio !== original.bio) dto.bio = form.bio
-
-  if (Object.keys(dto).length === 0) {
-    ElMessage.info('没有修改的内容')
-    return
-  }
-
   saving.value = true
   try {
+    // 有选中新头像时先上传
+    if (selectedFile.value) {
+      // TODO：后续补上头像上传接口请求逻辑
+      // const res = await uploadAvatar(selectedFile.value)
+      // if (res.code === 1 && res.data) {
+      //   form.avatar = res.data.url
+      // } else {
+      //   ElMessage.error('头像上传失败')
+      //   return
+      // }
+    }
+
+    const dto: UpdateProfileDTO = {}
+    if (form.avatar !== original.avatar) dto.avatar = form.avatar
+    if (form.nickname !== original.nickname) dto.nickname = form.nickname
+    if (form.bio !== original.bio) dto.bio = form.bio
+
+    if (Object.keys(dto).length === 0) {
+      ElMessage.info('没有修改的内容')
+      return
+    }
+
     const res = await updateProfile(dto)
     if (res.code === 1) {
       ElMessage.success('资料已更新')
@@ -143,6 +154,7 @@ async function handleSave() {
           bio: dto.bio ?? info.bio,
         })
       }
+      revokePreview()
       original.avatar = form.avatar
       original.nickname = form.nickname
       original.bio = form.bio
@@ -168,6 +180,10 @@ async function handleCancel() {
 onMounted(() => {
   fetchProfile()
 })
+
+onBeforeUnmount(() => {
+  revokePreview()
+})
 </script>
 
 <template>
@@ -175,16 +191,13 @@ onMounted(() => {
     <div class="settings-card">
       <!-- 头像区 -->
       <div class="avatar-section">
-        <div class="avatar-circle" :class="{ 'has-image': !!avatarSrc }">
+        <div class="avatar-circle" :class="{ 'has-image': !!avatarSrc, 'is-preview': !!previewUrl }">
           <img v-if="avatarSrc" :src="avatarSrc" alt="用户头像" />
           <span v-else class="avatar-letter">{{ avatarFallback }}</span>
-          <div v-if="uploading" class="avatar-overlay">
-            <el-icon class="spin"><Upload /></el-icon>
-          </div>
         </div>
-        <button class="upload-btn" type="button" :disabled="uploading" @click="triggerUpload">
+        <button class="upload-btn" type="button" @click="triggerUpload">
           <el-icon><Plus /></el-icon>
-          <span>{{ uploading ? '上传中…' : '更换头像' }}</span>
+          <span>选择图片</span>
         </button>
         <input
           ref="fileInput"
@@ -321,6 +334,11 @@ $radius-full: 999px;
     border-color: transparent;
     box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.08);
   }
+
+  &.is-preview {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.18);
+  }
 }
 
 .avatar-letter {
@@ -328,28 +346,6 @@ $radius-full: 999px;
   font-weight: 600;
   color: #6366f1;
   user-select: none;
-}
-
-.avatar-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(17, 24, 39, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 24px;
-  backdrop-filter: blur(2px);
-}
-
-.spin {
-  animation: spin 800ms linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .upload-btn {
@@ -393,11 +389,6 @@ $radius-full: 999px;
   &:focus-visible {
     outline: 2px solid $border-focus;
     outline-offset: 2px;
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
   }
 }
 

@@ -161,9 +161,15 @@ refreshToken 过期 → 清除 store → 跳转 /login
 - 后端已实现接口 2.2~2.6（资料设置 GET/PUT、账号设置 GET/PUT、修改密码 PUT），编译通过
 - 后端 Controller / Service 已添加 @Slf4j 业务日志，logback.xml 日志配置已就绪（控制台 + 滚动文件输出到 logs/）
 - 忘记密码 / 重置密码流程已规划，等待 Redis 接入后实现
+- 新增 `MaskUtil` 工具类（`echo-server/.../util/MaskUtil.java`）：手机号/邮箱/密码/Token/登录账号统一脱敏，Controller/ServiceImpl 日志中 8 处敏感数据已接入
+- GlobalExceptionHandler 新增 `DuplicateKeyException` → 409 Conflict 全局映射，数据库唯一键并发冲突不再返回 500
+- UserServiceImpl.updateProfile 增加空更新保护（与 updateSettings 一致），避免全 null DTO 触发无 SET 列的 SQL 异常
+- ProfileSettingsPage 头像交互重构："选择图片"按钮仅做本地预览（URL.createObjectURL），点击保存时统一上传头像 + 更新资料
+- UserService/UserController 移除残余"脱敏"Javadoc 注释
 
 ### 开发规范（更新中）
 - **日志追踪（强制）**：后续所有后端功能开发，Controller / Service 必须添加 @Slf4j 注解并使用 log.info/log.warn 打印业务流日志，格式统一为 `log.info("操作描述 关键参数={}", value)`
+- **敏感数据脱敏（强制）**：日志中涉及手机号、邮箱、密码、Token 等敏感字段时，必须通过 `MaskUtil` 工具类脱敏后再输出（`maskPhone` / `maskEmail` / `maskPassword` / `maskToken` / `maskAccount`），禁止明文打印
 - 日志文件通过 logback.xml 输出到 `echo-server/logs/` 目录（已在 .gitignore，不纳入版本管理）
 - 后续考虑引入 Spring AOP 统一拦截，详见 `docs/roadmap.md` > 日志系统改造为 AOP
 
@@ -228,14 +234,16 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | `echo-server/.../security/JwtUtil.java` | Token 生成与解析 |
 | `echo-server/.../service/impl/AuthServiceImpl.java` | 认证业务逻辑 |
 | `echo-server/.../controller/UserController.java` | 用户模块控制器（资料设置/账号设置/修改密码） |
-| `echo-server/.../service/impl/UserServiceImpl.java` | 用户模块业务逻辑（含手机/邮箱唯一性校验、BCrypt 改密） |
+| `echo-server/.../service/impl/UserServiceImpl.java` | 用户模块业务逻辑（含手机/邮箱唯一性校验、BCrypt 改密、空更新保护） |
 | `echo-server/.../mapper/UserMapper.java` | 用户模块 Mapper（与 AuthMapper 按业务拆分） |
+| `echo-server/.../util/MaskUtil.java` | 敏感数据脱敏工具（phone/email/password/token/account） |
+| `echo-server/.../common/GlobalExceptionHandler.java` | 全局异常处理器（含 DuplicateKeyException→409 映射） |
 | `echo-web/src/api/users.ts` | 用户模块前端 API（getProfile / updateProfile / getSettings / updateSettings / changePassword；uploadAvatar/uploadImage TODO） |
 | `echo-web/src/utils/result.ts` | Axios 封装，含 401 自动刷新逻辑 |
 | `echo-web/src/stores/userStore.ts` | 用户状态（Token + 用户信息） |
 | `echo-web/src/router/index.ts` | 路由定义与守卫 |
 | `echo-web/src/components/LayoutPage.vue` | 主布局（顶栏 + 可折叠侧边栏 + 内容区），下拉含资料设置/账号设置/修改密码/退出 |
-| `echo-web/src/views/ProfileSettingsPage.vue` | 资料设置页（头像上传+昵称+简介编辑，el-form rules 校验，保存/取消） |
+| `echo-web/src/views/ProfileSettingsPage.vue` | 资料设置页（头像本地预览+选择图片，保存时统一上传；昵称+简介编辑；保存/取消） |
 | `echo-web/src/views/SettingsPage.vue` | 账号设置页（手机号+邮箱编辑，el-form rules 校验，保存/取消） |
 | `echo-web/src/views/ChangePasswordPage.vue` | 修改密码页（旧密码/新密码/确认密码，show-password 切换，el-form rules 校验，绿色渐变修改密码按钮，忘记密码链接） |
 | `docs/roadmap.md` | 待开发功能方案设计 |

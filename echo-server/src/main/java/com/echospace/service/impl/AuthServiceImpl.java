@@ -10,6 +10,7 @@ import com.echospace.mapper.AuthMapper;
 import com.echospace.security.JwtUtil;
 import com.echospace.security.SecurityUtil;
 import com.echospace.service.AuthService;
+import com.echospace.util.MaskUtil;
 import com.echospace.vo.LoginVO;
 import com.echospace.vo.UserInfoVO;
 import io.jsonwebtoken.Claims;
@@ -63,11 +64,11 @@ public class AuthServiceImpl implements AuthService {
             throw BusinessException.conflict("用户名已存在");
         }
         if (authMapper.exists(new LambdaQueryWrapper<User>().eq(User::getPhone, dto.getPhone()))) {
-            log.warn("注册失败：手机号已被注册 phone={}", dto.getPhone());
+            log.warn("注册失败：手机号已被注册 phone={}", MaskUtil.maskPhone(dto.getPhone()));
             throw BusinessException.conflict("手机号已被注册");
         }
         if (authMapper.exists(new LambdaQueryWrapper<User>().eq(User::getEmail, dto.getEmail()))) {
-            log.warn("注册失败：邮箱已被注册 email={}", dto.getEmail());
+            log.warn("注册失败：邮箱已被注册 email={}", MaskUtil.maskEmail(dto.getEmail()));
             throw BusinessException.conflict("邮箱已被注册");
         }
 
@@ -93,7 +94,7 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     public LoginVO login(LoginDTO loginDTO) {
-        log.debug("登录查询用户 account={}", loginDTO.getAccount());
+        log.debug("登录查询用户 account={}", MaskUtil.maskAccount(loginDTO.getAccount()));
         User user = authMapper.selectOne(
                 new LambdaQueryWrapper<User>()
                         .eq(User::getUsername, loginDTO.getAccount())
@@ -102,12 +103,12 @@ public class AuthServiceImpl implements AuthService {
                         .last("limit 1")
         );
         if (user == null) {
-            log.warn("登录失败：账号不存在 account={}", loginDTO.getAccount());
+            log.warn("登录失败：账号不存在 account={}", MaskUtil.maskAccount(loginDTO.getAccount()));
             throw new BusinessException("账号或密码错误");
         }
 
         if (!passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())) {
-            log.warn("登录失败：密码错误 userId={}, account={}", user.getId(), loginDTO.getAccount());
+            log.warn("登录失败：密码错误 userId={}, account={}", user.getId(), MaskUtil.maskAccount(loginDTO.getAccount()));
             throw new BusinessException("账号或密码错误");
         }
 

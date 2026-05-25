@@ -9,6 +9,7 @@ import com.echospace.entity.User;
 import com.echospace.mapper.UserMapper;
 import com.echospace.security.SecurityUtil;
 import com.echospace.service.UserService;
+import com.echospace.util.MaskUtil;
 import com.echospace.vo.UserProfileVO;
 import com.echospace.vo.UserSettingsVO;
 import lombok.extern.slf4j.Slf4j;
@@ -75,13 +76,28 @@ public class UserServiceImpl implements UserService {
 
         User update = new User();
         update.setId(userId);
-        update.setAvatar(dto.getAvatar());
-        update.setNickname(dto.getNickname());
-        update.setBio(dto.getBio());
+        boolean changed = false;
 
-        userMapper.updateById(update);
-        log.info("资料设置更新完成 userId={}, avatarUpdated={}, nicknameUpdated={}, bioUpdated={}",
-                userId, dto.getAvatar() != null, dto.getNickname() != null, dto.getBio() != null);
+        if (dto.getAvatar() != null && !Objects.equals(dto.getAvatar(), current.getAvatar())) {
+            update.setAvatar(dto.getAvatar());
+            changed = true;
+        }
+        if (dto.getNickname() != null && !Objects.equals(dto.getNickname(), current.getNickname())) {
+            update.setNickname(dto.getNickname());
+            changed = true;
+        }
+        if (dto.getBio() != null && !Objects.equals(dto.getBio(), current.getBio())) {
+            update.setBio(dto.getBio());
+            changed = true;
+        }
+
+        if (changed) {
+            userMapper.updateById(update);
+            log.info("资料设置更新完成 userId={}, avatarUpdated={}, nicknameUpdated={}, bioUpdated={}",
+                    userId, update.getAvatar() != null, update.getNickname() != null, update.getBio() != null);
+        } else {
+            log.info("资料设置无变化，跳过更新 userId={}", userId);
+        }
     }
 
     /**
@@ -193,7 +209,7 @@ public class UserServiceImpl implements UserService {
                         .ne(User::getId, currentUserId)
         );
         if (exists) {
-            log.warn("更新账号设置失败：手机号被占用 phone={}, userId={}", phone, currentUserId);
+            log.warn("更新账号设置失败：手机号被占用 phone={}, userId={}", MaskUtil.maskPhone(phone), currentUserId);
             throw BusinessException.conflict("手机号已被注册");
         }
     }
@@ -208,7 +224,7 @@ public class UserServiceImpl implements UserService {
                         .ne(User::getId, currentUserId)
         );
         if (exists) {
-            log.warn("更新账号设置失败：邮箱被占用 email={}, userId={}", email, currentUserId);
+            log.warn("更新账号设置失败：邮箱被占用 email={}, userId={}", MaskUtil.maskEmail(email), currentUserId);
             throw BusinessException.conflict("邮箱已被注册");
         }
     }
