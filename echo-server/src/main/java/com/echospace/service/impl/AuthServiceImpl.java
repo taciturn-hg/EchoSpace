@@ -163,11 +163,11 @@ public class AuthServiceImpl implements AuthService {
     public UserInfoVO getMe() {
         Long userId = SecurityUtil.getCurrentUserId();
         log.debug("获取当前登录用户信息 userId={}", userId);
-        User user = authMapper.selectById(userId);
         if (userId == null) {
             log.warn("获取当前用户失败：未登录或登录已过期");
             throw BusinessException.unauthorized("未登录或登录已过期");
         }
+        User user = authMapper.selectById(userId);
         if (user == null) {
             log.warn("获取当前用户失败：用户不存在 userId={}", userId);
             throw BusinessException.notFound("用户不存在");

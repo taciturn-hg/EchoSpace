@@ -79,30 +79,35 @@ function triggerUpload() {
 
 async function handleFileChange(e: Event) {
   const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
-
-  const allowed = ['image/jpeg', 'image/png']
-  if (!allowed.includes(file.type)) {
-    ElMessage.error('仅支持 JPG、PNG 格式')
-    return
-  }
-  if (file.size > 2 * 1024 * 1024) {
-    ElMessage.error('头像大小不能超过 2MB')
-    return
-  }
-
-  uploading.value = true
   try {
-    // TODO：后续补上头像上传接口请求逻辑
-    // const res = await uploadAvatar(file)
-    // if (res.code === 1 && res.data) {
-    //   form.avatar = res.data.url
-    // }
+    const file = input.files?.[0]
+    if (!file) return
+
+    const allowed = ['image/jpeg', 'image/png']
+    if (!allowed.includes(file.type)) {
+      ElMessage.error('仅支持 JPG、PNG 格式')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      ElMessage.error('头像大小不能超过 2MB')
+      return
+    }
+
+    uploading.value = true
+    try {
+      // TODO：后续补上头像上传接口请求逻辑
+      // const res = await uploadAvatar(file)
+      // if (res.code === 1 && res.data) {
+      //   form.avatar = res.data.url
+      // }
+    } catch {
+      // 拦截器统一处理
+    } finally {
+      uploading.value = false
+    }
   } catch {
     // 拦截器统一处理
   } finally {
-    uploading.value = false
     input.value = ''
   }
 }
@@ -184,7 +189,7 @@ onMounted(() => {
         <input
           ref="fileInput"
           type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp"
+          accept="image/jpeg,image/png"
           hidden
           @change="handleFileChange"
         />

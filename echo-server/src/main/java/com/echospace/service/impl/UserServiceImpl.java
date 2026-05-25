@@ -70,7 +70,8 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public void updateProfile(UpdateProfileDTO dto) {
-        Long userId = currentUserIdOrThrow();
+        User current = requireCurrentUser();
+        Long userId = current.getId();
 
         User update = new User();
         update.setId(userId);

@@ -45,8 +45,8 @@ public class AuthController {
     @PostMapping("/register")
     @SecurityRequirements
     public Result<Void> register(@Valid @RequestBody RegisterDTO registerDTO) {
-        log.info("用户注册请求 username={}, phone={}, email={}",
-                registerDTO.getUsername(), registerDTO.getPhone(), registerDTO.getEmail());
+        log.info("用户注册请求 username={}",
+                registerDTO.getUsername());
         authService.register(registerDTO);
         log.info("用户注册成功 username={}", registerDTO.getUsername());
         return Result.success("注册成功");

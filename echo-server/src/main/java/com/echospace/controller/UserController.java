@@ -53,11 +53,11 @@ public class UserController {
 
     /**
      * 获取当前登录用户的账号设置信息
-     * <p>对应接口文档 2.3：手机号、邮箱在响应前已脱敏，避免敏感信息明文返回。</p>
+     * <p>对应接口文档 2.3：直接返回手机号和邮箱原始值，用于账号设置页回显。</p>
      *
-     * @return 账号设置 VO（手机号 / 邮箱已脱敏）
+     * @return 账号设置 VO（手机号 / 邮箱）
      */
-    @Operation(summary = "获取账号设置信息", description = "返回脱敏后的手机号和邮箱，用于账号设置页回显")
+    @Operation(summary = "获取账号设置信息", description = "返回手机号和邮箱，用于账号设置页回显")
     @GetMapping("/settings")
     public Result<UserSettingsVO> getMySettings() {
         log.info("获取账号设置信息请求 userId={}", SecurityUtil.getCurrentUserId());

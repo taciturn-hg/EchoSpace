@@ -28,10 +28,10 @@ public interface UserService {
     UserProfileVO getMyProfile();
 
     /**
-     * 获取当前登录用户的账号设置信息（脱敏）
-     * <p>用于账号设置页面回显手机号与邮箱，返回前已做脱敏处理。</p>
+     * 获取当前登录用户的账号设置信息
+     * <p>用于账号设置页面回显手机号与邮箱，直接返回原始值。</p>
      *
-     * @return 当前用户账号设置 VO（手机号、邮箱已脱敏）
+     * @return 当前用户账号设置 VO（手机号、邮箱）
      * @throws com.echospace.common.BusinessException 用户不存在时抛出 404
      */
     UserSettingsVO getMySettings();
