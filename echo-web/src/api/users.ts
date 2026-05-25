@@ -1,0 +1,25 @@
+import result from '@/utils/result'
+import type { ApiResult, ChangePasswordDTO, UpdateProfileDTO, UpdateSettingsDTO, UploadAvatarVO, UserProfileVO, UserSettingsVO } from './modules'
+
+export const getProfile = () =>
+  result.get<unknown, ApiResult<UserProfileVO>>('/users/me/profile')
+
+export const updateProfile = (dto: UpdateProfileDTO) =>
+  result.put<unknown, ApiResult<void>>('/users/me/profile', dto)
+
+export const getSettings = () =>
+  result.get<unknown, ApiResult<UserSettingsVO>>('/users/me/settings')
+
+export const updateSettings = (dto: UpdateSettingsDTO) =>
+  result.put<unknown, ApiResult<void>>('/users/me/settings', dto)
+
+export const changePassword = (dto: ChangePasswordDTO) =>
+  result.put<unknown, ApiResult<void>>('/users/me/password', dto)
+
+export const uploadAvatar = (file: File) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  return result.post<unknown, ApiResult<UploadAvatarVO>>('/upload/avatar', fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}

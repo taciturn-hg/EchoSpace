@@ -144,7 +144,60 @@ flowchart TD
     T --> U[前端跳转帖子详情页]
 ```
 
-### 2.4 评论流程（一级评论 + 二级回复）
+### 2.4 文件上传流程（MinIO / OSS 两阶段）
+
+> 文件上传模块按部署阶段区分存储后端：第一阶段本地 MinIO，第二阶段切换阿里云 OSS。切换时仅需修改 `application.yml` 中 endpoint、accessKey、secretKey 三个配置项，业务代码无需改动。
+
+```mermaid
+flowchart TD
+    A[用户上传图片] --> B{上传场景?}
+    B -->|帖子图片| C[Tiptap Image Extension 拦截]
+    B -->|用户头像| D[头像上传组件]
+
+    C --> E["前端校验<br>类型: jpg/png/gif/webp, ≤10MB"]
+    D --> F["前端校验<br>类型: jpg/png, ≤2MB"]
+
+    E --> G{校验通过?}
+    F --> G
+    G -->|否| H[前端提示错误信息]
+    H --> A
+
+    G -->|是| I[构建 FormData 包装文件]
+    I --> J{上传类型?}
+    J -->|帖子图片| K[POST /api/upload/image]
+    J -->|用户头像| L[POST /api/upload/avatar]
+
+    K --> M["后端校验<br>文件类型（魔数）+ 大小 + 扩展名"]
+    L --> M
+
+    M --> N{校验通过?}
+    N -->|否| O["返回 Result(code=0, msg=错误原因)"]
+    O --> A
+
+    N -->|是| P["生成存储路径<br>images: echospace/images/{yyyy}/{MM}/{uuid}.{ext}<br>avatars: echospace/avatars/{userId}/{uuid}.{ext}"]
+
+    P --> Q{当前存储方案<br>application.yml 配置?}
+
+    Q -->|"第一阶段: MinIO"| R["MinIOClient.putObject()<br>本地 http://localhost:9000"]
+    R --> S["返回 URL<br>http://localhost:9000/{bucket}/{path}"]
+
+    Q -->|"第二阶段: 阿里云 OSS"| T["OSSClient.putObject()<br>Endpoint: oss-cn-xxx.aliyuncs.com"]
+    T --> U["返回 URL<br>https://{bucket}.oss-cn-xxx.aliyuncs.com/{path}"]
+
+    S --> V["封装 Result(code=1, data={url}) 返回前端"]
+    U --> V
+
+    V --> W{上传场景?}
+    W -->|帖子图片| X["Tiptap 插入 img 标签<br>图片即时回显在编辑器"]
+    W -->|用户头像| Y["更新 user.avatar 字段<br>头像即时回显"]
+
+    X --> Z1[用户继续编辑帖子]
+    Y --> Z2[用户继续编辑资料]
+```
+
+> **切换要点**：MinIO Java SDK 与 OSS SDK 均兼容 S3 协议。切换时仅需修改配置项，无需改动 Service 层代码。已有图片数据通过 `mc mirror` 命令从 MinIO 同步到 OSS。
+
+### 2.5 评论流程（一级评论 + 二级回复）
 
 ```mermaid
 flowchart TD
@@ -189,7 +242,7 @@ flowchart TD
     AD --> N
 ```
 
-### 2.5 点赞/取消流程
+### 2.6 点赞/取消流程
 
 ```mermaid
 flowchart TD
@@ -221,7 +274,7 @@ flowchart TD
     Q -->|否 成功| S[同步完成]
 ```
 
-### 2.6 收藏/取消流程
+### 2.7 收藏/取消流程
 
 ```mermaid
 flowchart TD
@@ -242,7 +295,7 @@ flowchart TD
     N --> O[返回收藏的帖子列表]
 ```
 
-### 2.7 搜索流程
+### 2.8 搜索流程
 
 ```mermaid
 flowchart TD
@@ -266,7 +319,7 @@ flowchart TD
     M -->|修改关键词| A
 ```
 
-### 2.8 关注/取关流程
+### 2.9 关注/取关流程
 
 ```mermaid
 flowchart TD
@@ -296,7 +349,7 @@ flowchart TD
     S --> T[查询 user_follow WHERE followed_id = id]
 ```
 
-### 2.9 个人主页 + 时间线流程
+### 2.10 个人主页 + 时间线流程
 
 ```mermaid
 flowchart TD
@@ -318,7 +371,7 @@ flowchart TD
     N --> O[全站最新帖子列表]
 ```
 
-### 2.10 系统全景流程
+### 2.11 系统全景流程
 
 ```mermaid
 flowchart LR

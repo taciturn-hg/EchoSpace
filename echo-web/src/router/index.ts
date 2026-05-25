@@ -73,6 +73,11 @@ const router = createRouter({
           name: 'profile-settings',
           component: () => import('@/views/ProfileSettingsPage.vue'),
         },
+        {
+          path: 'settings/change-password',
+          name: 'change-password',
+          component: () => import('@/views/ChangePasswordPage.vue'),
+        },
       ],
     },
   ],

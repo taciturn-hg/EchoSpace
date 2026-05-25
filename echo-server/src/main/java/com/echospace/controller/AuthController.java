@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * @Author: taciturn-hg
  */
+@Slf4j
 @Tag(name = "认证模块", description = "注册、登录、刷新 Token")
 @RestController
 @RequestMapping("/auth")
@@ -43,7 +45,10 @@ public class AuthController {
     @PostMapping("/register")
     @SecurityRequirements
     public Result<Void> register(@Valid @RequestBody RegisterDTO registerDTO) {
+        log.info("用户注册请求 username={}, phone={}, email={}",
+                registerDTO.getUsername(), registerDTO.getPhone(), registerDTO.getEmail());
         authService.register(registerDTO);
+        log.info("用户注册成功 username={}", registerDTO.getUsername());
         return Result.success("注册成功");
     }
 
@@ -57,7 +62,10 @@ public class AuthController {
     @PostMapping("/login")
     @SecurityRequirements
     public Result<LoginVO> login(@Valid @RequestBody LoginDTO loginDTO) {
-        return Result.success(authService.login(loginDTO));
+        log.info("用户登录请求 account={}", loginDTO.getAccount());
+        LoginVO vo = authService.login(loginDTO);
+        log.info("用户登录成功 account={}", loginDTO.getAccount());
+        return Result.success(vo);
     }
 
     /**
@@ -70,7 +78,10 @@ public class AuthController {
     @PostMapping("/refresh")
     @SecurityRequirements
     public Result<LoginVO> refresh(@Valid @RequestBody RefreshTokenDTO refreshTokenDTO) {
-        return Result.success(authService.refresh(refreshTokenDTO));
+        log.info("刷新 Token 请求");
+        LoginVO vo = authService.refresh(refreshTokenDTO);
+        log.info("刷新 Token 成功");
+        return Result.success(vo);
     }
 
     /**
@@ -82,6 +93,9 @@ public class AuthController {
     @Operation(summary = "获取当前用户信息", description = "需携带 Authorization: Bearer <accessToken>，返回当前登录用户的公开信息")
     @GetMapping("/me")
     public Result<UserInfoVO> me() {
-        return Result.success(authService.getMe());
+        log.info("获取当前登录用户信息请求");
+        UserInfoVO vo = authService.getMe();
+        log.debug("当前登录用户 userId={}, username={}", vo.getId(), vo.getUsername());
+        return Result.success(vo);
     }
 }

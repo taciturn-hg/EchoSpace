@@ -316,15 +316,15 @@
 
 ---
 
-### 2.2 获取账号设置信息
+### 2.2 获取资料设置信息
 
 #### 2.2.1 基本信息
 
-> 请求路径：/api/users/me/settings
+> 请求路径：/api/users/me/profile
 >
 > 请求方式：GET
 >
-> 接口描述：该接口用于获取当前登录用户的账号设置信息（账号设置页面回显用）
+> 接口描述：该接口用于获取当前登录用户的资料设置信息（资料设置页面回显用）
 
 #### 2.2.2 请求参数
 
@@ -343,8 +343,6 @@
 | data | object | 非必须 | 返回的数据 |
 | \|- avatar | string | 非必须 | 头像 URL |
 | \|- nickname | string | 必须 | 昵称 |
-| \|- phone | string | 必须 | 手机号 |
-| \|- email | string | 必须 | 邮箱 |
 | \|- bio | string | 非必须 | 个人简介 |
 
 响应数据样例：
@@ -356,8 +354,6 @@
   "data": {
     "avatar": "http://localhost:9000/echospace/avatars/1.png",
     "nickname": "张三",
-    "phone": "138****8000",
-    "email": "zha***@example.com",
     "bio": "这个人很懒，什么都没写"
   }
 }
@@ -365,25 +361,21 @@
 
 ---
 
-### 2.3 更新个人信息
+### 2.3 获取账号设置信息
 
 #### 2.3.1 基本信息
 
-> 请求路径：/api/users/{id}
+> 请求路径：/api/users/me/settings
 >
-> 请求方式：PUT
+> 请求方式：GET
 >
-> 接口描述：该接口用于更新当前登录用户的个人信息（只能修改自己的信息）
+> 接口描述：该接口用于获取当前登录用户的账号设置信息（账号设置页面回显用）
 
 #### 2.3.2 请求参数
 
-参数格式：路径参数
+无
 
-参数说明：
-
-| 参数名 | 类型 | 是否必须 | 备注 |
-|--------|------|----------|------|
-| id | number | 必须 | 用户ID |
+#### 2.3.3 响应数据
 
 参数格式：application/json
 
@@ -391,10 +383,47 @@
 
 | 参数名 | 类型 | 是否必须 | 备注 |
 |--------|------|----------|------|
+| code | number | 必须 | 响应码，1 代表成功，0 代表失败 |
+| msg | string | 非必须 | 提示信息 |
+| data | object | 非必须 | 返回的数据 |
+| \|- phone | string | 必须 | 手机号（脱敏显示） |
+| \|- email | string | 必须 | 邮箱（脱敏显示） |
+
+响应数据样例：
+
+```json
+{
+  "code": 1,
+  "msg": "success",
+  "data": {
+    "phone": "138****8000",
+    "email": "zha***@example.com"
+  }
+}
+```
+
+---
+
+### 2.4 更新资料设置
+
+#### 2.4.1 基本信息
+
+> 请求路径：/api/users/me/profile
+>
+> 请求方式：PUT
+>
+> 接口描述：该接口用于更新当前登录用户的资料信息（头像、昵称、个人简介）
+
+#### 2.4.2 请求参数
+
+格式：application/json
+
+参数说明：
+
+| 参数名 | 类型 | 是否必须 | 备注 |
+|--------|------|----------|------|
 | avatar | string | 非必须 | 头像 URL |
-| nickname | string | 非必须 | 昵称 |
-| phone | string | 非必须 | 手机号 |
-| email | string | 非必须 | 邮箱 |
+| nickname | string | 非必须 | 昵称，长度 1~50 |
 | bio | string | 非必须 | 个人简介，最长 500 字 |
 
 请求参数样例：
@@ -403,13 +432,11 @@
 {
   "avatar": "http://localhost:9000/echospace/avatars/1.png",
   "nickname": "张三",
-  "phone": "13800138000",
-  "email": "zhangsan@example.com",
   "bio": "新个性签名"
 }
 ```
 
-#### 2.3.3 响应数据
+#### 2.4.3 响应数据
 
 参数格式：application/json
 
@@ -433,9 +460,63 @@
 
 ---
 
-### 2.4 修改密码
+### 2.5 更新账号设置
 
-#### 2.4.1 基本信息
+#### 2.5.1 基本信息
+
+> 请求路径：/api/users/me/settings
+>
+> 请求方式：PUT
+>
+> 接口描述：该接口用于更新当前登录用户的账号信息（手机号、邮箱）
+
+#### 2.5.2 请求参数
+
+格式：application/json
+
+参数说明：
+
+| 参数名 | 类型 | 是否必须 | 备注 |
+|--------|------|----------|------|
+| phone | string | 非必须 | 手机号，需唯一 |
+| email | string | 非必须 | 邮箱，需唯一 |
+
+请求参数样例：
+
+```json
+{
+  "phone": "13900139000",
+  "email": "new@example.com"
+}
+```
+
+#### 2.5.3 响应数据
+
+参数格式：application/json
+
+参数说明：
+
+| 参数名 | 类型 | 是否必须 | 备注 |
+|--------|------|----------|------|
+| code | number | 必须 | 响应码，1 代表成功，0 代表失败 |
+| msg | string | 非必须 | 提示信息 |
+| data | object | 非必须 | 返回的数据（成功时为 null） |
+
+响应数据样例：
+
+```json
+{
+  "code": 1,
+  "msg": "更新成功",
+  "data": null
+}
+```
+
+---
+
+### 2.6 修改密码
+
+#### 2.6.1 基本信息
 
 > 请求路径：/api/users/me/password
 >
@@ -443,7 +524,7 @@
 >
 > 接口描述：该接口用于修改当前登录用户的密码
 
-#### 2.4.2 请求参数
+#### 2.6.2 请求参数
 
 格式：application/json
 
@@ -452,7 +533,7 @@
 | 参数名 | 类型 | 是否必须 | 备注 |
 |--------|------|----------|------|
 | oldPassword | string | 必须 | 原密码 |
-| newPassword | string | 必须 | 新密码，长度 6~100 |
+| newPassword | string | 必须 | 新密码，长度 6~20 |
 | confirmPassword | string | 必须 | 确认新密码，须与 newPassword 一致 |
 
 请求参数样例：
@@ -465,7 +546,7 @@
 }
 ```
 
-#### 2.4.3 响应数据
+#### 2.6.3 响应数据
 
 参数格式：application/json
 
@@ -489,9 +570,9 @@
 
 ---
 
-### 2.5 查询用户帖子列表
+### 2.7 查询用户帖子列表
 
-#### 2.5.1 基本信息
+#### 2.7.1 基本信息
 
 > 请求路径：/api/users/{id}/posts
 >
@@ -499,7 +580,7 @@
 >
 > 接口描述：该接口用于分页查询指定用户发布的帖子列表
 
-#### 2.5.2 请求参数
+#### 2.7.2 请求参数
 
 参数格式：路径参数
 
@@ -525,7 +606,7 @@
 /api/users/1/posts?current=1&size=10&sort=created_at
 ```
 
-#### 2.5.3 响应数据
+#### 2.7.3 响应数据
 
 参数格式：application/json
 
@@ -573,9 +654,9 @@
 
 ---
 
-### 2.6 关注/取消关注
+### 2.8 关注/取消关注
 
-#### 2.6.1 基本信息
+#### 2.8.1 基本信息
 
 > 请求路径：/api/users/{id}/follow
 >
@@ -583,7 +664,7 @@
 >
 > 接口描述：该接口用于关注或取消关注指定用户（toggle 模式：已关注则取消，未关注则关注）
 
-#### 2.6.2 请求参数
+#### 2.8.2 请求参数
 
 参数格式：路径参数
 
@@ -593,7 +674,7 @@
 |--------|------|----------|------|
 | id | number | 必须 | 被关注的用户ID |
 
-#### 2.6.3 响应数据
+#### 2.8.3 响应数据
 
 参数格式：application/json
 
@@ -618,9 +699,9 @@
 
 ---
 
-### 2.7 粉丝列表
+### 2.9 粉丝列表
 
-#### 2.7.1 基本信息
+#### 2.9.1 基本信息
 
 > 请求路径：/api/users/{id}/followers
 >
@@ -628,7 +709,7 @@
 >
 > 接口描述：该接口用于分页查询指定用户的粉丝列表
 
-#### 2.7.2 请求参数
+#### 2.9.2 请求参数
 
 参数格式：路径参数
 
@@ -653,7 +734,7 @@
 /api/users/1/followers?current=1&size=10
 ```
 
-#### 2.7.3 响应数据
+#### 2.9.3 响应数据
 
 参数格式：application/json
 
@@ -697,9 +778,9 @@
 
 ---
 
-### 2.8 关注列表
+### 2.10 关注列表
 
-#### 2.8.1 基本信息
+#### 2.10.1 基本信息
 
 > 请求路径：/api/users/{id}/following
 >
@@ -707,7 +788,7 @@
 >
 > 接口描述：该接口用于分页查询指定用户关注的人的列表
 
-#### 2.8.2 请求参数
+#### 2.10.2 请求参数
 
 参数格式：路径参数
 
@@ -726,7 +807,7 @@
 | current | number | 非必须 | 1 | 页码 |
 | size | number | 非必须 | 10 | 每页条数 |
 
-#### 2.8.3 响应数据
+#### 2.10.3 响应数据
 
 参数格式：application/json
 
@@ -1728,15 +1809,19 @@
 
 ## 5. 文件上传模块
 
-### 5.1 上传图片
+> 文件上传按部署阶段区分存储后端：第一阶段使用本地 MinIO，第二阶段切换阿里云 OSS。前后端约定 4 个独立接口。
+
+---
+
+### 5.1 MinIO 上传图片
 
 #### 5.1.1 基本信息
 
-> 请求路径：/api/upload/image
+> 请求路径：/api/upload/minio/image
 >
 > 请求方式：POST
 >
-> 接口描述：该接口用于上传帖子中的图片（Tiptap 编辑器使用），前端拿到返回的 URL 后自动插入编辑器
+> 接口描述：该接口用于第一阶段（MinIO）上传帖子中的图片（Tiptap 编辑器使用），前端拿到返回的 URL 后自动插入编辑器
 
 #### 5.1.2 请求参数
 
@@ -1759,7 +1844,7 @@
 | code | number | 必须 | 响应码，1 代表成功，0 代表失败 |
 | msg | string | 非必须 | 提示信息 |
 | data | object | 非必须 | 返回的数据 |
-| \|- url | string | 必须 | 上传后的图片访问 URL |
+| \|- url | string | 必须 | MinIO 上的图片访问 URL |
 
 响应数据样例：
 
@@ -1775,15 +1860,15 @@
 
 ---
 
-### 5.2 上传头像
+### 5.2 MinIO 上传头像
 
 #### 5.2.1 基本信息
 
-> 请求路径：/api/upload/avatar
+> 请求路径：/api/upload/minio/avatar
 >
 > 请求方式：POST
 >
-> 接口描述：该接口用于上传用户头像
+> 接口描述：该接口用于第一阶段（MinIO）上传用户头像
 
 #### 5.2.2 请求参数
 
@@ -1806,7 +1891,7 @@
 | code | number | 必须 | 响应码，1 代表成功，0 代表失败 |
 | msg | string | 非必须 | 提示信息 |
 | data | object | 非必须 | 返回的数据 |
-| \|- url | string | 必须 | 上传后的头像访问 URL |
+| \|- url | string | 必须 | MinIO 上的头像访问 URL |
 
 响应数据样例：
 
@@ -1822,6 +1907,100 @@
 
 ---
 
+### 5.3 OSS 上传图片
+
+#### 5.3.1 基本信息
+
+> 请求路径：/api/upload/oss/image
+>
+> 请求方式：POST
+>
+> 接口描述：该接口用于第二阶段（阿里云 OSS）上传帖子中的图片（Tiptap 编辑器使用），前端拿到返回的 URL 后自动插入编辑器
+
+#### 5.3.2 请求参数
+
+参数格式：multipart/form-data
+
+参数说明：
+
+| 参数名 | 类型 | 是否必须 | 备注 |
+|--------|------|----------|------|
+| file | file | 必须 | 图片文件，限制 jpg/png/gif/webp，最大 10MB |
+
+#### 5.3.3 响应数据
+
+参数格式：application/json
+
+参数说明：
+
+| 参数名 | 类型 | 是否必须 | 备注 |
+|--------|------|----------|------|
+| code | number | 必须 | 响应码，1 代表成功，0 代表失败 |
+| msg | string | 非必须 | 提示信息 |
+| data | object | 非必须 | 返回的数据 |
+| \|- url | string | 必须 | OSS 上的图片访问 URL（HTTPS） |
+
+响应数据样例：
+
+```json
+{
+  "code": 1,
+  "msg": "上传成功",
+  "data": {
+    "url": "https://echospace.oss-cn-hangzhou.aliyuncs.com/images/2026/05/abc123.jpg"
+  }
+}
+```
+
+---
+
+### 5.4 OSS 上传头像
+
+#### 5.4.1 基本信息
+
+> 请求路径：/api/upload/oss/avatar
+>
+> 请求方式：POST
+>
+> 接口描述：该接口用于第二阶段（阿里云 OSS）上传用户头像
+
+#### 5.4.2 请求参数
+
+参数格式：multipart/form-data
+
+参数说明：
+
+| 参数名 | 类型 | 是否必须 | 备注 |
+|--------|------|----------|------|
+| file | file | 必须 | 图片，限制 jpg/png，最大 2MB |
+
+#### 5.4.3 响应数据
+
+参数格式：application/json
+
+参数说明：
+
+| 参数名 | 类型 | 是否必须 | 备注 |
+|--------|------|----------|------|
+| code | number | 必须 | 响应码，1 代表成功，0 代表失败 |
+| msg | string | 非必须 | 提示信息 |
+| data | object | 非必须 | 返回的数据 |
+| \|- url | string | 必须 | OSS 上的头像访问 URL（HTTPS） |
+
+响应数据样例：
+
+```json
+{
+  "code": 1,
+  "msg": "上传成功",
+  "data": {
+    "url": "https://echospace.oss-cn-hangzhou.aliyuncs.com/avatars/1/abc456.jpg"
+  }
+}
+```
+
+---
+
 ## 附录：接口汇总表
 
 | 序号 | 方法 | 路径 | 说明 | 模块 |
@@ -1831,26 +2010,30 @@
 | 3 | POST | /api/auth/refresh | 刷新 Token | 认证 |
 | 4 | GET | /api/auth/me | 当前用户信息 | 认证 |
 | 5 | GET | /api/users/{id} | 用户信息（个人主页） | 用户 |
-| 6 | GET | /api/users/me/settings | 账号设置信息 | 用户 |
-| 7 | PUT | /api/users/{id} | 更新个人信息 | 用户 |
-| 8 | PUT | /api/users/me/password | 修改密码 | 用户 |
-| 9 | GET | /api/users/{id}/posts | 用户帖子列表 | 用户 |
-| 10 | POST | /api/users/{id}/follow | 关注/取消（toggle） | 用户 |
-| 11 | GET | /api/users/{id}/followers | 粉丝列表 | 用户 |
-| 12 | GET | /api/users/{id}/following | 关注列表 | 用户 |
-| 13 | POST | /api/posts | 发布帖子 | 帖子 |
-| 14 | GET | /api/posts/{id} | 帖子详情 | 帖子 |
-| 15 | PUT | /api/posts/{id} | 编辑帖子 | 帖子 |
-| 16 | DELETE | /api/posts/{id} | 删除帖子（软删除） | 帖子 |
-| 17 | GET | /api/posts | 帖子列表（分页） | 帖子 |
-| 18 | POST | /api/posts/{id}/like | 帖子点赞/取消（toggle） | 帖子 |
-| 19 | POST | /api/posts/{id}/favorite | 帖子收藏/取消（toggle） | 帖子 |
-| 20 | GET | /api/posts/favorites | 我的收藏列表 | 帖子 |
-| 21 | GET | /api/posts/search | 搜索帖子（ES） | 帖子 |
-| 22 | POST | /api/posts/{postId}/comments | 发表评论/回复 | 评论 |
-| 23 | GET | /api/posts/{postId}/comments | 评论列表（含二级回复） | 评论 |
-| 24 | GET | /api/comments/{id}/replies | 加载更多二级回复 | 评论 |
-| 25 | DELETE | /api/comments/{id} | 删除评论 | 评论 |
-| 26 | POST | /api/comments/{id}/like | 评论点赞/取消（toggle） | 评论 |
-| 27 | POST | /api/upload/image | 上传图片 | 文件 |
-| 28 | POST | /api/upload/avatar | 上传头像 | 文件 |
+| 6 | GET | /api/users/me/profile | 资料设置信息 | 用户 |
+| 7 | GET | /api/users/me/settings | 账号设置信息 | 用户 |
+| 8 | PUT | /api/users/me/profile | 更新资料设置 | 用户 |
+| 9 | PUT | /api/users/me/settings | 更新账号设置 | 用户 |
+| 10 | PUT | /api/users/me/password | 修改密码 | 用户 |
+| 11 | GET | /api/users/{id}/posts | 用户帖子列表 | 用户 |
+| 12 | POST | /api/users/{id}/follow | 关注/取消（toggle） | 用户 |
+| 13 | GET | /api/users/{id}/followers | 粉丝列表 | 用户 |
+| 14 | GET | /api/users/{id}/following | 关注列表 | 用户 |
+| 15 | POST | /api/posts | 发布帖子 | 帖子 |
+| 16 | GET | /api/posts/{id} | 帖子详情 | 帖子 |
+| 17 | PUT | /api/posts/{id} | 编辑帖子 | 帖子 |
+| 18 | DELETE | /api/posts/{id} | 删除帖子（软删除） | 帖子 |
+| 19 | GET | /api/posts | 帖子列表（分页） | 帖子 |
+| 20 | POST | /api/posts/{id}/like | 帖子点赞/取消（toggle） | 帖子 |
+| 21 | POST | /api/posts/{id}/favorite | 帖子收藏/取消（toggle） | 帖子 |
+| 22 | GET | /api/posts/favorites | 我的收藏列表 | 帖子 |
+| 23 | GET | /api/posts/search | 搜索帖子（ES） | 帖子 |
+| 24 | POST | /api/posts/{postId}/comments | 发表评论/回复 | 评论 |
+| 25 | GET | /api/posts/{postId}/comments | 评论列表（含二级回复） | 评论 |
+| 26 | GET | /api/comments/{id}/replies | 加载更多二级回复 | 评论 |
+| 27 | DELETE | /api/comments/{id} | 删除评论 | 评论 |
+| 28 | POST | /api/comments/{id}/like | 评论点赞/取消（toggle） | 评论 |
+| 29 | POST | /api/upload/minio/image | MinIO 上传图片 | 文件 |
+| 30 | POST | /api/upload/minio/avatar | MinIO 上传头像 | 文件 |
+| 31 | POST | /api/upload/oss/image | OSS 上传图片 | 文件 |
+| 32 | POST | /api/upload/oss/avatar | OSS 上传头像 | 文件 |

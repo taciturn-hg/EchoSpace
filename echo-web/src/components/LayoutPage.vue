@@ -13,6 +13,7 @@ import {
   UserFilled,
   Plus,
   Edit,
+  Lock,
 } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/userStore'
 import { me } from '@/api/auth'
@@ -81,13 +82,17 @@ async function loadUserInfo(): Promise<void> {
   }
 }
 
-function handleDropdown(command: 'profile-settings' | 'settings' | 'logout'): void {
+function handleDropdown(command: 'profile-settings' | 'settings' | 'change-password' | 'logout'): void {
   if (command === 'profile-settings') {
     router.push('/settings/profile')
     return
   }
   if (command === 'settings') {
     router.push('/settings')
+    return
+  }
+  if (command === 'change-password') {
+    router.push('/settings/change-password')
     return
   }
   userStore.clearAuth()
@@ -175,6 +180,10 @@ onMounted(async () => {
                 <el-dropdown-item command="settings">
                   <el-icon class="menu-icon"><Setting /></el-icon>
                   <span>账号设置</span>
+                </el-dropdown-item>
+                <el-dropdown-item command="change-password">
+                  <el-icon class="menu-icon"><Lock /></el-icon>
+                  <span>修改密码</span>
                 </el-dropdown-item>
                 <el-dropdown-item command="logout" class="dropdown-logout" divided>
                   <el-icon class="menu-icon"><SwitchButton /></el-icon>
