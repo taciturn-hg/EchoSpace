@@ -24,6 +24,7 @@ public class UpdateSettingsDTO {
     private String phone;
 
     @Schema(description = "新邮箱，需唯一", example = "new@example.com")
+    @Pattern(regexp = "^(?!\\s*$).+", message = "邮箱不能为空")
     @Email(message = "邮箱格式不正确")
     private String email;
 }
