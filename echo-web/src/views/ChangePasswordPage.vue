@@ -142,23 +142,28 @@ function handleCancel() {
       </el-form>
 
       <div class="form-actions">
-        <button
-          class="btn btn-cancel"
-          type="button"
-          :disabled="saving"
-          @click="handleCancel"
-        >
-          <el-icon><EditPen /></el-icon>
-          <span>清空</span>
-        </button>
-        <button
-          class="btn btn-save"
-          type="button"
-          :disabled="!isDirty || saving"
-          @click="handleSave"
-        >
-          <span>{{ saving ? '保存中…' : '修改密码' }}</span>
-        </button>
+        <!-- TODO: 忘记密码功能待 Redis 接入后启用 -->
+        <!-- <router-link to="/forgot-password" class="forgot-link">忘记密码？</router-link> -->
+        <span class="forgot-link forgot-link--disabled">忘记密码？</span>
+        <div class="actions-right">
+          <button
+            class="btn btn-cancel"
+            type="button"
+            :disabled="saving"
+            @click="handleCancel"
+          >
+            <el-icon><EditPen /></el-icon>
+            <span>清空</span>
+          </button>
+          <button
+            class="btn btn-save"
+            type="button"
+            :disabled="!isDirty || saving"
+            @click="handleSave"
+          >
+            <span>{{ saving ? '保存中…' : '修改密码' }}</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -266,9 +271,37 @@ $radius-md: 10px;
 // ---------- Actions ----------
 .form-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
   padding-top: 4px;
+}
+
+.actions-right {
+  display: flex;
+  gap: 12px;
+}
+
+.forgot-link {
+  font-size: 13px;
+  color: #6366f1;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: #4f46e5;
+    text-decoration: underline;
+  }
+}
+
+.forgot-link--disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+
+  &:hover {
+    color: #9ca3af;
+    text-decoration: none;
+  }
 }
 
 .btn {

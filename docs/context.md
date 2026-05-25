@@ -122,7 +122,7 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | UserProfile.vue | `/user/:id` | 占位 |
 | ProfileSettingsPage.vue | `/settings/profile` | 已完成（头像上传/昵称/简介编辑+保存/取消） |
 | SettingsPage.vue | `/settings` | 已完成（手机号/邮箱编辑+保存/取消，el-form rules 校验） |
-| ChangePasswordPage.vue | `/settings/change-password` | 已完成（el-form rules 校验，旧密码/新密码/确认密码，show-password 切换，修改密码/清空按钮） |
+| ChangePasswordPage.vue | `/settings/change-password` | 已完成（el-form rules 校验，旧密码/新密码/确认密码，show-password 切换，修改密码/清空按钮，忘记密码链接） |
 
 ### 数据库实体（已建 Entity）
 
@@ -148,7 +148,7 @@ refreshToken 过期 → 清除 store → 跳转 /login
 - 当前分支：feature/user-settings
 - 完成了 LayoutPage.vue 布局系统：固定顶栏、可折叠左侧导航、搜索框、用户卡片、发布帖子按钮、下拉菜单（资料设置/账号设置/修改密码/退出登录）
 - 新增 ProfileSettingsPage.vue 完整实现：头像上传（前端校验，上传接口 TODO）、昵称编辑、个人简介编辑（Element Plus textarea，6行固定高度）、取消按钮（重新拉取服务器数据覆盖本地，失败时提示"还原失败"）、保存按钮（绿色渐变，仅脏数据可点击）
-- 新增 ChangePasswordPage.vue 完整实现：旧密码/新密码/确认密码三输入（show-password 切换），el-form rules 校验（必填、长度 6~20、新旧密码不同、两次输入一致），修改密码按钮 PUT /api/users/me/password 后端返回消息提示，清空按钮重置表单与校验状态，绿色渐变按钮仅脏数据可点击
+- 新增 ChangePasswordPage.vue 完整实现：旧密码/新密码/确认密码三输入（show-password 切换），el-form rules 校验（必填、长度 6~20、新旧密码不同、两次输入一致），修改密码按钮 PUT /api/users/me/password 后端返回消息提示，清空按钮重置表单与校验状态，按钮行左侧"忘记密码？"链接（当前禁用态，待 Redis 接入后启用），绿色渐变按钮仅脏数据可点击
 - 新增 SettingsPage.vue 完整实现：手机号/邮箱编辑（el-form rules 必填 + 格式校验），取消回拉服务器数据（失败时提示"还原失败"），保存 PUT /api/users/me/settings 并同步 Pinia store
 - 前端 API 层新增 `echo-web/src/api/users.ts`（getProfile / updateProfile / getSettings / updateSettings / changePassword），类型新增 UserProfileVO / UpdateProfileDTO / UserSettingsVO / UpdateSettingsDTO / ChangePasswordDTO；文件上传函数（uploadAvatar / uploadImage）以 TODO 注释占位，待 Sprint 2 后期实现
 - 后端 UserSettingsVO 取消手机号/邮箱脱敏，直接返回原始值（前端展示用，与 /api/auth/me 保持一致）
@@ -237,7 +237,7 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | `echo-web/src/components/LayoutPage.vue` | 主布局（顶栏 + 可折叠侧边栏 + 内容区），下拉含资料设置/账号设置/修改密码/退出 |
 | `echo-web/src/views/ProfileSettingsPage.vue` | 资料设置页（头像上传+昵称+简介编辑，el-form rules 校验，保存/取消） |
 | `echo-web/src/views/SettingsPage.vue` | 账号设置页（手机号+邮箱编辑，el-form rules 校验，保存/取消） |
-| `echo-web/src/views/ChangePasswordPage.vue` | 修改密码页（旧密码/新密码/确认密码，show-password 切换，el-form rules 校验，绿色渐变修改密码按钮） |
+| `echo-web/src/views/ChangePasswordPage.vue` | 修改密码页（旧密码/新密码/确认密码，show-password 切换，el-form rules 校验，绿色渐变修改密码按钮，忘记密码链接） |
 | `docs/roadmap.md` | 待开发功能方案设计 |
 | `docs/05-feature-flows.md` | 功能模块与流程图（11 张 Mermaid 流程图，含 MinIO/OSS 文件上传） |
 | `docs/《EchoSpace》系统设计.md` | 系统设计文档（架构 + 模块 + 数据库 + 设计要点） |
