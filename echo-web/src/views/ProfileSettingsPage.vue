@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { EditPen, Plus } from '@element-plus/icons-vue'
-import { getProfile, updateProfile } from '@/api/users'
+import { getProfile, updateProfile, uploadAvatar } from '@/api/users'
 import { useUserStore } from '@/stores/userStore'
 import type { UpdateProfileDTO, UserProfileVO } from '@/api/modules'
 
@@ -122,14 +122,13 @@ async function handleSave() {
   try {
     // 有选中新头像时先上传
     if (selectedFile.value) {
-      // TODO：后续补上头像上传接口请求逻辑
-      // const res = await uploadAvatar(selectedFile.value)
-      // if (res.code === 1 && res.data) {
-      //   form.avatar = res.data.url
-      // } else {
-      //   ElMessage.error('头像上传失败')
-      //   return
-      // }
+      const res = await uploadAvatar(selectedFile.value)
+      if (res.code === 1 && res.data) {
+        form.avatar = res.data.url
+      } else {
+        ElMessage.error('头像上传失败')
+        return
+      }
     }
 
     const dto: UpdateProfileDTO = {}

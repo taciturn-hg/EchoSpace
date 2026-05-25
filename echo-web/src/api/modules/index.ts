@@ -83,6 +83,10 @@ export interface UploadAvatarVO {
   url: string
 }
 
+export interface UploadImageVO {
+  url: string
+}
+
 // ===== 用户账号设置相关 =====
 export interface UserSettingsVO {
   phone: string | null

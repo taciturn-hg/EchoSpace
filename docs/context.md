@@ -56,11 +56,12 @@
 │  Controller Layer                                       │
 │    AuthController  (register / login / refresh / me)    │
 │    UserController (profile GET/PUT, settings GET/PUT, password PUT) │
-│    [PostController — 待开发]                             │
+│    FileController (avatar/image upload)                  │
 │                                                         │
 │  Service Layer                                          │
 │    AuthServiceImpl                                      │
 │    UserServiceImpl (profile / settings / changePassword) │
+│    FileService → MinioFileServiceImpl (storage.type=minio) │
 │    [PostService — 待开发]                               │
 │                                                         │
 │  Security Layer                                         │
@@ -71,7 +72,8 @@
 │    MyBatis-Plus Mapper → MySQL                          │
 │    [Redis — 待接入]                                     │
 │    [Elasticsearch — 待接入]                             │
-│    [MinIO / OSS — 待接入]                               │
+│    MinIO (头像/图片上传，storage.type=minio)             │
+│    [OSS — 待接入]                                       │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -108,6 +110,14 @@ refreshToken 过期 → 清除 store → 跳转 /login
 - [x] Spring Security 白名单（`/auth/login`、`/auth/register`、`/auth/refresh` 等）
 - [x] JwtAuthFilter（`getServletPath()` 匹配白名单，无 `/api` 前缀）
 - [x] UserPrincipal（存储 userId + username，从 SecurityContext 取用）
+
+#### 文件上传模块（upload）
+- [x] FileService 接口（uploadAvatar / uploadImage）
+- [x] MinioFileServiceImpl（`@ConditionalOnProperty(name="storage.type", havingValue="minio")`）
+- [x] FileController（POST /api/upload/avatar + POST /api/upload/image，需认证）
+- [x] MinioProperties 配置绑定 + MinioConfig 条件注入 MinioClient Bean
+- [x] `storage.type` 配置预留 MinIO/OSS 切换（当前值 minio）
+- [x] 前端 uploadAvatar / uploadImage API 函数 + ProfileSettingsPage 头像上传逻辑已放开
 
 ### 页面占位（已建文件，内容待开发）
 
@@ -150,7 +160,9 @@ refreshToken 过期 → 清除 store → 跳转 /login
 - 新增 ProfileSettingsPage.vue 完整实现：头像上传（前端校验，上传接口 TODO）、昵称编辑、个人简介编辑（Element Plus textarea，6行固定高度）、取消按钮（重新拉取服务器数据覆盖本地，失败时提示"还原失败"）、保存按钮（绿色渐变，仅脏数据可点击）
 - 新增 ChangePasswordPage.vue 完整实现：旧密码/新密码/确认密码三输入（show-password 切换），el-form rules 校验（必填、长度 6~20、新旧密码不同、两次输入一致），修改密码按钮 PUT /api/users/me/password 后端返回消息提示，清空按钮重置表单与校验状态，按钮行左侧"忘记密码？"链接（当前禁用态，待 Redis 接入后启用），绿色渐变按钮仅脏数据可点击
 - 新增 SettingsPage.vue 完整实现：手机号/邮箱编辑（el-form rules 必填 + 格式校验），取消回拉服务器数据（失败时提示"还原失败"），保存 PUT /api/users/me/settings 并同步 Pinia store
-- 前端 API 层新增 `echo-web/src/api/users.ts`（getProfile / updateProfile / getSettings / updateSettings / changePassword），类型新增 UserProfileVO / UpdateProfileDTO / UserSettingsVO / UpdateSettingsDTO / ChangePasswordDTO；文件上传函数（uploadAvatar / uploadImage）以 TODO 注释占位，待 Sprint 2 后期实现
+- 前端 API 层新增 `echo-web/src/api/users.ts`（getProfile / updateProfile / getSettings / updateSettings / changePassword / uploadAvatar / uploadImage），类型新增 UserProfileVO / UpdateProfileDTO / UserSettingsVO / UpdateSettingsDTO / ChangePasswordDTO / UploadAvatarVO / UploadImageVO
+- 后端 FileService 接口 + MinioFileServiceImpl 实现文件上传（头像 + 通用图片），MinioConfig 按 `storage.type` 条件注入 MinioClient Bean，application.yaml 新增 `storage.type: minio` 预留 OSS 切换
+- FileController（POST /api/upload/avatar + /api/upload/image）接入，前端 ProfileSettingsPage 头像上传 TODO 已放开
 - 后端 UserSettingsVO 取消手机号/邮箱脱敏，直接返回原始值（前端展示用，与 /api/auth/me 保持一致）
 - 用户表 nickname 字段改为可为空，前端 LayoutPage/ProfileSettingsPage 已适配：昵称为空时展示 username
 - 接口文档 02-api-documentation.md 已更新：文件上传模块 2 个通用接口（/api/upload/image + /api/upload/avatar），底层由 FileService 按 storage.type 切换 MinIO/OSS 实现；nickname 响应字段标注"非必须（可为空）"；附录接口总数 30
@@ -182,6 +194,7 @@ refreshToken 过期 → 清除 store → 跳转 /login
 - [x] 后端实现资料设置接口（GET/PUT /api/users/me/profile）
 - [x] 后端实现账号设置接口（GET/PUT /api/users/me/settings）
 - [x] 后端实现修改密码接口（PUT /api/users/me/password）
+- [x] 后端实现文件上传接口（POST /api/upload/avatar + /api/upload/image，MinIO）
 - [x] 前端开发 ProfileSettingsPage：头像/昵称/简介编辑
 - [x] 前端开发 SettingsPage：手机号/邮箱（el-form rules 校验）
 - [x] 前端开发 ChangePasswordPage.vue：修改密码（旧密码/新密码/确认密码，el-form rules 校验）
@@ -201,7 +214,8 @@ refreshToken 过期 → 清除 store → 跳转 /login
 ### 远期（搜索 & 存储）
 
 - [ ] 接入 Elasticsearch 实现全文搜索
-- [ ] 接入 MinIO / OSS 实现图片上传
+- [x] 接入 MinIO 实现图片上传（头像 + 通用图片）
+- [ ] OSS 存储实现（OssFileServiceImpl，storage.type=oss 时切换）
 - [ ] 404 页面（替换当前静默重定向）
 - [ ] 手机号短信验证码注册（需接入短信服务商）
 
@@ -234,8 +248,15 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | `echo-server/.../security/JwtUtil.java` | Token 生成与解析 |
 | `echo-server/.../service/impl/AuthServiceImpl.java` | 认证业务逻辑 |
 | `echo-server/.../controller/UserController.java` | 用户模块控制器（资料设置/账号设置/修改密码） |
+| `echo-server/.../controller/FileController.java` | 文件上传控制器（头像/图片上传，需认证） |
+| `echo-server/.../service/FileService.java` | 文件存储服务接口（uploadAvatar / uploadImage） |
 | `echo-server/.../service/impl/UserServiceImpl.java` | 用户模块业务逻辑（含手机/邮箱唯一性校验、BCrypt 改密、空更新保护） |
+| `echo-server/.../service/impl/MinioFileServiceImpl.java` | MinIO 文件存储实现（@ConditionalOnProperty 控制注入） |
 | `echo-server/.../mapper/UserMapper.java` | 用户模块 Mapper（与 AuthMapper 按业务拆分） |
+| `echo-server/.../config/MinioProperties.java` | MinIO 配置属性绑定（minio.*） |
+| `echo-server/.../config/MinioConfig.java` | MinIO 客户端条件注入（storage.type=minio） |
+| `echo-server/.../vo/UploadAvatarVO.java` | 头像上传响应 VO |
+| `echo-server/.../vo/UploadImageVO.java` | 图片上传响应 VO |
 | `echo-server/.../util/MaskUtil.java` | 敏感数据脱敏工具（phone/email/password/token/account） |
 | `echo-server/.../common/GlobalExceptionHandler.java` | 全局异常处理器（含 DuplicateKeyException→409 映射） |
 | `echo-web/src/api/users.ts` | 用户模块前端 API（getProfile / updateProfile / getSettings / updateSettings / changePassword；uploadAvatar/uploadImage TODO） |
