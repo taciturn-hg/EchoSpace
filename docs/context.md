@@ -154,8 +154,9 @@ refreshToken 过期 → 清除 store → 跳转 /login
 - 前端：登录页、注册页、路由守卫、Token 自动刷新
 - feature/login-register → dev（PR #3 已合并）
 
-**Sprint 2 — 用户认证与账号管理（进行中）**
-- 当前分支：feature/user-settings
+**Sprint 2 — 用户认证与账号管理（已完成，已合并至 dev）**
+- 相关分支：feature/user-settings（已合并）、feature/file-upload（安全加固，当前分支）
+- 当前分支：feature/file-upload
 - 完成了 LayoutPage.vue 布局系统：固定顶栏、可折叠左侧导航、搜索框、用户卡片、发布帖子按钮、下拉菜单（资料设置/账号设置/修改密码/退出登录）
 - 新增 ProfileSettingsPage.vue 完整实现：头像上传（前端校验，上传接口 TODO）、昵称编辑、个人简介编辑（Element Plus textarea，6行固定高度）、取消按钮（重新拉取服务器数据覆盖本地，失败时提示"还原失败"）、保存按钮（绿色渐变，仅脏数据可点击）
 - 新增 ChangePasswordPage.vue 完整实现：旧密码/新密码/确认密码三输入（show-password 切换），el-form rules 校验（必填、长度 6~20、新旧密码不同、两次输入一致），修改密码按钮 PUT /api/users/me/password 后端返回消息提示，清空按钮重置表单与校验状态，按钮行左侧"忘记密码？"链接（当前禁用态，待 Redis 接入后启用），绿色渐变按钮仅脏数据可点击
@@ -178,6 +179,14 @@ refreshToken 过期 → 清除 store → 跳转 /login
 - UserServiceImpl.updateProfile 增加空更新保护（与 updateSettings 一致），避免全 null DTO 触发无 SET 列的 SQL 异常
 - ProfileSettingsPage 头像交互重构："选择图片"按钮仅做本地预览（URL.createObjectURL），点击保存时统一上传头像 + 更新资料
 - UserService/UserController 移除残余"脱敏"Javadoc 注释
+- **文件上传安全加固（feature/file-upload）**：
+  - MinioFileServiceImpl 新增扩展名白名单校验（.jpg/.jpeg/.png），防止路径遍历和恶意文件上传
+  - MinioFileServiceImpl 新增文件大小上限校验（MAX_FILE_SIZE = 2MB），业务层 + Servlet 层双重防护
+  - MinioFileServiceImpl 新增 contentType 空判断，null 时兜底 "application/octet-stream"，防 NPE
+  - MinioFileServiceImpl upload() 用 try-with-resources 包裹 InputStream，确保流显式关闭
+  - MinioFileServiceImpl 新增 normalizeEndpoint() 去除 endpoint 尾部斜杠，避免双斜杠 URL
+  - 前端 uploadAvatar/uploadImage 删除手动 Content-Type: multipart/form-data，让 Axios 自动设置 boundary
+  - 开发问题记录 Question.md 新增问题 12（Content-Type/boundary）、13（扩展名白名单）、14（文件大小校验）、15（contentType NPE）、16（InputStream 关闭）
 
 ### 开发规范（更新中）
 - **日志追踪（强制）**：后续所有后端功能开发，Controller / Service 必须添加 @Slf4j 注解并使用 log.info/log.warn 打印业务流日志，格式统一为 `log.info("操作描述 关键参数={}", value)`
@@ -251,7 +260,7 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | `echo-server/.../controller/FileController.java` | 文件上传控制器（头像/图片上传，需认证） |
 | `echo-server/.../service/FileService.java` | 文件存储服务接口（uploadAvatar / uploadImage） |
 | `echo-server/.../service/impl/UserServiceImpl.java` | 用户模块业务逻辑（含手机/邮箱唯一性校验、BCrypt 改密、空更新保护） |
-| `echo-server/.../service/impl/MinioFileServiceImpl.java` | MinIO 文件存储实现（@ConditionalOnProperty 控制注入） |
+| `echo-server/.../service/impl/MinioFileServiceImpl.java` | MinIO 文件存储实现（扩展名白名单、文件大小校验、contentType 空判断、try-with-resources、endpoint 规范化） |
 | `echo-server/.../mapper/UserMapper.java` | 用户模块 Mapper（与 AuthMapper 按业务拆分） |
 | `echo-server/.../config/MinioProperties.java` | MinIO 配置属性绑定（minio.*） |
 | `echo-server/.../config/MinioConfig.java` | MinIO 客户端条件注入（storage.type=minio） |
@@ -259,7 +268,7 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | `echo-server/.../vo/UploadImageVO.java` | 图片上传响应 VO |
 | `echo-server/.../util/MaskUtil.java` | 敏感数据脱敏工具（phone/email/password/token/account） |
 | `echo-server/.../common/GlobalExceptionHandler.java` | 全局异常处理器（含 DuplicateKeyException→409 映射） |
-| `echo-web/src/api/users.ts` | 用户模块前端 API（getProfile / updateProfile / getSettings / updateSettings / changePassword；uploadAvatar/uploadImage TODO） |
+| `echo-web/src/api/users.ts` | 用户模块前端 API（上传函数已删除手动 Content-Type，Axios 自动设置 boundary） |
 | `echo-web/src/utils/result.ts` | Axios 封装，含 401 自动刷新逻辑 |
 | `echo-web/src/stores/userStore.ts` | 用户状态（Token + 用户信息） |
 | `echo-web/src/router/index.ts` | 路由定义与守卫 |

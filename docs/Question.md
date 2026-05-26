@@ -1010,3 +1010,161 @@ if (to.matched.some((r) => r.meta.requiresAuth) && !store.isLoggedIn) {
 ```
 
 > **关键点**：`to.meta` 只包含当前路由自身的 meta，`to.matched` 是从根到当前路由的完整路由记录数组。需要"继承"父路由 meta 的场景，必须用 `to.matched.some()` 或 `to.matched.find()` 遍历整条链，而不能直接读 `to.meta`。
+
+### 12、手动设置 Content-Type: multipart/form-data 导致缺少 boundary，Spring 无法解析文件
+
+**问题**
+
+`uploadAvatar` 和 `uploadImage` 在发送 `FormData` 时手动指定了 `headers: { 'Content-Type': 'multipart/form-data' }`。但 `multipart/form-data` 必须携带一个 `boundary` 参数（由浏览器/Axios 在检测到 `FormData` 时自动生成），格式为：
+
+```
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+```
+
+手动写死的 `multipart/form-data` 会覆盖自动生成的 Content-Type，导致请求头中没有 `boundary`。Spring Boot 的 `StandardServletMultipartResolver` 无法定位各 part 的边界，表现为：
+
+- `MissingServletRequestPartException: Required request part 'file' is not present`
+- 或直接 HTTP 400（取不到 `file` 参数）
+
+**解决方案：删除手动 headers，让 Axios 自动设置**
+
+Axios 在检测到 body 为 `FormData` 时会自动生成带正确 `boundary` 的 Content-Type，无需也不应手动覆盖：
+
+```typescript
+// ❌ 手动写死 Content-Type，丢失 boundary
+return result.post('/upload/avatar', fd, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+})
+
+// ✅ 删除 headers，让 Axios 自动设置
+return result.post('/upload/avatar', fd)
+```
+
+`uploadAvatar` 和 `uploadImage` 两处均删除 `headers` 参数。
+
+> **关键点**：任何基于 `FormData` 的上传请求，都**不应该**手动设置 `Content-Type: multipart/form-data`。浏览器和 Axios 需要自动附加唯一的 `boundary` 字符串来分隔 multipart 中的各个 part。这是 `FormData` + `XMLHttpRequest`/`fetch` 的标准行为，不是 Axios 特有的。
+
+---
+
+## 后端：文件上传安全加固
+
+### 13、MinIO 文件上传缺少扩展名白名单校验，存在路径遍历和恶意文件上传风险
+
+**问题**
+
+`MinioFileServiceImpl.upload()` 直接取 `originalFilename` 的扩展名拼入 MinIO objectName：`dir + "/" + UUID + extension`。攻击者可以构造恶意文件名绕过前端校验：
+
+1. **路径遍历**：文件名 `../../../etc/passwd` 或 `shell.jsp`，扩展名提取逻辑（`lastIndexOf(".")`）可能被绕过或产生非预期结果。
+2. **目录注入**：文件名包含 `/`（如 `a.jpg/../../../etc/passwd`），`lastIndexOf(".")` 取到 `.jpg` 之后的 `/` 部分，在 MinIO 中可能被解释为目录层级。
+3. **非图片文件上传**：`.exe`、`.jsp`、`.html` 等可执行文件若上传成功，结合 XSS 或路径穿越可造成严重安全后果。
+
+**解决方案：白名单 + 大小写不敏感匹配**
+
+定义允许的图片扩展名白名单，扩展名提取后立即校验，不在白名单内直接拒绝：
+
+```java
+private static final String[] ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png"};
+
+private boolean isAllowedExtension(String extension) {
+    for (String allowed : ALLOWED_EXTENSIONS) {
+        if (allowed.equalsIgnoreCase(extension)) {
+            return true;
+        }
+    }
+    return false;
+}
+```
+
+校验逻辑放在 `upload()` 方法中，扩展名提取之后立即执行：
+
+```java
+String extension = "";
+if (originalFilename != null && originalFilename.contains(".")) {
+    extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+}
+if (!isAllowedExtension(extension)) {
+    throw new BusinessException("文件扩展名不正确");
+}
+```
+
+> **关键点**：后端校验是最后一道防线——前端校验（如 `<input accept="image/*">`）可以被浏览器开发者工具或 curl 绕过。白名单使用 `equalsIgnoreCase` 兼容 `.JPG`、`.PNG` 等大写变体。
+
+### 14、MinIO 文件上传缺少文件大小校验
+
+**问题**
+
+`upload()` 方法未对文件大小做任何限制。攻击者可上传超大文件耗尽 MinIO 存储空间或造成内存溢出（`file.getInputStream()` 和 `file.getSize()` 直接传入 `PutObjectArgs.stream()`，大文件流式读取时可能持续占用内存）。
+
+Spring Boot 默认的 `spring.servlet.multipart.max-file-size` 为 1MB，但这是 Servlet 容器层面的限制，超限会返回 500 而非业务异常，且错误消息不友好。业务层增加显式校验可以返回清晰的错误提示。
+
+**解决方案：`file.getSize()` 校验 + 明确上限常量**
+
+```java
+private static final long MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+
+// upload() 方法中，扩展名校验之后：
+if (file.getSize() > MAX_FILE_SIZE) {
+    throw new BusinessException("文件大小不能超过2MB");
+}
+```
+
+校验顺序：扩展名 → 文件大小 → MinIO 上传。两项校验都在实际 I/O 之前完成，避免无效的流操作。
+
+> **关键点**：业务层和 Servlet 容器层两重防护互补。Servlet 层的 `max-file-size` 作为兜底（防止超大文件进入内存），业务层提供友好的中文错误提示。`MAX_FILE_SIZE` 定义为常量便于后续按场景差异化（头像和帖子图片可设不同上限）。
+
+### 15、`file.getContentType()` 未做空判断，传入 MinIO SDK 可能触发 NPE
+
+**问题**
+
+`MultipartFile.getContentType()` 在以下场景会返回 `null`：
+
+- 客户端请求中该 part 未发送 Content-Type 头
+- 某些非标准 HTTP 客户端/代理省略了 part 级 Content-Type
+- 使用 `curl -F 'file=@img.jpg'` 但不指定 `;type=` 时
+
+直接将 `null` 传给 `PutObjectArgs.contentType(null)`，取决于 MinIO SDK 构建器内部实现，可能即时抛出 NPE 或存入 `null` 后在序列化阶段抛异常。
+
+**解决方案：提供兜底默认值**
+
+```java
+String contentType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
+```
+
+`application/octet-stream` 是 RFC 2046 定义的标准二进制流 MIME 类型，MinIO 收到后不会对内容做额外推断，行为等价于不传 Content-Type 时的服务端默认值。
+
+> **关键点**：`file.getContentType()` 是客户端声明的值，**不可信**（客户端可以伪造为任意 MIME 类型）。这里提供默认值仅为了防止 NPE，真正的安全防线是扩展名白名单（问题 13）。
+
+### 16、`file.getInputStream()` 未显式关闭，存在资源泄漏风险
+
+**问题**
+
+原代码直接在 `PutObjectArgs.builder().stream(file.getInputStream(), ...)` 中传入 `file.getInputStream()`，未用 try-with-resources 包裹：
+
+```java
+// ❌ 流未显式关闭
+minioClient.putObject(
+    PutObjectArgs.builder()
+        .stream(file.getInputStream(), file.getSize(), -1)
+        .build()
+);
+```
+
+`MultipartFile.getInputStream()` 底层可能是临时文件或内存中的字节数组。虽然 MinIO SDK 的 `putObject()` 是同步调用，内部会遍历流直到结束，但如果在流读取过程中抛出异常（如网络中断），流不会被 SDK 关闭，需要依赖 GC 的 `finalize` 机制回收，存在资源泄漏窗口。
+
+**解决方案：try-with-resources 确保流关闭**
+
+`putObject()` 是同步阻塞调用，在 try-with-resources 块内执行是安全的——SDK 读取完整个流之后方法才返回：
+
+```java
+try (var in = file.getInputStream()) {
+    minioClient.putObject(
+        PutObjectArgs.builder()
+            .stream(in, file.getSize(), -1)
+            .build()
+    );
+} catch (Exception e) {
+    // 异常处理
+}
+```
+
+> **关键点**：try-with-resources 保证 `InputStream.close()` 在正常返回和异常抛出两种路径下都被调用。对于 `MultipartFile` 的流，`close()` 通常意味着删除临时文件或释放内存缓冲区，是防御性编程的基本要求。

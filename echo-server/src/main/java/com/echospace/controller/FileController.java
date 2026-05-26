@@ -1,5 +1,6 @@
 package com.echospace.controller;
 
+import com.echospace.common.BusinessException;
 import com.echospace.common.Result;
 import com.echospace.service.FileService;
 import com.echospace.vo.UploadAvatarVO;
@@ -37,8 +38,8 @@ public class FileController {
     @Operation(summary = "上传头像", description = "上传用户头像图片，返回文件访问 URL")
     @PostMapping("/avatar")
     public Result<UploadAvatarVO> uploadAvatar(@RequestParam("file") MultipartFile file) {
-        if (file.isEmpty()) {
-            return Result.error("请选择要上传的文件");
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("请选择要上传的文件");
         }
         String url = fileService.uploadAvatar(file);
         log.info("头像上传成功 url={}", url);
@@ -54,8 +55,8 @@ public class FileController {
     @Operation(summary = "上传图片", description = "上传通用图片（帖子配图等），返回文件访问 URL")
     @PostMapping("/image")
     public Result<UploadImageVO> uploadImage(@RequestParam("file") MultipartFile file) {
-        if (file.isEmpty()) {
-            return Result.error("请选择要上传的文件");
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("请选择要上传的文件");
         }
         String url = fileService.uploadImage(file);
         log.info("图片上传成功 url={}", url);

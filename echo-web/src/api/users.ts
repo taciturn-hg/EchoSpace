@@ -27,15 +27,11 @@ export const changePassword = (dto: ChangePasswordDTO) =>
 export const uploadAvatar = (file: File) => {
   const fd = new FormData()
   fd.append('file', file)
-  return result.post<unknown, ApiResult<UploadAvatarVO>>('/upload/avatar', fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  return result.post<unknown, ApiResult<UploadAvatarVO>>('/upload/avatar', fd)
 }
 
 export const uploadImage = (file: File) => {
   const fd = new FormData()
   fd.append('file', file)
-  return result.post<unknown, ApiResult<UploadImageVO>>('/upload/image', fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  return result.post<unknown, ApiResult<UploadImageVO>>('/upload/image', fd)
 }
