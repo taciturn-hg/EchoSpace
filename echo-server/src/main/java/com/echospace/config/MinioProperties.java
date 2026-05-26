@@ -20,9 +20,11 @@ public class MinioProperties {
     private String endpoint;
 
     /** 访问密钥 */
+    @NotBlank
     private String accessKey;
 
     /** 密钥 */
+    @NotBlank
     private String secretKey;
 
     /** 存储桶名称 */

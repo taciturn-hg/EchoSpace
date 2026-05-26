@@ -126,7 +126,6 @@ async function handleSave() {
         const res = await uploadAvatar(selectedFile.value)
         form.avatar = res.data?.url
       } catch {
-        ElMessage.error('头像上传失败')
         return
       }
     }
