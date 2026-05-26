@@ -125,7 +125,7 @@ public class MinioFileServiceImpl implements FileService {
         }
         String normalized = endpoint.trim();
         if (normalized.isEmpty()) {
-            throw new BusinessException("MinIO endpoint 配置不能为空白");
+            throw new BusinessException("MinIO endpoint 配置不能为空");
         }
         int endIndex = normalized.length();
         while (endIndex > 0 && normalized.charAt(endIndex - 1) == '/') {
