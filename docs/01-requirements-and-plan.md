@@ -547,9 +547,11 @@ EchoSpace/
 | Axios | — | HTTP 请求 |
 | pinia-plugin-persistedstate | — | Pinia 持久化插件 |
 | Element Plus | 2.x | UI 组件库 |
+| @lucide/vue | — | Lucide 图标库（15,000+ 图标，Tree-shaking） |
 | @tiptap/vue-3 | — | Tiptap Vue 3 集成 |
 | @tiptap/starter-kit | — | Tiptap 基础扩展包 |
 | @tiptap/extension-image | — | Tiptap 图片扩展 |
+| @tiptap/extension-link | — | Tiptap 链接扩展 |
 | DOMPurify | — | 前端 XSS 过滤（渲染前最后一道防线） |
 
 > **注意**：DOMPurify 安装后不会自动生效，需在渲染富文本 HTML 的组件中手动调用：

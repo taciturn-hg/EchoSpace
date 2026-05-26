@@ -8,7 +8,7 @@
 |------|--------|----------|--------|
 | **用户系统** | 注册、登录、JWT 认证、个人信息编辑 | 4 个（auth 模块） | P0 |
 | **用户资料** | 个人主页、账号设置、编辑资料、修改密码、用户帖子列表 | 5 个（users 模块） | P0 |
-| **帖子系统** | 发布（Tiptap 富文本 + 图片）、编辑、软删除、分页列表、帖子详情 | 5 个（post CRUD + list） | P0 |
+| **帖子系统** | 发布（Tiptap 富文本 + 图片）、编辑、软删除、游标分页列表（无限滚动）、帖子详情 | 5 个（post CRUD + list） | P0 |
 | **图片上传** | 上传帖子图片、上传头像、图片回显、文件类型/大小校验 | 2 个 | P0 |
 | **评论系统** | 一级评论 + 二级回复、评论分页、删除 | 4 个 | P0 |
 | **点赞系统** | 帖子点赞/取消、评论点赞/取消、点赞数展示（Redis Set + MySQL） | 2 个 | P0 |
@@ -358,17 +358,17 @@ flowchart TD
     C --> D[统计 postCount / followerCount / followingCount]
     D --> E[返回用户资料]
 
-    E --> F["GET /api/users/{id}/posts?page=1"]
-    F --> G[分页查询该用户的帖子列表]
-    G --> H[渲染帖子列表]
+    E --> F["GET /api/users/{id}/posts?size=10"]
+    F --> G[游标分页查询该用户的帖子列表]
+    G --> H[渲染帖子列表，滚动到底部加载更多]
 
     I[用户访问首页时间线] --> J{已登录?}
-    J -->|是| K[GET /api/posts?sort=created_at<br>过滤关注用户的帖子]
+    J -->|是| K["GET /api/posts?sort=created_at<br>过滤关注用户的帖子"]
     K --> L[JOIN user_follow + post<br>WHERE follower_id = currentUserId]
-    L --> M[按时间倒序返回关注用户的帖子]
+    L --> M[游标分页，按时间倒序返回]
 
-    J -->|否/未关注任何人| N[GET /api/posts?sort=created_at]
-    N --> O[全站最新帖子列表]
+    J -->|否/未关注任何人| N["GET /api/posts?sort=created_at"]
+    N --> O[全站最新帖子列表（无限滚动）]
 ```
 
 ### 2.11 系统全景流程

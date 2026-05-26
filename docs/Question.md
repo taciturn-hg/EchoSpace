@@ -1353,3 +1353,110 @@ minio:
 ```
 
 > **关键点**：将"直连地址"和"对外访问地址"分离，兼容开发（本地裸 MinIO）和生产（nginx/CDN 反代）两种场景。`publicBaseUrl` 不配 `@NotBlank`，为空时回退到 `endpoint`，开发环境零配置即可工作。如果后续需要预签名 URL（bucket 设为私有时），可以在此基础上引入 MinIO SDK 的 `getPresignedObjectUrl()`，对外访问地址仍从 `publicBaseUrl` 获取。
+
+---
+
+## 前端：数据库查询使用游标实现瀑布式加载
+
+### 21、评论列表无限滚动 — 游标分页替代传统页码分页
+
+**背景**
+
+帖子详情页的评论区一级评论列表采用无限滚动（瀑布流）加载，与首页帖子列表一致。但评论列表接口（4.2）最初设计为传统页码分页（`current`/`size`/`total`），无法直接复用通用的 `useInfiniteList` composable。
+
+**方案设计**
+
+1. **接口层**：将 4.2 评论列表接口从页码分页改造为游标分页，对齐 3.5 帖子列表接口格式。
+
+| 改动点 | 改造前（页码） | 改造后（游标） |
+|--------|---------------|---------------|
+| 请求参数 | `current`, `size`, `replySize` | `cursor`, `size`, `replySize` |
+| 响应字段 | `total`, `current`, `size` | `cursor`, `hasMore`, `size` |
+| 游标格式 | — | `{timestamp}_{id}` |
+| 首次请求 | `current=1` | 不传 `cursor` |
+| 翻页 | `current=2` | `cursor=上页返回的cursor值` |
+
+2. **Composable 层**：将 `usePostList` 重构为通用 `useInfiniteList<T>`，支持双模式：
+
+```typescript
+// 游标模式（帖子列表、评论列表）
+useInfiniteList<PostVO>()                          // 默认 cursor 模式
+
+// 页码模式（粉丝列表、关注列表等传统分页场景）
+useInfiniteList<FollowerVO>({ mode: 'page' })
+```
+
+核心分页逻辑：
+
+```typescript
+// 游标模式 — hasMore 由后端直接返回
+cursor.value = (result.cursor as string) ?? null
+hasMore.value = (result.hasMore as boolean) ?? false
+
+// 页码模式 — hasMore 由前端计算
+hasMore.value = cur * sz < total
+currentPage.value++
+```
+
+3. **前端页面**：PostDetail 评论区使用 `v-infinite-scroll` + `useInfiniteList<CommentVO>`：
+
+```typescript
+const {
+  posts: comments,
+  loading: commentsLoading,
+  hasMore: commentsHasMore,
+  fetchPosts: fetchCommentPage,
+  reset: resetComments,
+} = useInfiniteList<CommentVO>({
+  fetchFn: (params) =>
+    fetchComments(postId.value, {
+      cursor: (params.cursor as string) ?? undefined,
+      size: params.size as number,
+      replySize: 3,
+    }),
+})
+```
+
+```html
+<section
+  v-infinite-scroll="fetchCommentPage"
+  :infinite-scroll-disabled="commentsLoading || !commentsHasMore"
+  :infinite-scroll-immediate="false"
+  infinite-scroll-distance="120"
+>
+  <CommentThread v-for="comment in comments" ... />
+  <p v-if="commentsLoading">加载中...</p>
+  <p v-if="!commentsHasMore && comments.length > 0">没有更多评论了</p>
+</section>
+```
+
+4. **数据库查询**：后端 MyBatis-Plus 按 `(created_at, id)` 复合排序 + `WHERE (created_at, id) < (?, ?)` 实现 keyset pagination，避免 `OFFSET` 在大页码时的性能衰减。
+
+```sql
+-- 首页（无 cursor）
+SELECT * FROM comment
+WHERE post_id = ? AND parent_id = 0 AND is_deleted = 0
+ORDER BY created_at ASC, id ASC
+LIMIT ? + 1  -- 多取一条判断 hasMore
+
+-- 后续页（传入 cursor: {timestamp}_{id}）
+SELECT * FROM comment
+WHERE post_id = ? AND parent_id = 0 AND is_deleted = 0
+  AND (created_at, id) > (?, ?)  -- keyset 条件
+ORDER BY created_at ASC, id ASC
+LIMIT ? + 1
+```
+
+> **关键点**：游标分页的核心优势是在大数据量下保持稳定的查询性能。`OFFSET + LIMIT` 在翻到后面页码时数据库仍需扫描并跳过前面所有行，而 keyset pagination 利用索引直接定位起点，时间复杂度 O(1)。此外，游标分页天然避免"插入新数据导致翻页重复/遗漏"的并发问题。
+
+**影响范围**
+
+| 文件 | 改动 |
+|------|------|
+| `composables/usePostList.ts` → `useInfiniteList.ts` | 重命名，泛型化，增加 `mode` 选项 |
+| `api/comments.ts` | `fetchComments` 参数从 `{current,size}` 改为 `{cursor,size}` |
+| `views/HomePage.vue` | import 路径更新 |
+| `views/PostDetail.vue` | 评论区从 ElPagination 改为 v-infinite-scroll + composable |
+| `docs/02-api-documentation.md` | 4.2 接口改为游标分页格式 |
+
+> 4.3 二级回复接口保持页码分页不变，因为二级回复通过 CommentThread 内置的 ElPagination 展示，不需要无限滚动。
