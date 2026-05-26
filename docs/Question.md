@@ -1206,3 +1206,73 @@ String contentType = resolveContentType(extension);
 ```
 
 > **关键点**：扩展名白名单（问题 13）是"允许什么格式"的防线，`resolveContentType` 是"以什么类型对外服务"的防线。两者配合才能构成完整的安全链路——白名单决定能存什么，`resolveContentType` 决定怎么服务。`default` 分支返回 `application/octet-stream` 仅在 `ALLOWED_EXTENSIONS` 与 `resolveContentType` 不同步时才会走到，属于代码维护安全网。
+
+### 18、`normalizeEndpoint` 在 endpoint 为空时静默返回空字符串，掩盖配置错误
+
+**问题**
+
+`normalizeEndpoint()` 方法对 `null` endpoint 返回空字符串 `""`，后续拼出的 URL 形如 `/bucket/object`（缺少 scheme + host），前端拿到后无法访问。更严重的是，上传流程在外层返回成功，调用方（如 `updateProfile`）会错误地认为头像已可用，但实际上存储的是一个无效链接。
+
+```java
+// ❌ null 时返回空字符串，掩盖配置错误
+private String normalizeEndpoint(String endpoint) {
+    if (endpoint == null) {
+        return "";
+    }
+    // ...
+}
+```
+
+此外，`file.getContentType()` 可能为 `null`（见问题 15），`accessKey`/`secretKey` 为空时 `MinioClient` 也能构建成功（仅在首次请求时才发现认证失败）。这些问题如果不在启动期暴露，就会在运行时以各种奇怪的形态表现出来，排查成本高。
+
+**解决方案：启动期强校验 + 条件注册**
+
+1. **`MinioProperties` 关键字段加 `@NotBlank`**：`endpoint`、`accessKey`、`secretKey`、`bucketName` 全部加 `@NotBlank`，配置缺失/为空时启动直接抛 `BindValidationException`，拒绝启动。
+
+2. **`MinioProperties` 的注册与校验移到 `storage.type=minio` 条件分支内**：原来 `MinioProperties` 类上有 `@ConfigurationProperties(prefix = "minio")`，被 `@ConfigurationPropertiesScan` 无条件扫描注册。如果未来切换到 `storage.type=oss`，仍然需要提供 `minio.*` 配置，与"通过 `storage.type` 切换存储方案"的设计矛盾。
+
+修改方案：去掉 `MinioProperties` 类上的 `@ConfigurationProperties`，改为在 `MinioConfig` 的 `@Bean` 方法上加 `@ConfigurationProperties(prefix = "minio")` + `@Validated`：
+
+```java
+// MinioConfig.java — 仅在 storage.type=minio 时生效
+@Configuration
+@ConditionalOnProperty(name = "storage.type", havingValue = "minio")
+public class MinioConfig {
+
+    @Bean
+    @ConfigurationProperties(prefix = "minio")
+    @Validated
+    public MinioProperties minioProperties() {
+        return new MinioProperties();
+    }
+
+    @Bean
+    public MinioClient minioClient(MinioProperties properties) { ... }
+}
+```
+
+```java
+// MinioProperties.java — 普通 POJO，不再被 @ConfigurationPropertiesScan 扫描
+@Data
+public class MinioProperties {
+    @NotBlank private String endpoint;
+    @NotBlank private String accessKey;
+    @NotBlank private String secretKey;
+    @NotBlank private String bucketName;
+}
+```
+
+3. **`normalizeEndpoint` 删除 null 守卫**：`@NotBlank` 已保证运行时 `endpoint` 非 null，null 检查变成死代码。仅保留尾部斜杠归一化逻辑。
+
+```java
+// ✅ null 守卫已由启动校验覆盖，此处仅处理尾部斜杠
+private String normalizeEndpoint(String endpoint) {
+    int endIndex = endpoint.length();
+    while (endIndex > 0 && endpoint.charAt(endIndex - 1) == '/') {
+        endIndex--;
+    }
+    return endpoint.substring(0, endIndex);
+}
+```
+
+> **关键点**：fail-fast 原则——配置问题应在启动期暴露，而非运行时以"上传成功但链接不可用"的形式出现。`@ConfigurationProperties` 从类级别移到 `@Bean` 方法级别，配合 `@ConditionalOnProperty`，实现了"MinIO 配置的绑定与校验只在 MinIO 被选用时才触发"，切换到 OSS 时不再需要提供无意义的 `minio.*` 配置。

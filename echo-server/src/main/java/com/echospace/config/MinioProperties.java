@@ -2,16 +2,12 @@ package com.echospace.config;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.validation.annotation.Validated;
 
 /**
- * MinIO 配置属性：绑定 application.yaml 中 minio.* 前缀的配置项
+ * MinIO 配置属性：仅在 storage.type=minio 时由 MinioConfig 注册并校验
  *
  * @Author: taciturn-hg
  */
-@ConfigurationProperties(prefix = "minio")
-@Validated
 @Data
 public class MinioProperties {
 
