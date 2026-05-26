@@ -1305,3 +1305,51 @@ public Result<Void> handleMultipart(MultipartException e) {
 ```
 
 > **关键点**：这两个异常属于 Spring MVC 框架层的参数绑定/解析异常，与 `MethodArgumentNotValidException`（@Valid 校验失败 → 400）性质相同——都是客户端请求格式问题，应统一映射为 400。放在 `GlobalExceptionHandler` 而非 Controller 内处理，遵循关注点分离：框架层异常在框架边界处理，对所有 Controller 生效。`FileController` 中 `file == null || file.isEmpty()` 判断在 `required=true` 下是死代码（框架已提前拦截），但保留作为防御性编程无害。
+
+### 20、手工拼接文件访问 URL 与实际对外访问方式不一致
+
+**问题**
+
+`MinioFileServiceImpl.upload()` 直接用 SDK 直连的 `endpoint` 拼接返回给前端的文件 URL：
+
+```java
+// ❌ 返回的是 SDK 直连地址，浏览器未必能访问
+String url = endpoint + "/" + bucketName + "/" + objectName;
+```
+
+这种拼接方式在不同部署拓扑下都会出问题：
+
+- **反向代理 / CDN**：SDK 通过内网 `http://minio:9000` 直连，但前端浏览器需要用公网域名 `https://cdn.echospace.com` 访问
+- **HTTPS**：内网直连通常是 HTTP，返回给浏览器后因协议不匹配被拦截（Mixed Content）
+- **自定义域名**：MinIO 对外使用 `assets.example.com`，与 `endpoint` 完全不同
+
+结果：上传流程（SDK 写 MinIO）成功，但返回给前端的 URL 不可用——前端拿到 `http://localhost:9000/echospace/avatars/xxx.jpg`，浏览器根本连不上。
+
+**解决方案：新增 `publicBaseUrl` 配置，与直连 `endpoint` 分离**
+
+`MinioProperties` 新增可选字段 `publicBaseUrl`——SDK 操作仍使用 `endpoint`，但返回给前端的链接前缀使用 `publicBaseUrl`（为空时回退到 `endpoint`，兼容开发环境不走反代的场景）：
+
+```java
+// MinioProperties.java
+@NotBlank
+private String endpoint;        // SDK 直连用（内网地址）
+
+private String publicBaseUrl;   // 对外访问域名（nginx/CDN 反代后地址），为空时回退到 endpoint
+```
+
+```java
+// MinioFileServiceImpl.java — upload() 中 URL 拼接逻辑
+String baseUrl = (publicBaseUrl != null && !publicBaseUrl.isBlank())
+        ? normalizeEndpoint(publicBaseUrl)
+        : normalizeEndpoint(endpoint);
+String url = baseUrl + "/" + bucketName + "/" + objectName;
+```
+
+```yaml
+# application.yaml
+minio:
+  endpoint: http://localhost:9000           # SDK 直连地址
+  # public-base-url: https://cdn.example.com  # 对外访问域名（可选，经 nginx/CDN 反代时配置）
+```
+
+> **关键点**：将"直连地址"和"对外访问地址"分离，兼容开发（本地裸 MinIO）和生产（nginx/CDN 反代）两种场景。`publicBaseUrl` 不配 `@NotBlank`，为空时回退到 `endpoint`，开发环境零配置即可工作。如果后续需要预签名 URL（bucket 设为私有时），可以在此基础上引入 MinIO SDK 的 `getPresignedObjectUrl()`，对外访问地址仍从 `publicBaseUrl` 获取。

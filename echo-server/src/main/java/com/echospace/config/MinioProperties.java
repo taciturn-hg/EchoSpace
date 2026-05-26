@@ -11,9 +11,15 @@ import lombok.Data;
 @Data
 public class MinioProperties {
 
-    /** MinIO 服务端点 */
+    /** MinIO 服务端点（SDK 直连用） */
     @NotBlank
     private String endpoint;
+
+    /**
+     * 对外访问基础 URL（返回给前端的文件链接前缀），为空时回退到 endpoint。
+     * 典型场景：MinIO 经 nginx/CDN 反代，SDK 直连 endpoint 与对外域名不同。
+     */
+    private String publicBaseUrl;
 
     /** 访问密钥 */
     @NotBlank

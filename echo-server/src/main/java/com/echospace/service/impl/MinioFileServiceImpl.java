@@ -73,7 +73,11 @@ public class MinioFileServiceImpl implements FileService {
         }
 
         String endpoint = normalizeEndpoint(minioProperties.getEndpoint());
-        String url = endpoint + "/" + minioProperties.getBucketName() + "/" + objectName;
+        String publicBaseUrl = minioProperties.getPublicBaseUrl();
+        String baseUrl = (publicBaseUrl != null && !publicBaseUrl.isBlank())
+                ? normalizeEndpoint(publicBaseUrl)
+                : endpoint;
+        String url = baseUrl + "/" + minioProperties.getBucketName() + "/" + objectName;
         log.info("MinIO 上传成功 url={}", url);
         return url;
     }
