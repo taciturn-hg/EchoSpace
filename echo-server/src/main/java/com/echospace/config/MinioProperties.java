@@ -12,7 +12,7 @@ import lombok.Data;
 public class MinioProperties {
 
     /** MinIO 服务端点（SDK 直连用） */
-    @NotBlank
+    @NotBlank(message = "MinIO 服务端点不能为空")
     private String endpoint;
 
     /**
@@ -22,14 +22,14 @@ public class MinioProperties {
     private String publicBaseUrl;
 
     /** 访问密钥 */
-    @NotBlank
+    @NotBlank(message = "MinIO 访问密钥不能为空")
     private String accessKey;
 
     /** 密钥 */
-    @NotBlank
+    @NotBlank(message = "MinIO 密钥不能为空")
     private String secretKey;
 
     /** 存储桶名称 */
-    @NotBlank
+    @NotBlank(message = "MinIO 存储桶名称不能为空")
     private String bucketName;
 }
