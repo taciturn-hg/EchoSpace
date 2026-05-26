@@ -79,14 +79,6 @@ export interface UpdateProfileDTO {
   bio?: string
 }
 
-export interface UploadAvatarVO {
-  url: string
-}
-
-export interface UploadImageVO {
-  url: string
-}
-
 // ===== 用户账号设置相关 =====
 export interface UserSettingsVO {
   phone: string | null
@@ -112,6 +104,16 @@ export interface ChangePasswordDTO {
   oldPassword: string
   newPassword: string
   confirmPassword: string
+}
+
+// ===== 文件操作 =====
+
+export interface UploadAvatarVO {
+  url: string
+}
+
+export interface UploadImageVO {
+  url: string
 }
 
 // ===== 后续 Sprint 按需补充 =====

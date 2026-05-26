@@ -24,4 +24,11 @@ public interface FileService {
      * @return 上传后的文件访问 URL
      */
     String uploadImage(MultipartFile file);
+
+    /**
+     * 删除已上传的文件（用于更新失败回滚等场景）
+     *
+     * @param url 上传时返回的文件访问 URL
+     */
+    void deleteFile(String url);
 }

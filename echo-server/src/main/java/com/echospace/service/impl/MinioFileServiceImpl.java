@@ -5,6 +5,7 @@ import com.echospace.config.MinioProperties;
 import com.echospace.service.FileService;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
+import io.minio.RemoveObjectArgs;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -12,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -40,7 +42,11 @@ public class MinioFileServiceImpl implements FileService {
         return upload(file, "images");
     }
 
-    private static final String[] ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png"};
+    private static final Map<String, String> ALLOWED_CONTENT_TYPES = Map.of(
+            ".jpg", "image/jpeg",
+            ".jpeg", "image/jpeg",
+            ".png", "image/png"
+    );
     private static final long MAX_FILE_SIZE = 2 * 1024 * 1024;
 
     private String upload(MultipartFile file, String dir) {
@@ -82,32 +88,49 @@ public class MinioFileServiceImpl implements FileService {
         return url;
     }
 
-    private boolean isAllowedExtension(String extension) {
-        for (String allowed : ALLOWED_EXTENSIONS) {
-            if (allowed.equalsIgnoreCase(extension)) {
-                return true;
-            }
+    @Override
+    public void deleteFile(String url) {
+        String bucketName = minioProperties.getBucketName();
+        int idx = url.indexOf("/" + bucketName + "/");
+        if (idx == -1) {
+            log.warn("MinIO 删除失败：URL 不匹配当前存储桶 url={} bucket={}", url, bucketName);
+            throw new BusinessException("文件地址不合法，无法删除");
         }
-        return false;
+        String objectName = url.substring(idx + bucketName.length() + 2);
+        try {
+            minioClient.removeObject(
+                    RemoveObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(objectName)
+                            .build()
+            );
+            log.info("MinIO 删除成功 bucket={} object={}", bucketName, objectName);
+        } catch (Exception e) {
+            log.error("MinIO 删除失败 bucket={} object={}", bucketName, objectName, e);
+            throw new BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "文件删除失败，请稍后重试");
+        }
+    }
+
+    private boolean isAllowedExtension(String extension) {
+        return ALLOWED_CONTENT_TYPES.containsKey(extension.toLowerCase());
     }
 
     private String resolveContentType(String extension) {
-        switch (extension.toLowerCase()) {
-            case ".jpg":
-            case ".jpeg":
-                return "image/jpeg";
-            case ".png":
-                return "image/png";
-            default:
-                return "application/octet-stream";
-        }
+        return ALLOWED_CONTENT_TYPES.getOrDefault(extension.toLowerCase(), "application/octet-stream");
     }
 
     private String normalizeEndpoint(String endpoint) {
-        int endIndex = endpoint.length();
-        while (endIndex > 0 && endpoint.charAt(endIndex - 1) == '/') {
+        if (endpoint == null) {
+            throw new BusinessException("MinIO endpoint 配置不能为空");
+        }
+        String normalized = endpoint.trim();
+        if (normalized.isEmpty()) {
+            throw new BusinessException("MinIO endpoint 配置不能为空白");
+        }
+        int endIndex = normalized.length();
+        while (endIndex > 0 && normalized.charAt(endIndex - 1) == '/') {
             endIndex--;
         }
-        return endpoint.substring(0, endIndex);
+        return normalized.substring(0, endIndex);
     }
 }

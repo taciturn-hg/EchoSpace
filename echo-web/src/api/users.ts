@@ -35,3 +35,6 @@ export const uploadImage = (file: File) => {
   fd.append('file', file)
   return result.post<unknown, ApiResult<UploadImageVO>>('/upload/image', fd)
 }
+
+export const deleteFile = (url: string) =>
+  result.delete<unknown, ApiResult<void>>('/upload/file', { params: { url } })

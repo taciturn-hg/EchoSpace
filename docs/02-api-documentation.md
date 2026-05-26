@@ -1907,6 +1907,52 @@
 
 ---
 
+### 5.3 删除文件
+
+#### 5.3.1 基本信息
+
+> 请求路径：/api/upload/file
+>
+> 请求方式：DELETE
+>
+> 接口描述：根据上传时返回的 URL 删除对应文件，用于更新失败回滚等场景。仅允许删除当前存储桶内的文件。
+
+#### 5.3.2 请求参数
+
+参数格式：query string
+
+参数说明：
+
+| 参数名 | 类型 | 是否必须 | 备注 |
+|--------|------|----------|------|
+| url | string | 必须 | 上传时返回的文件访问 URL |
+
+请求示例：`DELETE /api/upload/file?url=http://localhost:9000/echospace/avatars/uuid.jpg`
+
+#### 5.3.3 响应数据
+
+参数格式：application/json
+
+参数说明：
+
+| 参数名 | 类型 | 是否必须 | 备注 |
+|--------|------|----------|------|
+| code | number | 必须 | 响应码，1 代表成功，0 代表失败 |
+| msg | string | 非必须 | 提示信息 |
+| data | null | 非必须 | 无返回数据 |
+
+响应数据样例：
+
+```json
+{
+  "code": 1,
+  "msg": null,
+  "data": null
+}
+```
+
+---
+
 ## 附录：接口汇总表
 
 | 序号 | 方法 | 路径 | 说明 | 模块 |
@@ -1941,3 +1987,4 @@
 | 28 | POST | /api/comments/{id}/like | 评论点赞/取消（toggle） | 评论 |
 | 29 | POST | /api/upload/image | 上传图片 | 文件 |
 | 30 | POST | /api/upload/avatar | 上传头像 | 文件 |
+| 31 | DELETE | /api/upload/file | 删除文件（回滚清理） | 文件 |

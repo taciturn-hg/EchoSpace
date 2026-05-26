@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { EditPen, Plus } from '@element-plus/icons-vue'
-import { getProfile, updateProfile, uploadAvatar } from '@/api/users'
+import { getProfile, updateProfile, uploadAvatar, deleteFile } from '@/api/users'
 import { useUserStore } from '@/stores/userStore'
 import type { UpdateProfileDTO, UserProfileVO } from '@/api/modules'
 
@@ -119,6 +119,7 @@ async function handleSave() {
   }
 
   saving.value = true
+  let uploadedUrl: string | null = null
   try {
     // 有选中新头像时先上传
     if (selectedFile.value) {
@@ -130,6 +131,7 @@ async function handleSave() {
           return
         }
         form.avatar = avatarUrl
+        uploadedUrl = avatarUrl
       } catch {
         return
       }
@@ -161,7 +163,14 @@ async function handleSave() {
     original.nickname = form.nickname
     original.bio = form.bio
   } catch {
-    // 拦截器统一处理
+    // updateProfile 失败时，回滚清理已上传的头像文件
+    if (uploadedUrl) {
+      try {
+        await deleteFile(uploadedUrl)
+      } catch {
+        // 清理失败不影响错误提示，MinIO 中的孤儿文件可后续定期清理
+      }
+    }
   } finally {
     saving.value = false
   }
