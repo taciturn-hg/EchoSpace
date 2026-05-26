@@ -1276,3 +1276,32 @@ private String normalizeEndpoint(String endpoint) {
 ```
 
 > **关键点**：fail-fast 原则——配置问题应在启动期暴露，而非运行时以"上传成功但链接不可用"的形式出现。`@ConfigurationProperties` 从类级别移到 `@Bean` 方法级别，配合 `@ConditionalOnProperty`，实现了"MinIO 配置的绑定与校验只在 MinIO 被选用时才触发"，切换到 OSS 时不再需要提供无意义的 `minio.*` 配置。
+
+### 19、`@RequestParam("file")` 未带 `required=false`，缺失文件时 `MissingServletRequestPartException` 被兜底为 500
+
+**问题**
+
+`FileController` 的 `@RequestParam("file")` 默认 `required=true`。当请求未携带 `file` part 时，Spring 在参数绑定阶段直接抛出 `MissingServletRequestPartException`，Controller 方法体不会执行到 `file == null || file.isEmpty()` 判断（该判断是死代码）。
+
+`GlobalExceptionHandler` 中没有 `MissingServletRequestPartException` 的专属 handler，该异常最终被兜底 `handleException` 捕获，返回 **500 "服务器内部错误"**——但对于客户端来说，这是请求参数缺失问题，应该返回 400。
+
+同理，如果请求的 Content-Type 不是 `multipart/form-data`，Spring 会抛出 `MultipartException`，同样被兜底为 500。
+
+**解决方案：在 `GlobalExceptionHandler` 新增两个 handler**
+
+```java
+@ExceptionHandler(MissingServletRequestPartException.class)
+@ResponseStatus(HttpStatus.BAD_REQUEST)
+public Result<Void> handleMissingPart(MissingServletRequestPartException e) {
+    return Result.error("请选择要上传的文件");
+}
+
+@ExceptionHandler(MultipartException.class)
+@ResponseStatus(HttpStatus.BAD_REQUEST)
+public Result<Void> handleMultipart(MultipartException e) {
+    log.warn("文件上传请求格式不正确", e);
+    return Result.error("文件上传请求格式不正确");
+}
+```
+
+> **关键点**：这两个异常属于 Spring MVC 框架层的参数绑定/解析异常，与 `MethodArgumentNotValidException`（@Valid 校验失败 → 400）性质相同——都是客户端请求格式问题，应统一映射为 400。放在 `GlobalExceptionHandler` 而非 Controller 内处理，遵循关注点分离：框架层异常在框架边界处理，对所有 Controller 生效。`FileController` 中 `file == null || file.isEmpty()` 判断在 `required=true` 下是死代码（框架已提前拦截），但保留作为防御性编程无害。

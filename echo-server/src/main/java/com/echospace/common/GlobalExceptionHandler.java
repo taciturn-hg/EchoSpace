@@ -8,6 +8,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 /**
  * 全局异常处理器：统一捕获各类异常并转换为标准 {@link Result} 响应。
@@ -39,6 +41,25 @@ public class GlobalExceptionHandler {
                 .reduce((a, b) -> a + "; " + b)
                 .orElse("参数校验失败");
         return Result.error(msg);
+    }
+
+    /**
+     * 处理请求未携带 required multipart file part，HTTP 400
+     */
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Result<Void> handleMissingPart(MissingServletRequestPartException e) {
+        return Result.error("请选择要上传的文件");
+    }
+
+    /**
+     * 处理 multipart 请求解析异常（非 multipart 请求或格式错误），HTTP 400
+     */
+    @ExceptionHandler(MultipartException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Result<Void> handleMultipart(MultipartException e) {
+        log.warn("文件上传请求格式不正确", e);
+        return Result.error("文件上传请求格式不正确");
     }
 
     /**
