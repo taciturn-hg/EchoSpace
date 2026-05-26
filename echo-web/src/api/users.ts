@@ -4,6 +4,8 @@ import type {
   ChangePasswordDTO,
   UpdateProfileDTO,
   UpdateSettingsDTO,
+  UploadAvatarVO,
+  UploadImageVO,
   UserProfileVO,
   UserSettingsVO,
 } from './modules'
@@ -22,19 +24,17 @@ export const updateSettings = (dto: UpdateSettingsDTO) =>
 export const changePassword = (dto: ChangePasswordDTO) =>
   result.put<unknown, ApiResult<void>>('/users/me/password', dto)
 
-// TODO: 文件上传接口（Sprint 2 后期实现），底层由 FileService 按 storage.type 切换 MinIO/OSS
-// export const uploadAvatar = (file: File) => {
-//   const fd = new FormData()
-//   fd.append('file', file)
-//   return result.post<unknown, ApiResult<UploadAvatarVO>>('/upload/avatar', fd, {
-//     headers: { 'Content-Type': 'multipart/form-data' },
-//   })
-// }
-//
-// export const uploadImage = (file: File) => {
-//   const fd = new FormData()
-//   fd.append('file', file)
-//   return result.post<unknown, ApiResult<UploadImageVO>>('/upload/image', fd, {
-//     headers: { 'Content-Type': 'multipart/form-data' },
-//   })
-// }
+export const uploadAvatar = (file: File) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  return result.post<unknown, ApiResult<UploadAvatarVO>>('/upload/avatar', fd)
+}
+
+export const uploadImage = (file: File) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  return result.post<unknown, ApiResult<UploadImageVO>>('/upload/image', fd)
+}
+
+export const deleteFile = (url: string) =>
+  result.delete<unknown, ApiResult<void>>('/upload/file', { params: { url } })

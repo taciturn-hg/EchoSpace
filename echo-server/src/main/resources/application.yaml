@@ -54,8 +54,12 @@ jwt:
   access-token-expiration: 1800000
   refresh-token-expiration: 604800000
 
+storage:
+  type: minio
+
 minio:
   endpoint: http://localhost:9000
+  # public-base-url: https://cdn.example.com  # 对外访问域名（经 nginx/CDN 反代时配置，默认使用 endpoint）
   access-key: ${MINIO_ROOT_USER}
   secret-key: ${MINIO_ROOT_PASSWORD}
   bucket-name: echospace

@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { EditPen, Plus } from '@element-plus/icons-vue'
-import { getProfile, updateProfile } from '@/api/users'
+import { getProfile, updateProfile, uploadAvatar, deleteFile } from '@/api/users'
 import { useUserStore } from '@/stores/userStore'
 import type { UpdateProfileDTO, UserProfileVO } from '@/api/modules'
 
@@ -71,7 +71,7 @@ function applyProfile(p: UserProfileVO) {
 async function fetchProfile() {
   try {
     const res = await getProfile()
-    if (res.code === 1 && res.data) {
+    if (res.data) {
       applyProfile(res.data)
       return true
     }
@@ -119,17 +119,22 @@ async function handleSave() {
   }
 
   saving.value = true
+  let uploadedUrl: string | null = null
   try {
     // 有选中新头像时先上传
     if (selectedFile.value) {
-      // TODO：后续补上头像上传接口请求逻辑
-      // const res = await uploadAvatar(selectedFile.value)
-      // if (res.code === 1 && res.data) {
-      //   form.avatar = res.data.url
-      // } else {
-      //   ElMessage.error('头像上传失败')
-      //   return
-      // }
+      try {
+        const res = await uploadAvatar(selectedFile.value)
+        const avatarUrl = res.data?.url
+        if (!avatarUrl) {
+          ElMessage.error('头像上传结果异常，请重试')
+          return
+        }
+        form.avatar = avatarUrl
+        uploadedUrl = avatarUrl
+      } catch {
+        return
+      }
     }
 
     const dto: UpdateProfileDTO = {}
@@ -142,25 +147,30 @@ async function handleSave() {
       return
     }
 
-    const res = await updateProfile(dto)
-    if (res.code === 1) {
-      ElMessage.success('资料已更新')
-      const info = userInfo.value
-      if (info) {
-        userStore.setUserInfo({
-          ...info,
-          avatar: dto.avatar ?? info.avatar,
-          nickname: dto.nickname ?? info.nickname,
-          bio: dto.bio ?? info.bio,
-        })
-      }
-      revokePreview()
-      original.avatar = form.avatar
-      original.nickname = form.nickname
-      original.bio = form.bio
+    await updateProfile(dto)
+    ElMessage.success('资料已更新')
+    const info = userInfo.value
+    if (info) {
+      userStore.setUserInfo({
+        ...info,
+        avatar: dto.avatar ?? info.avatar,
+        nickname: dto.nickname ?? info.nickname,
+        bio: dto.bio ?? info.bio,
+      })
     }
+    revokePreview()
+    original.avatar = form.avatar
+    original.nickname = form.nickname
+    original.bio = form.bio
   } catch {
-    // 拦截器统一处理
+    // updateProfile 失败时，回滚清理已上传的头像文件
+    if (uploadedUrl) {
+      try {
+        await deleteFile(uploadedUrl)
+      } catch {
+        // 清理失败不影响错误提示，MinIO 中的孤儿文件可后续定期清理
+      }
+    }
   } finally {
     saving.value = false
   }
@@ -191,7 +201,10 @@ onBeforeUnmount(() => {
     <div class="settings-card">
       <!-- 头像区 -->
       <div class="avatar-section">
-        <div class="avatar-circle" :class="{ 'has-image': !!avatarSrc, 'is-preview': !!previewUrl }">
+        <div
+          class="avatar-circle"
+          :class="{ 'has-image': !!avatarSrc, 'is-preview': !!previewUrl }"
+        >
           <img v-if="avatarSrc" :src="avatarSrc" alt="用户头像" />
           <span v-else class="avatar-letter">{{ avatarFallback }}</span>
         </div>

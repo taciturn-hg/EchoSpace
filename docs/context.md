@@ -56,11 +56,12 @@
 │  Controller Layer                                       │
 │    AuthController  (register / login / refresh / me)    │
 │    UserController (profile GET/PUT, settings GET/PUT, password PUT) │
-│    [PostController — 待开发]                             │
+│    FileController (avatar/image upload)                  │
 │                                                         │
 │  Service Layer                                          │
 │    AuthServiceImpl                                      │
 │    UserServiceImpl (profile / settings / changePassword) │
+│    FileService → MinioFileServiceImpl (storage.type=minio) │
 │    [PostService — 待开发]                               │
 │                                                         │
 │  Security Layer                                         │
@@ -71,7 +72,8 @@
 │    MyBatis-Plus Mapper → MySQL                          │
 │    [Redis — 待接入]                                     │
 │    [Elasticsearch — 待接入]                             │
-│    [MinIO / OSS — 待接入]                               │
+│    MinIO (头像/图片上传，storage.type=minio)             │
+│    [OSS — 待接入]                                       │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -109,6 +111,14 @@ refreshToken 过期 → 清除 store → 跳转 /login
 - [x] JwtAuthFilter（`getServletPath()` 匹配白名单，无 `/api` 前缀）
 - [x] UserPrincipal（存储 userId + username，从 SecurityContext 取用）
 
+#### 文件上传模块（upload）
+- [x] FileService 接口（uploadAvatar / uploadImage）
+- [x] MinioFileServiceImpl（`@ConditionalOnProperty(name="storage.type", havingValue="minio")`）
+- [x] FileController（POST /api/upload/avatar + POST /api/upload/image，需认证）
+- [x] MinioProperties 配置绑定 + MinioConfig 条件注入 MinioClient Bean
+- [x] `storage.type` 配置预留 MinIO/OSS 切换（当前值 minio）
+- [x] 前端 uploadAvatar / uploadImage API 函数 + ProfileSettingsPage 头像上传逻辑已放开
+
 ### 页面占位（已建文件，内容待开发）
 
 | 页面 | 路由 | 状态 |
@@ -144,17 +154,20 @@ refreshToken 过期 → 清除 store → 跳转 /login
 - 前端：登录页、注册页、路由守卫、Token 自动刷新
 - feature/login-register → dev（PR #3 已合并）
 
-**Sprint 2 — 用户认证与账号管理（进行中）**
-- 当前分支：feature/user-settings
+**Sprint 2 — 用户认证与账号管理（已完成，已合并至 dev）**
+- 相关分支：feature/user-settings（已合并）、feature/file-upload（安全加固，当前分支）
+- 当前分支：feature/file-upload
 - 完成了 LayoutPage.vue 布局系统：固定顶栏、可折叠左侧导航、搜索框、用户卡片、发布帖子按钮、下拉菜单（资料设置/账号设置/修改密码/退出登录）
 - 新增 ProfileSettingsPage.vue 完整实现：头像上传（前端校验，上传接口 TODO）、昵称编辑、个人简介编辑（Element Plus textarea，6行固定高度）、取消按钮（重新拉取服务器数据覆盖本地，失败时提示"还原失败"）、保存按钮（绿色渐变，仅脏数据可点击）
 - 新增 ChangePasswordPage.vue 完整实现：旧密码/新密码/确认密码三输入（show-password 切换），el-form rules 校验（必填、长度 6~20、新旧密码不同、两次输入一致），修改密码按钮 PUT /api/users/me/password 后端返回消息提示，清空按钮重置表单与校验状态，按钮行左侧"忘记密码？"链接（当前禁用态，待 Redis 接入后启用），绿色渐变按钮仅脏数据可点击
 - 新增 SettingsPage.vue 完整实现：手机号/邮箱编辑（el-form rules 必填 + 格式校验），取消回拉服务器数据（失败时提示"还原失败"），保存 PUT /api/users/me/settings 并同步 Pinia store
-- 前端 API 层新增 `echo-web/src/api/users.ts`（getProfile / updateProfile / getSettings / updateSettings / changePassword），类型新增 UserProfileVO / UpdateProfileDTO / UserSettingsVO / UpdateSettingsDTO / ChangePasswordDTO；文件上传函数（uploadAvatar / uploadImage）以 TODO 注释占位，待 Sprint 2 后期实现
+- 前端 API 层新增 `echo-web/src/api/users.ts`（getProfile / updateProfile / getSettings / updateSettings / changePassword / uploadAvatar / uploadImage），类型新增 UserProfileVO / UpdateProfileDTO / UserSettingsVO / UpdateSettingsDTO / ChangePasswordDTO / UploadAvatarVO / UploadImageVO
+- 后端 FileService 接口 + MinioFileServiceImpl 实现文件上传（头像 + 通用图片），MinioConfig 按 `storage.type` 条件注入 MinioClient Bean，application.yaml 新增 `storage.type: minio` 预留 OSS 切换
+- FileController（POST /api/upload/avatar + /api/upload/image）接入，前端 ProfileSettingsPage 头像上传 TODO 已放开
 - 后端 UserSettingsVO 取消手机号/邮箱脱敏，直接返回原始值（前端展示用，与 /api/auth/me 保持一致）
 - 用户表 nickname 字段改为可为空，前端 LayoutPage/ProfileSettingsPage 已适配：昵称为空时展示 username
-- 接口文档 02-api-documentation.md 已更新：文件上传模块 2 个通用接口（/api/upload/image + /api/upload/avatar），底层由 FileService 按 storage.type 切换 MinIO/OSS 实现；nickname 响应字段标注"非必须（可为空）"；附录接口总数 30
-- 开发计划 04-development-plan.md 已同步：文件上传接口在 Sprint 2（累计接口数 9→11），OSS 存储实现（OssFileServiceImpl）留在 Sprint 3，全景图接口数联级更新（最终 30）
+- 接口文档 02-api-documentation.md 已更新：文件上传模块 2 个通用接口（/api/upload/image + /api/upload/avatar），底层由 FileService 按 storage.type 切换 MinIO/OSS 实现；nickname 响应字段标注"非必须（可为空）"；附录接口总数 31
+- 开发计划 04-development-plan.md 已同步：文件上传接口在 Sprint 2（累计接口数 9→12），OSS 存储实现（OssFileServiceImpl）留在 Sprint 3，全景图接口数联级更新（最终 31）
 - 功能流程图 05-feature-flows.md 已更新：新增 2.4 文件上传流程，修正 MinIO/OSS SDK 兼容性说明（OSS 官方 SDK 非 S3 协议，需 FileService 接口抽象切换）
 - 需求文档 01-requirements-and-plan.md 已修正：图片存储阶段策略中 MinIO→OSS 切换方案由"改配置"改为"FileService 接口 + OssFileServiceImpl 实现"
 - 系统设计文档已产出：`docs/《EchoSpace》系统设计.md` + `.docx`，含系统架构、六大功能模块设计、E-R 图、6 张数据库表定义、设计要点总结
@@ -166,6 +179,21 @@ refreshToken 过期 → 清除 store → 跳转 /login
 - UserServiceImpl.updateProfile 增加空更新保护（与 updateSettings 一致），避免全 null DTO 触发无 SET 列的 SQL 异常
 - ProfileSettingsPage 头像交互重构："选择图片"按钮仅做本地预览（URL.createObjectURL），点击保存时统一上传头像 + 更新资料
 - UserService/UserController 移除残余"脱敏"Javadoc 注释
+- **文件上传安全加固（feature/file-upload）**：
+  - MinioFileServiceImpl 新增扩展名白名单校验（.jpg/.jpeg/.png），防止路径遍历和恶意文件上传
+  - MinioFileServiceImpl 新增文件大小上限校验（MAX_FILE_SIZE = 2MB），业务层 + Servlet 层双重防护
+  - MinioFileServiceImpl 新增 `resolveContentType()` 由服务端根据已验证扩展名推导 MIME 类型，不再信任客户端声明的 Content-Type，防止伪造为 text/html 导致 XSS
+  - MinioFileServiceImpl upload() 用 try-with-resources 包裹 InputStream，确保流显式关闭
+  - MinioFileServiceImpl 新增 normalizeEndpoint() 去除 endpoint 尾部斜杠 + trim，避免双斜杠 URL
+  - 前端 uploadAvatar/uploadImage 删除手动 Content-Type: multipart/form-data，让 Axios 自动设置 boundary
+  - MinioProperties 关键字段（endpoint/accessKey/secretKey/bucketName）加 @NotBlank(message=...) 启动期强校验，fail-fast；配置绑定从类级别 @ConfigurationProperties 移到 MinioConfig @Bean 方法级别，仅在 storage.type=minio 时注册校验
+  - MinioProperties 新增 publicBaseUrl 可选字段：SDK 直连用 endpoint，对外返回链接用 publicBaseUrl（为空时回退），分离内网与公网访问地址
+  - GlobalExceptionHandler 新增 MissingServletRequestPartException → 400 + MultipartException → 400 映射
+  - FileService 新增 deleteFile(String url) 接口 + MinioFileServiceImpl 实现（解析 URL → removeObject）+ FileController DELETE /api/upload/file 端点（需认证，URL 白名单校验 bucket 匹配）
+  - ProfileSettingsPage handleSave 新增回滚清理：updateProfile 失败时自动调 deleteFile 清理已上传头像（best-effort，清理失败不影响错误提示）
+  - 前端 users.ts 新增 deleteFile API 函数
+  - 接口文档 02-api-documentation.md 新增 5.3 删除文件接口，附录接口总数更新为 31
+  - 开发问题记录 Question.md 新增问题 12~20（Content-Type/boundary、扩展名白名单、文件大小校验、contentType NPE、InputStream 关闭、Content-Type 伪造/XSS、MinIO 配置校验/条件注册、MissingServletRequestPartException、手工拼接 URL、删除回滚）
 
 ### 开发规范（更新中）
 - **日志追踪（强制）**：后续所有后端功能开发，Controller / Service 必须添加 @Slf4j 注解并使用 log.info/log.warn 打印业务流日志，格式统一为 `log.info("操作描述 关键参数={}", value)`
@@ -182,6 +210,7 @@ refreshToken 过期 → 清除 store → 跳转 /login
 - [x] 后端实现资料设置接口（GET/PUT /api/users/me/profile）
 - [x] 后端实现账号设置接口（GET/PUT /api/users/me/settings）
 - [x] 后端实现修改密码接口（PUT /api/users/me/password）
+- [x] 后端实现文件上传接口（POST /api/upload/avatar + /api/upload/image，MinIO）
 - [x] 前端开发 ProfileSettingsPage：头像/昵称/简介编辑
 - [x] 前端开发 SettingsPage：手机号/邮箱（el-form rules 校验）
 - [x] 前端开发 ChangePasswordPage.vue：修改密码（旧密码/新密码/确认密码，el-form rules 校验）
@@ -201,7 +230,8 @@ refreshToken 过期 → 清除 store → 跳转 /login
 ### 远期（搜索 & 存储）
 
 - [ ] 接入 Elasticsearch 实现全文搜索
-- [ ] 接入 MinIO / OSS 实现图片上传
+- [x] 接入 MinIO 实现图片上传（头像 + 通用图片）
+- [ ] OSS 存储实现（OssFileServiceImpl，storage.type=oss 时切换）
 - [ ] 404 页面（替换当前静默重定向）
 - [ ] 手机号短信验证码注册（需接入短信服务商）
 
@@ -234,11 +264,18 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | `echo-server/.../security/JwtUtil.java` | Token 生成与解析 |
 | `echo-server/.../service/impl/AuthServiceImpl.java` | 认证业务逻辑 |
 | `echo-server/.../controller/UserController.java` | 用户模块控制器（资料设置/账号设置/修改密码） |
+| `echo-server/.../controller/FileController.java` | 文件上传控制器（头像/图片上传 + 文件删除，需认证） |
+| `echo-server/.../service/FileService.java` | 文件存储服务接口（uploadAvatar / uploadImage / deleteFile） |
 | `echo-server/.../service/impl/UserServiceImpl.java` | 用户模块业务逻辑（含手机/邮箱唯一性校验、BCrypt 改密、空更新保护） |
+| `echo-server/.../service/impl/MinioFileServiceImpl.java` | MinIO 文件存储实现（扩展名白名单、文件大小校验、resolveContentType 防 XSS、try-with-resources、endpoint 规范化、deleteFile 回滚清理） |
 | `echo-server/.../mapper/UserMapper.java` | 用户模块 Mapper（与 AuthMapper 按业务拆分） |
+| `echo-server/.../config/MinioProperties.java` | MinIO 配置属性（endpoint/publicBaseUrl/accessKey/secretKey/bucketName，@NotBlank 启动校验） |
+| `echo-server/.../config/MinioConfig.java` | MinIO 客户端条件注入（storage.type=minio，含 MinioProperties 条件注册绑定） |
+| `echo-server/.../vo/UploadAvatarVO.java` | 头像上传响应 VO |
+| `echo-server/.../vo/UploadImageVO.java` | 图片上传响应 VO |
 | `echo-server/.../util/MaskUtil.java` | 敏感数据脱敏工具（phone/email/password/token/account） |
-| `echo-server/.../common/GlobalExceptionHandler.java` | 全局异常处理器（含 DuplicateKeyException→409 映射） |
-| `echo-web/src/api/users.ts` | 用户模块前端 API（getProfile / updateProfile / getSettings / updateSettings / changePassword；uploadAvatar/uploadImage TODO） |
+| `echo-server/.../common/GlobalExceptionHandler.java` | 全局异常处理器（含 DuplicateKeyException→409、MissingServletRequestPartException/MultipartException→400 映射） |
+| `echo-web/src/api/users.ts` | 用户模块前端 API（含 uploadAvatar/uploadImage/deleteFile） |
 | `echo-web/src/utils/result.ts` | Axios 封装，含 401 自动刷新逻辑 |
 | `echo-web/src/stores/userStore.ts` | 用户状态（Token + 用户信息） |
 | `echo-web/src/router/index.ts` | 路由定义与守卫 |

@@ -48,7 +48,7 @@ echo-web/src/
 - [x] 更新资料设置接口 (PUT /api/users/me/profile)
 - [x] 更新账号设置接口 (PUT /api/users/me/settings)
 - [x] 修改密码接口 (PUT /api/users/me/password)
-- [ ] 文件上传接口（帖子图片上传：POST /api/upload/image + 头像上传：POST /api/upload/avatar）
+- [x] 文件上传接口（帖子图片上传：POST /api/upload/image + 头像上传：POST /api/upload/avatar）
 - [x] 前端登录/注册页面 + Axios 拦截器（Token 注入 + 过期刷新）
 
 ### Sprint 2 产出物

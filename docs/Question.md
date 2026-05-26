@@ -1010,3 +1010,346 @@ if (to.matched.some((r) => r.meta.requiresAuth) && !store.isLoggedIn) {
 ```
 
 > **关键点**：`to.meta` 只包含当前路由自身的 meta，`to.matched` 是从根到当前路由的完整路由记录数组。需要"继承"父路由 meta 的场景，必须用 `to.matched.some()` 或 `to.matched.find()` 遍历整条链，而不能直接读 `to.meta`。
+
+### 12、手动设置 Content-Type: multipart/form-data 导致缺少 boundary，Spring 无法解析文件
+
+**问题**
+
+`uploadAvatar` 和 `uploadImage` 在发送 `FormData` 时手动指定了 `headers: { 'Content-Type': 'multipart/form-data' }`。但 `multipart/form-data` 必须携带一个 `boundary` 参数（由浏览器/Axios 在检测到 `FormData` 时自动生成），格式为：
+
+```
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+```
+
+手动写死的 `multipart/form-data` 会覆盖自动生成的 Content-Type，导致请求头中没有 `boundary`。Spring Boot 的 `StandardServletMultipartResolver` 无法定位各 part 的边界，表现为：
+
+- `MissingServletRequestPartException: Required request part 'file' is not present`
+- 或直接 HTTP 400（取不到 `file` 参数）
+
+**解决方案：删除手动 headers，让 Axios 自动设置**
+
+Axios 在检测到 body 为 `FormData` 时会自动生成带正确 `boundary` 的 Content-Type，无需也不应手动覆盖：
+
+```typescript
+// ❌ 手动写死 Content-Type，丢失 boundary
+return result.post('/upload/avatar', fd, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+})
+
+// ✅ 删除 headers，让 Axios 自动设置
+return result.post('/upload/avatar', fd)
+```
+
+`uploadAvatar` 和 `uploadImage` 两处均删除 `headers` 参数。
+
+> **关键点**：任何基于 `FormData` 的上传请求，都**不应该**手动设置 `Content-Type: multipart/form-data`。浏览器和 Axios 需要自动附加唯一的 `boundary` 字符串来分隔 multipart 中的各个 part。这是 `FormData` + `XMLHttpRequest`/`fetch` 的标准行为，不是 Axios 特有的。
+
+---
+
+## 后端：文件上传安全加固
+
+### 13、MinIO 文件上传缺少扩展名白名单校验，存在路径遍历和恶意文件上传风险
+
+**问题**
+
+`MinioFileServiceImpl.upload()` 直接取 `originalFilename` 的扩展名拼入 MinIO objectName：`dir + "/" + UUID + extension`。攻击者可以构造恶意文件名绕过前端校验：
+
+1. **路径遍历**：文件名 `../../../etc/passwd` 或 `shell.jsp`，扩展名提取逻辑（`lastIndexOf(".")`）可能被绕过或产生非预期结果。
+2. **目录注入**：文件名包含 `/`（如 `a.jpg/../../../etc/passwd`），`lastIndexOf(".")` 取到 `.jpg` 之后的 `/` 部分，在 MinIO 中可能被解释为目录层级。
+3. **非图片文件上传**：`.exe`、`.jsp`、`.html` 等可执行文件若上传成功，结合 XSS 或路径穿越可造成严重安全后果。
+
+**解决方案：白名单 + 大小写不敏感匹配**
+
+定义允许的图片扩展名白名单，扩展名提取后立即校验，不在白名单内直接拒绝：
+
+```java
+private static final String[] ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png"};
+
+private boolean isAllowedExtension(String extension) {
+    for (String allowed : ALLOWED_EXTENSIONS) {
+        if (allowed.equalsIgnoreCase(extension)) {
+            return true;
+        }
+    }
+    return false;
+}
+```
+
+校验逻辑放在 `upload()` 方法中，扩展名提取之后立即执行：
+
+```java
+String extension = "";
+if (originalFilename != null && originalFilename.contains(".")) {
+    extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+}
+if (!isAllowedExtension(extension)) {
+    throw new BusinessException("文件扩展名不正确");
+}
+```
+
+> **关键点**：后端校验是最后一道防线——前端校验（如 `<input accept="image/*">`）可以被浏览器开发者工具或 curl 绕过。白名单使用 `equalsIgnoreCase` 兼容 `.JPG`、`.PNG` 等大写变体。
+
+### 14、MinIO 文件上传缺少文件大小校验
+
+**问题**
+
+`upload()` 方法未对文件大小做任何限制。攻击者可上传超大文件耗尽 MinIO 存储空间或造成内存溢出（`file.getInputStream()` 和 `file.getSize()` 直接传入 `PutObjectArgs.stream()`，大文件流式读取时可能持续占用内存）。
+
+Spring Boot 默认的 `spring.servlet.multipart.max-file-size` 为 1MB，但这是 Servlet 容器层面的限制，超限会返回 500 而非业务异常，且错误消息不友好。业务层增加显式校验可以返回清晰的错误提示。
+
+**解决方案：`file.getSize()` 校验 + 明确上限常量**
+
+```java
+private static final long MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+
+// upload() 方法中，扩展名校验之后：
+if (file.getSize() > MAX_FILE_SIZE) {
+    throw new BusinessException("文件大小不能超过2MB");
+}
+```
+
+校验顺序：扩展名 → 文件大小 → MinIO 上传。两项校验都在实际 I/O 之前完成，避免无效的流操作。
+
+> **关键点**：业务层和 Servlet 容器层两重防护互补。Servlet 层的 `max-file-size` 作为兜底（防止超大文件进入内存），业务层提供友好的中文错误提示。`MAX_FILE_SIZE` 定义为常量便于后续按场景差异化（头像和帖子图片可设不同上限）。
+
+### 15、`file.getContentType()` 未做空判断，传入 MinIO SDK 可能触发 NPE
+
+**问题**
+
+`MultipartFile.getContentType()` 在以下场景会返回 `null`：
+
+- 客户端请求中该 part 未发送 Content-Type 头
+- 某些非标准 HTTP 客户端/代理省略了 part 级 Content-Type
+- 使用 `curl -F 'file=@img.jpg'` 但不指定 `;type=` 时
+
+直接将 `null` 传给 `PutObjectArgs.contentType(null)`，取决于 MinIO SDK 构建器内部实现，可能即时抛出 NPE 或存入 `null` 后在序列化阶段抛异常。
+
+**解决方案：提供兜底默认值**
+
+```java
+String contentType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
+```
+
+`application/octet-stream` 是 RFC 2046 定义的标准二进制流 MIME 类型，MinIO 收到后不会对内容做额外推断，行为等价于不传 Content-Type 时的服务端默认值。
+
+> **关键点**：`file.getContentType()` 是客户端声明的值，**不可信**（客户端可以伪造为任意 MIME 类型）。这里提供默认值仅为了防止 NPE，真正的安全防线是扩展名白名单（问题 13）。
+
+### 16、`file.getInputStream()` 未显式关闭，存在资源泄漏风险
+
+**问题**
+
+原代码直接在 `PutObjectArgs.builder().stream(file.getInputStream(), ...)` 中传入 `file.getInputStream()`，未用 try-with-resources 包裹：
+
+```java
+// ❌ 流未显式关闭
+minioClient.putObject(
+    PutObjectArgs.builder()
+        .stream(file.getInputStream(), file.getSize(), -1)
+        .build()
+);
+```
+
+`MultipartFile.getInputStream()` 底层可能是临时文件或内存中的字节数组。虽然 MinIO SDK 的 `putObject()` 是同步调用，内部会遍历流直到结束，但如果在流读取过程中抛出异常（如网络中断），流不会被 SDK 关闭，需要依赖 GC 的 `finalize` 机制回收，存在资源泄漏窗口。
+
+**解决方案：try-with-resources 确保流关闭**
+
+`putObject()` 是同步阻塞调用，在 try-with-resources 块内执行是安全的——SDK 读取完整个流之后方法才返回：
+
+```java
+try (var in = file.getInputStream()) {
+    minioClient.putObject(
+        PutObjectArgs.builder()
+            .stream(in, file.getSize(), -1)
+            .build()
+    );
+} catch (Exception e) {
+    // 异常处理
+}
+```
+
+> **关键点**：try-with-resources 保证 `InputStream.close()` 在正常返回和异常抛出两种路径下都被调用。对于 `MultipartFile` 的流，`close()` 通常意味着删除临时文件或释放内存缓冲区，是防御性编程的基本要求。
+
+### 17、直接使用 `file.getContentType()` 作为 MinIO 对象 Content-Type，存在内容嗅探/XSS 风险
+
+**问题**
+
+问题 15 对 `file.getContentType()` 做了空判断兜底，但 `MultipartFile.getContentType()` 的值完全由客户端声明——攻击者可以上传一个通过扩展名白名单校验的 `.jpg` 文件，却在 multipart part 头中声明 `Content-Type: text/html`。MinIO 存储对象时会以该值作为响应 Content-Type，浏览器访问该 URL 时按 HTML 解析，如果文件内容中嵌入了脚本代码，就可能触发 XSS。
+
+```java
+// ❌ 信任客户端声明的 Content-Type，可被伪造
+String contentType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
+```
+
+**解决方案：根据已验证的扩展名推导 MIME 类型**
+
+扩展名已经过了白名单校验（问题 13），因此 Content-Type 应由服务端根据已验证的扩展名判定，不再读取客户端声明的值：
+
+```java
+// ✅ 由服务端根据已验证的扩展名推导，不信任客户端
+private String resolveContentType(String extension) {
+    switch (extension.toLowerCase()) {
+        case ".jpg":
+        case ".jpeg":
+            return "image/jpeg";
+        case ".png":
+            return "image/png";
+        default:
+            return "application/octet-stream";
+    }
+}
+```
+
+upload() 中调用方改为：
+
+```java
+String contentType = resolveContentType(extension);
+```
+
+> **关键点**：扩展名白名单（问题 13）是"允许什么格式"的防线，`resolveContentType` 是"以什么类型对外服务"的防线。两者配合才能构成完整的安全链路——白名单决定能存什么，`resolveContentType` 决定怎么服务。`default` 分支返回 `application/octet-stream` 仅在 `ALLOWED_EXTENSIONS` 与 `resolveContentType` 不同步时才会走到，属于代码维护安全网。
+
+### 18、`normalizeEndpoint` 在 endpoint 为空时静默返回空字符串，掩盖配置错误
+
+**问题**
+
+`normalizeEndpoint()` 方法对 `null` endpoint 返回空字符串 `""`，后续拼出的 URL 形如 `/bucket/object`（缺少 scheme + host），前端拿到后无法访问。更严重的是，上传流程在外层返回成功，调用方（如 `updateProfile`）会错误地认为头像已可用，但实际上存储的是一个无效链接。
+
+```java
+// ❌ null 时返回空字符串，掩盖配置错误
+private String normalizeEndpoint(String endpoint) {
+    if (endpoint == null) {
+        return "";
+    }
+    // ...
+}
+```
+
+此外，`file.getContentType()` 可能为 `null`（见问题 15），`accessKey`/`secretKey` 为空时 `MinioClient` 也能构建成功（仅在首次请求时才发现认证失败）。这些问题如果不在启动期暴露，就会在运行时以各种奇怪的形态表现出来，排查成本高。
+
+**解决方案：启动期强校验 + 条件注册**
+
+1. **`MinioProperties` 关键字段加 `@NotBlank`**：`endpoint`、`accessKey`、`secretKey`、`bucketName` 全部加 `@NotBlank`，配置缺失/为空时启动直接抛 `BindValidationException`，拒绝启动。
+
+2. **`MinioProperties` 的注册与校验移到 `storage.type=minio` 条件分支内**：原来 `MinioProperties` 类上有 `@ConfigurationProperties(prefix = "minio")`，被 `@ConfigurationPropertiesScan` 无条件扫描注册。如果未来切换到 `storage.type=oss`，仍然需要提供 `minio.*` 配置，与"通过 `storage.type` 切换存储方案"的设计矛盾。
+
+修改方案：去掉 `MinioProperties` 类上的 `@ConfigurationProperties`，改为在 `MinioConfig` 的 `@Bean` 方法上加 `@ConfigurationProperties(prefix = "minio")` + `@Validated`：
+
+```java
+// MinioConfig.java — 仅在 storage.type=minio 时生效
+@Configuration
+@ConditionalOnProperty(name = "storage.type", havingValue = "minio")
+public class MinioConfig {
+
+    @Bean
+    @ConfigurationProperties(prefix = "minio")
+    @Validated
+    public MinioProperties minioProperties() {
+        return new MinioProperties();
+    }
+
+    @Bean
+    public MinioClient minioClient(MinioProperties properties) { ... }
+}
+```
+
+```java
+// MinioProperties.java — 普通 POJO，不再被 @ConfigurationPropertiesScan 扫描
+@Data
+public class MinioProperties {
+    @NotBlank private String endpoint;
+    @NotBlank private String accessKey;
+    @NotBlank private String secretKey;
+    @NotBlank private String bucketName;
+}
+```
+
+3. **`normalizeEndpoint` 删除 null 守卫**：`@NotBlank` 已保证运行时 `endpoint` 非 null，null 检查变成死代码。仅保留尾部斜杠归一化逻辑。
+
+```java
+// ✅ null 守卫已由启动校验覆盖，此处仅处理尾部斜杠
+private String normalizeEndpoint(String endpoint) {
+    int endIndex = endpoint.length();
+    while (endIndex > 0 && endpoint.charAt(endIndex - 1) == '/') {
+        endIndex--;
+    }
+    return endpoint.substring(0, endIndex);
+}
+```
+
+> **关键点**：fail-fast 原则——配置问题应在启动期暴露，而非运行时以"上传成功但链接不可用"的形式出现。`@ConfigurationProperties` 从类级别移到 `@Bean` 方法级别，配合 `@ConditionalOnProperty`，实现了"MinIO 配置的绑定与校验只在 MinIO 被选用时才触发"，切换到 OSS 时不再需要提供无意义的 `minio.*` 配置。
+
+### 19、`@RequestParam("file")` 未带 `required=false`，缺失文件时 `MissingServletRequestPartException` 被兜底为 500
+
+**问题**
+
+`FileController` 的 `@RequestParam("file")` 默认 `required=true`。当请求未携带 `file` part 时，Spring 在参数绑定阶段直接抛出 `MissingServletRequestPartException`，Controller 方法体不会执行到 `file == null || file.isEmpty()` 判断（该判断是死代码）。
+
+`GlobalExceptionHandler` 中没有 `MissingServletRequestPartException` 的专属 handler，该异常最终被兜底 `handleException` 捕获，返回 **500 "服务器内部错误"**——但对于客户端来说，这是请求参数缺失问题，应该返回 400。
+
+同理，如果请求的 Content-Type 不是 `multipart/form-data`，Spring 会抛出 `MultipartException`，同样被兜底为 500。
+
+**解决方案：在 `GlobalExceptionHandler` 新增两个 handler**
+
+```java
+@ExceptionHandler(MissingServletRequestPartException.class)
+@ResponseStatus(HttpStatus.BAD_REQUEST)
+public Result<Void> handleMissingPart(MissingServletRequestPartException e) {
+    return Result.error("请选择要上传的文件");
+}
+
+@ExceptionHandler(MultipartException.class)
+@ResponseStatus(HttpStatus.BAD_REQUEST)
+public Result<Void> handleMultipart(MultipartException e) {
+    log.warn("文件上传请求格式不正确", e);
+    return Result.error("文件上传请求格式不正确");
+}
+```
+
+> **关键点**：这两个异常属于 Spring MVC 框架层的参数绑定/解析异常，与 `MethodArgumentNotValidException`（@Valid 校验失败 → 400）性质相同——都是客户端请求格式问题，应统一映射为 400。放在 `GlobalExceptionHandler` 而非 Controller 内处理，遵循关注点分离：框架层异常在框架边界处理，对所有 Controller 生效。`FileController` 中 `file == null || file.isEmpty()` 判断在 `required=true` 下是死代码（框架已提前拦截），但保留作为防御性编程无害。
+
+### 20、手工拼接文件访问 URL 与实际对外访问方式不一致
+
+**问题**
+
+`MinioFileServiceImpl.upload()` 直接用 SDK 直连的 `endpoint` 拼接返回给前端的文件 URL：
+
+```java
+// ❌ 返回的是 SDK 直连地址，浏览器未必能访问
+String url = endpoint + "/" + bucketName + "/" + objectName;
+```
+
+这种拼接方式在不同部署拓扑下都会出问题：
+
+- **反向代理 / CDN**：SDK 通过内网 `http://minio:9000` 直连，但前端浏览器需要用公网域名 `https://cdn.echospace.com` 访问
+- **HTTPS**：内网直连通常是 HTTP，返回给浏览器后因协议不匹配被拦截（Mixed Content）
+- **自定义域名**：MinIO 对外使用 `assets.example.com`，与 `endpoint` 完全不同
+
+结果：上传流程（SDK 写 MinIO）成功，但返回给前端的 URL 不可用——前端拿到 `http://localhost:9000/echospace/avatars/xxx.jpg`，浏览器根本连不上。
+
+**解决方案：新增 `publicBaseUrl` 配置，与直连 `endpoint` 分离**
+
+`MinioProperties` 新增可选字段 `publicBaseUrl`——SDK 操作仍使用 `endpoint`，但返回给前端的链接前缀使用 `publicBaseUrl`（为空时回退到 `endpoint`，兼容开发环境不走反代的场景）：
+
+```java
+// MinioProperties.java
+@NotBlank
+private String endpoint;        // SDK 直连用（内网地址）
+
+private String publicBaseUrl;   // 对外访问域名（nginx/CDN 反代后地址），为空时回退到 endpoint
+```
+
+```java
+// MinioFileServiceImpl.java — upload() 中 URL 拼接逻辑
+String baseUrl = (publicBaseUrl != null && !publicBaseUrl.isBlank())
+        ? normalizeEndpoint(publicBaseUrl)
+        : normalizeEndpoint(endpoint);
+String url = baseUrl + "/" + bucketName + "/" + objectName;
+```
+
+```yaml
+# application.yaml
+minio:
+  endpoint: http://localhost:9000           # SDK 直连地址
+  # public-base-url: https://cdn.example.com  # 对外访问域名（可选，经 nginx/CDN 反代时配置）
+```
+
+> **关键点**：将"直连地址"和"对外访问地址"分离，兼容开发（本地裸 MinIO）和生产（nginx/CDN 反代）两种场景。`publicBaseUrl` 不配 `@NotBlank`，为空时回退到 `endpoint`，开发环境零配置即可工作。如果后续需要预签名 URL（bucket 设为私有时），可以在此基础上引入 MinIO SDK 的 `getPresignedObjectUrl()`，对外访问地址仍从 `publicBaseUrl` 获取。
