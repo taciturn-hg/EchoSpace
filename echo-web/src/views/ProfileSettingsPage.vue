@@ -124,7 +124,12 @@ async function handleSave() {
     if (selectedFile.value) {
       try {
         const res = await uploadAvatar(selectedFile.value)
-        form.avatar = res.data?.url
+        const avatarUrl = res.data?.url
+        if (!avatarUrl) {
+          ElMessage.error('头像上传结果异常，请重试')
+          return
+        }
+        form.avatar = avatarUrl
       } catch {
         return
       }
