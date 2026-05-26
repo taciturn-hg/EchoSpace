@@ -57,7 +57,7 @@ public class MinioFileServiceImpl implements FileService {
         }
         String objectName = dir + "/" + UUID.randomUUID() + extension;
 
-        String contentType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
+        String contentType = resolveContentType(extension);
         try (var in = file.getInputStream()) {
             minioClient.putObject(
                     PutObjectArgs.builder()
@@ -87,10 +87,19 @@ public class MinioFileServiceImpl implements FileService {
         return false;
     }
 
-    private String normalizeEndpoint(String endpoint) {
-        if (endpoint == null) {
-            return "";
+    private String resolveContentType(String extension) {
+        switch (extension.toLowerCase()) {
+            case ".jpg":
+            case ".jpeg":
+                return "image/jpeg";
+            case ".png":
+                return "image/png";
+            default:
+                return "application/octet-stream";
         }
+    }
+
+    private String normalizeEndpoint(String endpoint) {
         int endIndex = endpoint.length();
         while (endIndex > 0 && endpoint.charAt(endIndex - 1) == '/') {
             endIndex--;

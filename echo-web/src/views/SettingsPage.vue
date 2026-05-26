@@ -28,7 +28,8 @@ const rules: FormRules = {
     {
       validator: (_rule, value: unknown, callback) => {
         if (!value) return callback()
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value as string)) return callback(new Error('邮箱格式不正确'))
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value as string))
+          return callback(new Error('邮箱格式不正确'))
         callback()
       },
       trigger: 'blur',
@@ -49,9 +50,7 @@ const original = reactive<UpdateSettingsDTO>({
 const saving = ref(false)
 const loading = ref(true)
 
-const isDirty = computed(() =>
-  form.phone !== original.phone || form.email !== original.email,
-)
+const isDirty = computed(() => form.phone !== original.phone || form.email !== original.email)
 
 function applySettings(s: UserSettingsVO) {
   form.phone = s.phone ?? undefined
@@ -63,7 +62,7 @@ function applySettings(s: UserSettingsVO) {
 async function fetchSettings() {
   try {
     const res = await getSettings()
-    if (res.code === 1 && res.data) {
+    if (res.data) {
       applySettings(res.data)
       return true
     }
@@ -94,20 +93,18 @@ async function handleSave() {
 
   saving.value = true
   try {
-    const res = await updateSettings(dto)
-    if (res.code === 1) {
-      ElMessage.success('账号信息已更新')
-      const info = userStore.userInfo
-      if (info) {
-        userStore.setUserInfo({
-          ...info,
-          phone: dto.phone ?? info.phone,
-          email: dto.email ?? info.email,
-        })
-      }
-      original.phone = form.phone
-      original.email = form.email
+    await updateSettings(dto)
+    ElMessage.success('账号信息已更新')
+    const info = userStore.userInfo
+    if (info) {
+      userStore.setUserInfo({
+        ...info,
+        phone: dto.phone ?? info.phone,
+        email: dto.email ?? info.email,
+      })
     }
+    original.phone = form.phone
+    original.email = form.email
   } catch {
     // 拦截器统一处理
   } finally {
@@ -161,12 +158,7 @@ onMounted(() => {
       </el-form>
 
       <div class="form-actions">
-        <button
-          class="btn btn-cancel"
-          type="button"
-          :disabled="loading"
-          @click="handleCancel"
-        >
+        <button class="btn btn-cancel" type="button" :disabled="loading" @click="handleCancel">
           <el-icon><EditPen /></el-icon>
           <span>取消</span>
         </button>

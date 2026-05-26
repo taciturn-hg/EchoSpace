@@ -71,7 +71,7 @@ function applyProfile(p: UserProfileVO) {
 async function fetchProfile() {
   try {
     const res = await getProfile()
-    if (res.code === 1 && res.data) {
+    if (res.data) {
       applyProfile(res.data)
       return true
     }
@@ -122,10 +122,10 @@ async function handleSave() {
   try {
     // 有选中新头像时先上传
     if (selectedFile.value) {
-      const res = await uploadAvatar(selectedFile.value)
-      if (res.code === 1 && res.data) {
-        form.avatar = res.data.url
-      } else {
+      try {
+        const res = await uploadAvatar(selectedFile.value)
+        form.avatar = res.data?.url
+      } catch {
         ElMessage.error('头像上传失败')
         return
       }
@@ -141,23 +141,21 @@ async function handleSave() {
       return
     }
 
-    const res = await updateProfile(dto)
-    if (res.code === 1) {
-      ElMessage.success('资料已更新')
-      const info = userInfo.value
-      if (info) {
-        userStore.setUserInfo({
-          ...info,
-          avatar: dto.avatar ?? info.avatar,
-          nickname: dto.nickname ?? info.nickname,
-          bio: dto.bio ?? info.bio,
-        })
-      }
-      revokePreview()
-      original.avatar = form.avatar
-      original.nickname = form.nickname
-      original.bio = form.bio
+    await updateProfile(dto)
+    ElMessage.success('资料已更新')
+    const info = userInfo.value
+    if (info) {
+      userStore.setUserInfo({
+        ...info,
+        avatar: dto.avatar ?? info.avatar,
+        nickname: dto.nickname ?? info.nickname,
+        bio: dto.bio ?? info.bio,
+      })
     }
+    revokePreview()
+    original.avatar = form.avatar
+    original.nickname = form.nickname
+    original.bio = form.bio
   } catch {
     // 拦截器统一处理
   } finally {
@@ -190,7 +188,10 @@ onBeforeUnmount(() => {
     <div class="settings-card">
       <!-- 头像区 -->
       <div class="avatar-section">
-        <div class="avatar-circle" :class="{ 'has-image': !!avatarSrc, 'is-preview': !!previewUrl }">
+        <div
+          class="avatar-circle"
+          :class="{ 'has-image': !!avatarSrc, 'is-preview': !!previewUrl }"
+        >
           <img v-if="avatarSrc" :src="avatarSrc" alt="用户头像" />
           <span v-else class="avatar-letter">{{ avatarFallback }}</span>
         </div>

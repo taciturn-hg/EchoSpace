@@ -80,10 +80,8 @@ async function handleSave() {
   saving.value = true
   try {
     const res = await changePassword({ ...form })
-    if (res.code === 1) {
       ElMessage.success(res.msg || '密码修改成功')
       resetForm()
-    }
   } catch {
     // 拦截器统一处理
   } finally {

@@ -66,7 +66,7 @@ function isNavActive(item: NavItem): boolean {
 async function loadUserInfo(): Promise<void> {
   try {
     const res = await me()
-    if (res.code === 1 && res.data) {
+    if (res.data) {
       userStore.setUserInfo({
         id: res.data.id,
         username: res.data.username,

@@ -1168,3 +1168,41 @@ try (var in = file.getInputStream()) {
 ```
 
 > **关键点**：try-with-resources 保证 `InputStream.close()` 在正常返回和异常抛出两种路径下都被调用。对于 `MultipartFile` 的流，`close()` 通常意味着删除临时文件或释放内存缓冲区，是防御性编程的基本要求。
+
+### 17、直接使用 `file.getContentType()` 作为 MinIO 对象 Content-Type，存在内容嗅探/XSS 风险
+
+**问题**
+
+问题 15 对 `file.getContentType()` 做了空判断兜底，但 `MultipartFile.getContentType()` 的值完全由客户端声明——攻击者可以上传一个通过扩展名白名单校验的 `.jpg` 文件，却在 multipart part 头中声明 `Content-Type: text/html`。MinIO 存储对象时会以该值作为响应 Content-Type，浏览器访问该 URL 时按 HTML 解析，如果文件内容中嵌入了脚本代码，就可能触发 XSS。
+
+```java
+// ❌ 信任客户端声明的 Content-Type，可被伪造
+String contentType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
+```
+
+**解决方案：根据已验证的扩展名推导 MIME 类型**
+
+扩展名已经过了白名单校验（问题 13），因此 Content-Type 应由服务端根据已验证的扩展名判定，不再读取客户端声明的值：
+
+```java
+// ✅ 由服务端根据已验证的扩展名推导，不信任客户端
+private String resolveContentType(String extension) {
+    switch (extension.toLowerCase()) {
+        case ".jpg":
+        case ".jpeg":
+            return "image/jpeg";
+        case ".png":
+            return "image/png";
+        default:
+            return "application/octet-stream";
+    }
+}
+```
+
+upload() 中调用方改为：
+
+```java
+String contentType = resolveContentType(extension);
+```
+
+> **关键点**：扩展名白名单（问题 13）是"允许什么格式"的防线，`resolveContentType` 是"以什么类型对外服务"的防线。两者配合才能构成完整的安全链路——白名单决定能存什么，`resolveContentType` 决定怎么服务。`default` 分支返回 `application/octet-stream` 仅在 `ALLOWED_EXTENSIONS` 与 `resolveContentType` 不同步时才会走到，属于代码维护安全网。
