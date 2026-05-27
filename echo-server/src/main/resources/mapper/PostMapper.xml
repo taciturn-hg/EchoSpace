@@ -103,4 +103,14 @@
         UPDATE post SET view_count = view_count + 1 WHERE id = #{id}
     </update>
 
+    <!-- 帖子评论数 +1 -->
+    <update id="incrementCommentCount">
+        UPDATE post SET comment_count = comment_count + 1 WHERE id = #{id}
+    </update>
+
+    <!-- 帖子评论数 -delta -->
+    <update id="decrementCommentCount">
+        UPDATE post SET comment_count = GREATEST(comment_count - #{delta}, 0) WHERE id = #{id}
+    </update>
+
 </mapper>

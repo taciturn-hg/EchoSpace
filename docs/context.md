@@ -121,15 +121,22 @@ refreshToken 过期 → 清除 store → 跳转 /login
 - [x] `storage.type` 配置预留 MinIO/OSS 切换（当前值 minio）
 - [x] 前端 uploadAvatar / uploadImage API 函数 + ProfileSettingsPage 头像上传逻辑已放开
 
+#### 评论后端模块（comment）— Sprint 4
+- [x] CommentController（POST/GET /posts/{postId}/comments + GET /comments/{commentId}/replies + DELETE /comments/{id}）
+- [x] CommentService / CommentServiceImpl（发表校验/游标分页/预加载回复/级联软删除/评论数同步）
+- [x] CommentMapper + CommentMapper.xml（4 自定义 SQL：游标分页一级评论 + 预加载回复 + 回复统计 + 二级回复页码分页）
+- [x] PostMapper 新增 incrementCommentCount/decrementCommentCount（GREATEST 防负值）
+- [x] CreateCommentDTO / CommentVO / ReplyVO / CommentUserVO / ReplyToUserVO / CreateCommentVO
+
 ### 页面占位（已建文件，内容待开发）
 
 | 页面 | 路由 | 状态 |
 |------|------|------|
 | ForgotPassword.vue | `/forgot-password` | 占位，待 Redis 接入后开发 |
 | ResetPassword.vue | `/reset-password` | 占位，待 Redis 接入后开发 |
-| HomePage.vue | `/` | 已完成（帖子卡片列表 + 模拟数据，游标分页加载待接入） |
+| HomePage.vue | `/` | 已完成（v-infinite-scroll 无限滚动 + useInfiniteList，游标分页已接入后端） |
 | PostCard.vue | — | 已完成（卡片组件：用户区/帖子区/图片网格/交互区/图片预览） |
-| PostDetail.vue | `/post/:id` | 占位 |
+| PostDetail.vue | `/post/:id` | 已完成（淡入动画，作者区+关注+DOMPurify 净化+交互，评论区无限滚动） |
 | PostCreate.vue | `/post/create` | 已完成（TipTap 富文本 + Toolbar + 图片上传，详见 Sprint 3） |
 | SearchPage.vue | `/search` | 占位 |
 | UserProfile.vue | `/user/:id` | 占位 |
@@ -142,11 +149,11 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | 实体 | 说明 |
 |------|------|
 | User | 用户基础信息（id, username, nickname, email, phone, password, avatar, bio, status） |
-| Post | 帖子（待完善） |
-| Comment | 评论（待完善） |
+| Post | 帖子（id, authorId, title, contentHtml, contentText, cover, likeCount, collectCount, commentCount, viewCount, status, version） |
+| Comment | 评论（id, postId, userId, parentId, replyToUid, content, likeCount, status）——parentId=0 一级评论，非0 二级回复 |
 | UserFavorite | 收藏关系（待完善） |
 | UserFollow | 关注关系（待完善） |
-| UserLike | 点赞关系（待完善） |
+| UserLike | 点赞关系（targetType 1=帖子 2=评论 3=回复） |
 
 ---
 
@@ -197,7 +204,7 @@ refreshToken 过期 → 清除 store → 跳转 /login
   - 接口文档 02-api-documentation.md 新增 5.3 删除文件接口，附录接口总数更新为 31
   - 开发问题记录 Question.md 新增问题 12~20（Content-Type/boundary、扩展名白名单、文件大小校验、contentType NPE、InputStream 关闭、Content-Type 伪造/XSS、MinIO 配置校验/条件注册、MissingServletRequestPartException、手工拼接 URL、删除回滚）
 
-**Sprint 3 — 帖子核心（进行中，当前分支 feature/post-module）**
+**Sprint 3 — 帖子核心（已完成，已合并至 dev）**
 - PostCard 帖子卡片组件已完成（用户区/帖子标题摘要/图片网格/交互区/图片预览，@lucide/vue 图标）
 - HomePage 帖子列表展示已完成（v-infinite-scroll 无限滚动，游标分页，880px 固定宽度）
 - 交互区按钮：评论（跳转详情页 #comments）、点赞（红色填充/灰色轮廓切换）、收藏（黄色填充/灰色轮廓切换）、分享（ElMessage 占位提示）
@@ -207,15 +214,15 @@ refreshToken 过期 → 清除 store → 跳转 /login
 - 前端类型新增：`PostAuthor`、`PostVO`、`PostListDTO`、`CursorPageResult<T>`、`PostDetailVO`（含 isLiked/isCollected/isFollowed/contentHtml/viewCount/updatedAt）、`LikePostVO`、`FavoritePostVO`、`FollowVO`
 - 后端测试数据 `db/data.sql` 已完成：5 个测试用户 + 23 条帖子（覆盖 3 页游标分页）
 - **评论组件**：
-  - `CommentCard.vue` 已完成：无边框卡片，用户区（头像+昵称+相对时间 + 二级回复时显示"@回复人昵称"）+ 评论内容 + 底部操作栏（绝对时间占 25% + 点赞/回复按钮占 37.5%），Heart 图标点赞（红色/暗灰切换），MessageCircle 图标回复；`hideReplyTarget` prop 控制是否隐藏 "@xxx"（回复一级评论时隐藏）
-  - `CommentThread.vue` 已完成：编排一级评论 + 缩进二级回复（左边线 + padding 缩进），默认展示 3 条预览回复 + "加载更多评论"按钮 → 展开后切换为 Element Plus 分页模式（prev/pager/next，10条/页，仅 >1 页显示），行内回复编辑器插入（回复一级→插顶部，回复二级→插其下方）；子回复 `hideReplyTarget` 由 `reply.replyToUser.id === comment.user.id` 判断
-  - `CommentCreate.vue` 已完成：当前用户头像+昵称 + ElInput textarea + 发布/取消按钮，回复时预填"回复 @{username}："，按钮灰色禁用→蓝色可点
+  - `CommentCard.vue` 已完成：无边框卡片，用户区（头像+昵称+相对时间 + 二级回复时显示"@回复人昵称"，`hideReplyTarget` prop 控制显隐）+ 评论内容 + 底部操作栏（绝对时间占 25% + 点赞/回复/删除按钮占 37.5%），Heart 图标点赞（红色/暗灰切换），MessageCircle 图标回复，Trash2 图标删除（仅本人评论可见，通过 `useUserStore` 判断，hover 红色高亮）；emit `toggle-like` / `reply` / `delete`
+  - `CommentThread.vue` 已完成：编排一级评论 + 缩进二级回复（左边线 + padding 缩进），默认展示 3 条预览回复 + "加载更多评论"按钮 → 展开后切换为 Element Plus 分页模式（prev/pager/next，10条/页，仅 >1 页显示），行内回复编辑器插入（回复一级→插顶部，回复二级→插其下方）；子回复 `hideReplyTarget` 由 `reply.replyToUser.id === comment.user.id` 判断；删除操作 `handleDelete`（ElMessageBox 确认 → `deleteComment` API，一级评论 emit `deleted` 给父组件从列表移除，二级回复本地 filter + replyTotal-1）；emit `reply-added` / `deleted`
+  - `CommentCreate.vue` 已完成：当前用户头像+昵称 + ElInput textarea + 发布/取消按钮，回复时预填"回复 @{username}："，按钮灰色禁用→蓝色可点，空模板保护防提交纯前缀
 - 前端类型新增：`CommentUser`（含 nickname）、`ReplyToUser`（含 nickname）、`CommentVO`（含 replies/replyCount/hasMoreReplies/parentId/replyToUser）、`CreateCommentDTO`、`CreateCommentVO`、`LikeCommentVO`
-- 前端 API `api/comments.ts` 已完成：`fetchComments`（游标分页，cursor/size/replySize）/ `fetchReplies`（页码分页，current/size）/ `createComment` / `likeComment` / `deleteComment`
+- 前端 API `api/comments.ts` 已完成：`fetchComments`（游标分页，cursor/size/replySize）/ `fetchReplies`（页码分页，current/size）/ `createComment` / `likeComment` / `deleteComment`（统一箭头函数 + ApiResult 返回类型）
 - **共享工具**：`utils/time.ts`（`formatRelativeTime` / `formatDateTime`），PostCard 已重构为使用共享函数
 - **帖子详情页 PostDetail.vue**：已完成，分上下两张圆角卡片——
   - 上卡片：作者区（头像+昵称+时间+关注按钮，未关注=红色填充/已关注=灰色填充）+ 帖子主体（Eye 浏览数 + 标题 + DOMPurify 净化富文本 + 4 个交互按钮同 PostCard）
-  - 下卡片：CommentCreate 一级评论发布 + CommentThread 无限滚动列表（v-infinite-scroll + useInfiniteList<CommentVO>，游标分页，"加载中..."/"没有更多评论了" 指示）
+  - 下卡片：CommentCreate 一级评论发布 + CommentThread 无限滚动列表（v-infinite-scroll + useInfiniteList<CommentVO>，游标分页，"加载中..."/"没有更多评论了" 指示），`@deleted` 事件监听从列表中 splice 移除已删评论
   - 淡入动画（0.35s），880px 居中，点赞/收藏/关注均乐观更新 + API 失败回滚
 - **API 文档**：4.2 评论列表接口从传统页码分页改为游标分页（`cursor`/`hasMore`/`size`，对齐 3.5 帖子列表），4.3 二级回复保持页码分页不变
 - **开发问题记录**：`docs/Question.md` 新增问题 21——游标瀑布流实现方案（SQL keyset pagination + 前端 useInfiniteList 双模式 + API 对齐）
@@ -247,6 +254,16 @@ refreshToken 过期 → 清除 store → 跳转 /login
   - **安全加固**：Link href 协议白名单（http/https/mailto/tel）、服务端 HTML 清洗（Jsoup.clean + Safelist，img src 仅 http/https、a href 仅 http/https/mailto/tel）、软删除查询补漏
   - **新增后端注释**：16 个文件（Controller/DTO/VO/Mapper/Service/XML）全部补全 Javadoc/XML 注释
 
+**Sprint 4 — 评论后端 CRUD（进行中，当前分支 feature/comment-crud）**
+- 后端评论模块核心逻辑已完成（已开发，待提交）：
+  - `CommentController` 4 个端点：POST /posts/{postId}/comments（发表）、GET /posts/{postId}/comments（游标分页列表，含预加载二级回复）、GET /comments/{commentId}/replies（二级回复页码分页）、DELETE /comments/{id}（软删除，仅限本人）
+  - `CommentService` / `CommentServiceImpl`：发表校验（帖子存在 + 父评论存在 + 帖子匹配 + 只能回复一级评论）、游标分页（`{timestamp}_{id}` 编解码，NumberFormatException → 400）、二级回复预加载（LIMIT replySize）+ 加载更多（MyBatis-Plus 页码分页）、级联软删除（一级评论 → 其下所有二级回复一并软删除，`deletedCount` 扣减帖子评论数）
+  - `CommentMapper` + `CommentMapper.xml`：4 个自定义 SQL — `selectTopLevelComments`（游标分页，LEFT JOIN user_like 判断 isLiked）、`selectReplies`（预加载回复，ASC）、`countReplies`（统计 status=1 回复数）、`selectRepliesPage`（页码分页，ORDER BY created_at ASC）
+  - `PostMapper` 新增：`incrementCommentCount(id)` / `decrementCommentCount(id, delta)` — MySQL `GREATEST(comment_count - delta, 0)` 防负值
+  - 新增 DTO：`CreateCommentDTO`（parentId/replyToUid/content，@Valid 校验 1~5000 字）
+  - 新增 VO：`CommentVO`（含预加载 replies/replyCount/hasMoreReplies）、`ReplyVO`（含嵌套 user + replyToUser）、`CommentUserVO`（id/username/nickname/avatar）、`ReplyToUserVO`（id/username/nickname，无头像）、`CreateCommentVO`（id）
+  - 开发计划 `docs/04-development-plan.md` Sprint 4 评论 CRUD 接口已标记完成
+
 ### 开发规范（更新中）
 - **日志追踪（强制）**：后续所有后端功能开发，Controller / Service 必须添加 @Slf4j 注解并使用 log.info/log.warn 打印业务流日志，格式统一为 `log.info("操作描述 关键参数={}", value)`
 - **敏感数据脱敏（强制）**：日志中涉及手机号、邮箱、密码、Token 等敏感字段时，必须通过 `MaskUtil` 工具类脱敏后再输出（`maskPhone` / `maskEmail` / `maskPassword` / `maskToken` / `maskAccount`），禁止明文打印
@@ -274,12 +291,13 @@ refreshToken 过期 → 清除 store → 跳转 /login
 - [x] 开发 PostCreate：富文本编辑器（TipTap）发帖，含 toolbar（粗体/斜体/标题/引用/代码块/图片/链接）
 - [ ] 开发 UserProfile：用户主页、发帖列表
 - [x] 前端开发评论组件：CommentCard / CommentThread / CommentCreate
+- [x] 后端实现评论 CRUD 接口 4.1~4.4（发表/评论列表游标分页/二级回复页码分页/软删除，含级联删除和评论数同步）
 
 ### 中期（社交功能）
 
 - [ ] 关注 / 取关
 - [ ] 点赞 / 收藏
-- [ ] 评论 / 回复
+- [x] 评论 / 回复（后端 CRUD 已完成，前端组件已完成）
 - [ ] 消息通知（RabbitMQ）
 
 ### 远期（搜索 & 存储）
@@ -333,11 +351,22 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | `echo-server/.../controller/PostController.java` | 帖子模块控制器（发布/详情/编辑/删除/列表 5 端点，游标分页） |
 | `echo-server/.../service/PostService.java` | 帖子模块服务接口 |
 | `echo-server/.../service/impl/PostServiceImpl.java` | 帖子模块服务实现（Jsoup.clean HTML 清洗、游标编解码+NumberFormatException→400、乐观锁、所有权校验、文本/封面提取） |
-| `echo-server/.../mapper/PostMapper.java` | 帖子 Mapper（BaseMapper + 3 自定义查询） |
+| `echo-server/.../mapper/PostMapper.java` | 帖子 Mapper（BaseMapper + 3 自定义查询 + incrementCommentCount/decrementCommentCount） |
+| `echo-server/.../mapper/CommentMapper.java` | 评论 Mapper（4 自定义 SQL：游标分页/预加载回复/回复统计/二级回复分页） |
+| `echo-server/src/main/resources/mapper/CommentMapper.xml` | 评论自定义 SQL（resultMap + 游标分页 + LEFT JOIN user_like + 页码分页） |
+| `echo-server/.../controller/CommentController.java` | 评论控制器（发表/游标分页列表/二级回复分页/软删除 4 端点，所有权校验） |
+| `echo-server/.../service/CommentService.java` | 评论服务接口（createComment/listComments/listReplies/deleteComment） |
+| `echo-server/.../service/impl/CommentServiceImpl.java` | 评论服务实现（发表校验+游标编解码+预加载回复+级联软删除+GREATEST 防负值扣减） |
+| `echo-server/.../dto/CreateCommentDTO.java` | 发表评论请求 DTO（parentId/replyToUid/content，@Valid 1~5000 字） |
+| `echo-server/.../vo/CommentVO.java` | 一级评论 VO（含预加载 replies/replyCount/hasMoreReplies） |
+| `echo-server/.../vo/ReplyVO.java` | 二级回复 VO（含嵌套 user + replyToUser + isLiked） |
+| `echo-server/.../vo/CommentUserVO.java` | 评论用户信息 VO（id/username/nickname/avatar） |
+| `echo-server/.../vo/ReplyToUserVO.java` | 被回复用户信息 VO（id/username/nickname，无头像） |
+| `echo-server/.../vo/CreateCommentVO.java` | 创建评论响应 VO（id） |
 | `echo-server/.../mapper/UserLikeMapper.java` | 点赞关系 Mapper |
 | `echo-server/.../mapper/UserFavoriteMapper.java` | 收藏关系 Mapper |
 | `echo-server/.../mapper/UserFollowMapper.java` | 关注关系 Mapper |
-| `echo-server/src/main/resources/mapper/PostMapper.xml` | 帖子自定义 SQL（游标分页最新/热门 + 详情多表 JOIN 含软删除过滤 p.status=1） |
+| `echo-server/src/main/resources/mapper/PostMapper.xml` | 帖子自定义 SQL（游标分页最新/热门 + 详情多表 JOIN 含软删除过滤 p.status=1 + incrementCommentCount/decrementCommentCount） |
 | `echo-server/.../dto/CreatePostDTO.java` | 发布帖子请求 DTO |
 | `echo-server/.../dto/UpdatePostDTO.java` | 编辑帖子请求 DTO |
 | `echo-server/.../vo/AuthorVO.java` | 作者信息 VO（id/username/nickname/avatar） |
@@ -357,11 +386,11 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | `echo-web/src/router/index.ts` | 路由定义与守卫 |
 | `echo-web/src/components/LayoutPage.vue` | 主布局（顶栏 + 可折叠侧边栏 + 内容区），下拉含资料设置/账号设置/修改密码/退出 |
 | `echo-web/src/components/PostCard.vue` | 帖子卡片组件（用户区/帖子区/图片网格/交互区/图片预览，@lucide/vue 图标，单图原生比例+多图 4:3 网格，watch props 同步 liked/collected，document 级 Esc 预览关闭） |
-| `echo-web/src/components/CommentCard.vue` | 评论卡片组件（无边框，用户区含"@回复人"昵称+评论内容+底部时间(25%)/点赞回复按钮(37.5%)，Heart红色切换，hideReplyTarget 控制 @ 显隐） |
-| `echo-web/src/components/CommentThread.vue` | 评论线程组件（一级评论+缩进二级回复+加载更多/分页+行内回复编辑器插入，replyLikes 本地覆盖防 prop mutation，子回复 hideReplyTarget 按 replyToUser.id === 一级作者 id 判断） |
+| `echo-web/src/components/CommentCard.vue` | 评论卡片组件（无边框，用户区含"@回复人"昵称+删除按钮仅本人可见+评论内容+底部时间(25%)/点赞回复删除按钮(37.5%)，Heart红色切换+Trash2 hover红色，emit toggle-like/reply/delete） |
+| `echo-web/src/components/CommentThread.vue` | 评论线程组件（一级评论+缩进二级回复+加载更多/分页+行内回复编辑器插入，replyLikes 本地覆盖防 prop mutation，handleDelete ElMessageBox 确认→deleteComment API→emit deleted，子回复 hideReplyTarget 按 replyToUser.id === 一级作者 id 判断） |
 | `echo-web/src/components/CommentCreate.vue` | 评论发布组件（ElInput textarea+发布按钮，回复预填"回复@{username}："，空模板保护防提交纯前缀） |
 | `echo-web/src/views/HomePage.vue` | 首页帖子列表（v-infinite-scroll 无限滚动 + useInfiniteList composable） |
-| `echo-web/src/views/PostDetail.vue` | 帖子详情页（淡入动画，作者区+关注按钮+帖子主体 DOMPurify 净化+4 交互按钮，评论区 useInfiniteList<CommentVO> + v-infinite-scroll 无限滚动，乐观更新+回滚） |
+| `echo-web/src/views/PostDetail.vue` | 帖子详情页（淡入动画，作者区+关注按钮+帖子主体 DOMPurify 净化+4 交互按钮，评论区 useInfiniteList<CommentVO> + v-infinite-scroll 无限滚动，乐观更新+回滚，handleCommentDeleted splice 移除已删评论） |
 | `echo-web/src/views/PostCreate.vue` | 帖子发布页（TipTap 富文本 + Toolbar 粗体/斜体/标题/引用/代码块/图片/链接 + Link 协议白名单 http/https/mailto/tel + 图片粘贴拖入上传 + 标题/正文双框布局 + 淡入动画 + editor 就绪保护） |
 | `echo-web/src/views/ProfileSettingsPage.vue` | 资料设置页（头像本地预览+选择图片，保存时统一上传；昵称+简介编辑；保存/取消） |
 | `echo-web/src/views/SettingsPage.vue` | 账号设置页（手机号+邮箱编辑，el-form rules 校验，保存/取消） |
