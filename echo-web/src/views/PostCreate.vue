@@ -6,20 +6,13 @@ import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Link from '@tiptap/extension-link'
-import {
-  Bold,
-  Italic,
-  Heading2,
-  Quote,
-  Code2,
-  ImagePlus,
-  Link2,
-} from '@lucide/vue'
+import { Bold, Italic, Heading2, Quote, Code2, ImagePlus, Link2 } from '@lucide/vue'
 import { createPost } from '@/api/posts'
 import { uploadImage } from '@/api/users'
 
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png']
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 10MB
+const ALLOWED_LINK_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:']
 
 const router = useRouter()
 
@@ -40,6 +33,7 @@ const editor = useEditor({
     Link.configure({
       openOnClick: false,
       HTMLAttributes: { rel: 'noopener noreferrer' },
+      validate: (href: string) => ALLOWED_LINK_PROTOCOLS.some((p) => href.toLowerCase().startsWith(p)),
     }),
   ],
   editorProps: {
@@ -122,6 +116,10 @@ function setLink() {
     editor.value?.chain().focus().extendMarkRange('link').unsetLink().run()
     return
   }
+  if (!ALLOWED_LINK_PROTOCOLS.some((p) => url.toLowerCase().startsWith(p))) {
+    ElMessage.warning('仅支持 http、https、mailto、tel 协议的链接')
+    return
+  }
   editor.value?.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
 }
 
@@ -146,7 +144,7 @@ async function uploadAndInsert(file: File) {
 
 // ===== Computed =====
 const canPublish = computed(() => {
-  return title.value.trim().length > 0 && hasContent.value && !publishing.value
+  return editor.value && title.value.trim().length > 0 && hasContent.value && !publishing.value
 })
 
 // ===== Actions =====
@@ -179,9 +177,7 @@ async function handlePublish() {
   <div class="post-create">
     <!-- Header Row -->
     <div class="post-create__header">
-      <button class="post-create__back" @click="handleBack" aria-label="返回首页">
-        &lt;
-      </button>
+      <button class="post-create__back" @click="handleBack" aria-label="返回首页">&lt;</button>
       <div class="post-create__actions">
         <button class="post-create__save" disabled @click="handleSave">保存</button>
         <button

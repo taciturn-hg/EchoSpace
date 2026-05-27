@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+    帖子模块自定义 SQL 映射
+    包含：游标分页列表（最新/热门）、详情多表联查、浏览数自增
+-->
 <mapper namespace="com.echospace.mapper.PostMapper">
 
+    <!-- 帖子列表项结果映射（含嵌套作者信息） -->
     <resultMap id="postItemResultMap" type="com.echospace.vo.PostItemVO">
         <id column="id" property="id"/>
         <result column="title" property="title"/>
@@ -19,6 +24,7 @@
         </association>
     </resultMap>
 
+    <!-- 帖子详情结果映射（含嵌套作者 + 当前用户交互状态标记） -->
     <resultMap id="postDetailResultMap" type="com.echospace.vo.PostDetailVO">
         <id column="id" property="id"/>
         <result column="title" property="title"/>
@@ -40,6 +46,7 @@
         </association>
     </resultMap>
 
+    <!-- 按最新排序的游标分页：游标键为 (created_at, id) -->
     <select id="selectListLatest" resultMap="postItemResultMap">
         SELECT p.id, p.title, p.cover_image, p.content_text,
                p.like_count, p.comment_count, p.collect_count, p.created_at,
@@ -56,6 +63,7 @@
         LIMIT #{size}
     </select>
 
+    <!-- 按热门排序的游标分页：游标键为 (like_count, id) -->
     <select id="selectListHot" resultMap="postItemResultMap">
         SELECT p.id, p.title, p.cover_image, p.content_text,
                p.like_count, p.comment_count, p.collect_count, p.created_at,
@@ -72,6 +80,7 @@
         LIMIT #{size}
     </select>
 
+    <!-- 帖子详情多表联查：LEFT JOIN user_like/user_favorite/user_follow 标记当前用户交互状态 -->
     <select id="selectDetailWithAuthor" resultMap="postDetailResultMap">
         SELECT p.id, p.title, p.content_html,
                p.like_count, p.comment_count, p.collect_count, p.view_count,
@@ -86,9 +95,10 @@
         LEFT JOIN user_like lk ON lk.target_id = p.id AND lk.target_type = 1 AND lk.user_id = #{userId}
         LEFT JOIN user_favorite fav ON fav.post_id = p.id AND fav.user_id = #{userId}
         LEFT JOIN user_follow flw ON flw.followed_id = p.user_id AND flw.follower_id = #{userId}
-        WHERE p.id = #{id}
+        WHERE p.id = #{id} AND p.status = 1
     </select>
 
+    <!-- 浏览数原子自增，避免读-改-写竞态 -->
     <update id="incrementViewCount">
         UPDATE post SET view_count = view_count + 1 WHERE id = #{id}
     </update>

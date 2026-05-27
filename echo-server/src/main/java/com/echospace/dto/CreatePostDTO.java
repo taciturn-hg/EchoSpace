@@ -5,6 +5,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+/**
+ * 发布帖子请求参数
+ *
+ * @Author: taciturn-hg
+ */
 @Data
 @Schema(description = "发布帖子请求")
 public class CreatePostDTO {

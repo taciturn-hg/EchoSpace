@@ -42,7 +42,13 @@ const placeholder = computed(() => {
   return '写下你的评论...'
 })
 
-const canSubmit = computed(() => content.value.trim().length > 0 && !submitting.value)
+const canSubmit = computed(() => {
+  if (submitting.value) return false
+  const text = content.value.trim()
+  if (text.length === 0) return false
+  if (props.replyToUser && text === getInitialContent()) return false
+  return true
+})
 
 async function handleSubmit() {
   if (!canSubmit.value) return

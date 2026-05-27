@@ -149,7 +149,8 @@ export interface CursorPageResult<T> {
   records: T[]
   cursor: string | null
   hasMore: boolean
-  size: number
+  /** 本次返回的实际记录数 */
+  count: number
 }
 
 // ===== 帖子详情相关 =====

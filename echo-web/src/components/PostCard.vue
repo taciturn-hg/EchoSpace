@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElAvatar, ElMessage } from 'element-plus'
 import { MessageCircle, Heart, Bookmark, Share2 } from '@lucide/vue'
@@ -33,6 +33,9 @@ const router = useRouter()
 // ===== Local state =====
 const liked = ref(props.isLiked)
 const collected = ref(props.isCollected)
+
+watch(() => props.isLiked, (v) => { liked.value = v })
+watch(() => props.isCollected, (v) => { collected.value = v })
 const previewVisible = ref(false)
 const previewSrc = ref('')
 
@@ -89,9 +92,21 @@ function closePreview() {
   previewVisible.value = false
 }
 
-function onPreviewKeydown(e: KeyboardEvent) {
+watch(previewVisible, (visible) => {
+  if (visible) {
+    document.addEventListener('keydown', onEscape)
+  } else {
+    document.removeEventListener('keydown', onEscape)
+  }
+})
+
+function onEscape(e: KeyboardEvent) {
   if (e.key === 'Escape') closePreview()
 }
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', onEscape)
+})
 </script>
 
 <template>
@@ -166,9 +181,7 @@ function onPreviewKeydown(e: KeyboardEvent) {
         <div
           v-if="previewVisible"
           class="image-preview-overlay"
-          tabindex="-1"
           @click="closePreview"
-          @keydown="onPreviewKeydown"
         >
           <button class="image-preview-close" aria-label="关闭预览" @click="closePreview">
             <svg

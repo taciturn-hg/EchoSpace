@@ -8,6 +8,11 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * 帖子详情视图对象，含作者信息与当前用户交互状态
+ *
+ * @Author: taciturn-hg
+ */
 @Data
 @Builder
 @AllArgsConstructor

@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.safety.Safelist;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -23,11 +24,46 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 
+/**
+ * 帖子业务实现
+ * <p>
+ * 核心设计要点：
+ * <ul>
+ *   <li>游标分页使用 SQL keyset pagination，游标编码格式为 {@code {排序值}_{id}}</li>
+ *   <li>编辑操作使用 MyBatis-Plus 乐观锁（version 字段），并发冲突时提示用户刷新</li>
+ *   <li>Jsoup 提取富文本 HTML 中的纯文本摘要和首张封面图</li>
+ * </ul>
+ * </p>
+ *
+ * @Author: taciturn-hg
+ */
 @Slf4j
 @Service
 public class PostServiceImpl implements PostService {
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
+
+    /**
+     * 帖子富文本 HTML 清洗白名单：
+     * 允许 TipTap StarterKit + Image + Link 生成的标签和属性，
+     * img/src 和 a/href 仅允许 http/https/mailto/tel 协议。
+     */
+    private static final Safelist POST_SAFELIST;
+
+    static {
+        POST_SAFELIST = new Safelist()
+                .addTags("p", "br", "strong", "em", "s", "u",
+                        "h1", "h2", "h3", "h4",
+                        "blockquote", "pre", "code",
+                        "ul", "ol", "li",
+                        "hr", "img", "a")
+                .addAttributes("img", "src", "alt")
+                .addAttributes("a", "href", "rel")
+                .addAttributes("pre", "class")
+                .addAttributes("code", "class")
+                .addProtocols("img", "src", "http", "https")
+                .addProtocols("a", "href", "http", "https", "mailto", "tel");
+    }
 
     @Autowired
     private PostMapper postMapper;
@@ -36,13 +72,14 @@ public class PostServiceImpl implements PostService {
     public Long createPost(CreatePostDTO dto) {
         Long userId = requireCurrentUserId();
 
-        String contentText = extractText(dto.getContentHtml());
-        String coverImage = extractCoverImage(dto.getContentHtml());
+        String safeHtml = sanitizeHtml(dto.getContentHtml());
+        String contentText = extractText(safeHtml);
+        String coverImage = extractCoverImage(safeHtml);
 
         Post post = new Post();
         post.setUserId(userId);
         post.setTitle(dto.getTitle());
-        post.setContentHtml(dto.getContentHtml());
+        post.setContentHtml(safeHtml);
         post.setContentText(contentText);
         post.setCoverImage(coverImage);
         post.setLikeCount(0);
@@ -86,9 +123,11 @@ public class PostServiceImpl implements PostService {
         update.setId(postId);
         update.setVersion(post.getVersion());
         update.setTitle(dto.getTitle());
-        update.setContentHtml(dto.getContentHtml());
-        update.setContentText(extractText(dto.getContentHtml()));
-        update.setCoverImage(extractCoverImage(dto.getContentHtml()));
+
+        String safeHtml = sanitizeHtml(dto.getContentHtml());
+        update.setContentHtml(safeHtml);
+        update.setContentText(extractText(safeHtml));
+        update.setCoverImage(extractCoverImage(safeHtml));
 
         int rows = postMapper.updateById(update);
         if (rows == 0) {
@@ -121,19 +160,19 @@ public class PostServiceImpl implements PostService {
             Integer cursorCount = null;
             Long cursorId = null;
             if (cursor != null && !cursor.isEmpty()) {
-                String[] parts = parseCursor(cursor);
-                cursorCount = Integer.parseInt(parts[0]);
-                cursorId = Long.parseLong(parts[1]);
+                CursorParts parts = parseCursor(cursor);
+                cursorCount = (int) parts.first();
+                cursorId = parts.second();
             }
             records = postMapper.selectListHot(cursorCount, cursorId, size + 1);
         } else {
             LocalDateTime cursorTime = null;
             Long cursorId = null;
             if (cursor != null && !cursor.isEmpty()) {
-                String[] parts = parseCursor(cursor);
-                long epochMilli = Long.parseLong(parts[0]);
+                CursorParts parts = parseCursor(cursor);
+                long epochMilli = parts.first();
                 cursorTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMilli), ZONE);
-                cursorId = Long.parseLong(parts[1]);
+                cursorId = parts.second();
             }
             records = postMapper.selectListLatest(cursorTime, cursorId, size + 1);
         }
@@ -153,12 +192,15 @@ public class PostServiceImpl implements PostService {
         page.setRecords(records);
         page.setCursor(nextCursor);
         page.setHasMore(hasMore);
-        page.setSize(records.size());
+        page.setCount(records.size());
         return page;
     }
 
     // ---------- 内部辅助 ----------
 
+    /**
+     * 从 SecurityContext 获取当前登录用户 ID，未登录则抛出 401
+     */
     private Long requireCurrentUserId() {
         Long userId = SecurityUtil.getCurrentUserId();
         if (userId == null) {
@@ -168,6 +210,9 @@ public class PostServiceImpl implements PostService {
         return userId;
     }
 
+    /**
+     * 根据 ID 查询帖子，不存在或已软删除则抛出 404
+     */
     private Post findPostOrThrow(Long postId) {
         Post post = postMapper.selectById(postId);
         if (post == null || post.getStatus() == 0) {
@@ -177,25 +222,57 @@ public class PostServiceImpl implements PostService {
         return post;
     }
 
+    /**
+     * 使用 Jsoup + 白名单清洗富文本 HTML，移除危险标签和非法协议。
+     * 调用方保证 html 非空。
+     */
+    private String sanitizeHtml(String html) {
+        return Jsoup.clean(html, POST_SAFELIST);
+    }
+
+    /**
+     * 使用 Jsoup 从富文本 HTML 提取纯文本摘要
+     */
     private String extractText(String html) {
         Document doc = Jsoup.parse(html);
         return doc.text();
     }
 
+    /**
+     * 使用 Jsoup 从富文本 HTML 提取首张图片地址作为封面
+     */
     private String extractCoverImage(String html) {
         Document doc = Jsoup.parse(html);
         Element firstImg = doc.select("img").first();
         return firstImg != null ? firstImg.attr("src") : null;
     }
 
-    private String[] parseCursor(String cursor) {
+    /**
+     * 游标解析结果：first=排序值（timestamp 或 likeCount），second=帖子 ID
+     */
+    private record CursorParts(long first, long second) {}
+
+    /**
+     * 解析并校验游标字符串：{first}_{second}，非法格式或数字解析失败时抛出业务异常
+     */
+    private CursorParts parseCursor(String cursor) {
         int idx = cursor.lastIndexOf('_');
         if (idx <= 0) {
             throw new BusinessException("游标格式不正确");
         }
-        return new String[]{cursor.substring(0, idx), cursor.substring(idx + 1)};
+        try {
+            return new CursorParts(
+                    Long.parseLong(cursor.substring(0, idx)),
+                    Long.parseLong(cursor.substring(idx + 1))
+            );
+        } catch (NumberFormatException e) {
+            throw new BusinessException("游标格式不正确");
+        }
     }
 
+    /**
+     * 构造下一页游标：最新→{timestamp}_{id}，热门→{likeCount}_{id}
+     */
     private String buildCursor(PostItemVO item, String sort) {
         if ("hot".equals(sort)) {
             return item.getLikeCount() + "_" + item.getId();

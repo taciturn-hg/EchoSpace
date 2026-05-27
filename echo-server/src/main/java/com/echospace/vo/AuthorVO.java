@@ -5,6 +5,11 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * 作者信息视图对象
+ *
+ * @Author: taciturn-hg
+ */
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

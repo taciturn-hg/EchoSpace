@@ -8,6 +8,11 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * 帖子列表项视图对象，用于首页信息流展示
+ *
+ * @Author: taciturn-hg
+ */
 @Data
 @Builder
 @AllArgsConstructor

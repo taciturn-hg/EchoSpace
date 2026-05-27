@@ -43,7 +43,7 @@ export function useInfiniteList<T = PostVO>(options?: UseInfiniteListOptions) {
   }
 
   async function fetchPosts(): Promise<void> {
-    if (loading.value || (!hasMore.value && posts.value.length > 0)) return
+    if (loading.value || !hasMore.value) return
 
     loading.value = true
     error.value = null

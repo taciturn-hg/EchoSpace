@@ -1,22 +1,27 @@
 import result from '@/utils/result'
-import type { CursorPageResult, PostListDTO, PostVO, PostDetailVO, LikePostVO, FavoritePostVO, CreatePostDTO, CreatePostVO } from '@/api/modules/index'
+import type {
+  CursorPageResult,
+  PostListDTO,
+  PostVO,
+  PostDetailVO,
+  LikePostVO,
+  FavoritePostVO,
+  CreatePostDTO,
+  CreatePostVO,
+  ApiResult,
+} from '@/api/modules/index'
 
-export function createPost(dto: CreatePostDTO) {
-  return result.post<CreatePostVO>('/posts', dto)
-}
+export const createPost = (dto: CreatePostDTO) =>
+  result.post<unknown, ApiResult<CreatePostVO>>('/posts', dto)
 
-export function fetchPosts(params: PostListDTO = {}) {
-  return result.get<CursorPageResult<PostVO>>('/posts', { params })
-}
+export const fetchPosts = (params: PostListDTO = {}) =>
+  result.get<unknown, ApiResult<CursorPageResult<PostVO>>>('/posts', { params })
 
-export function fetchPostDetail(id: number) {
-  return result.get<PostDetailVO>(`/posts/${id}`)
-}
+export const fetchPostDetail = (id: number) =>
+  result.get<unknown, ApiResult<PostDetailVO>>(`/posts/${id}`)
 
-export function likePost(id: number) {
-  return result.post<LikePostVO>(`/posts/${id}/like`)
-}
+export const likePost = (id: number) =>
+  result.post<unknown, ApiResult<LikePostVO>>(`/posts/${id}/like`)
 
-export function favoritePost(id: number) {
-  return result.post<FavoritePostVO>(`/posts/${id}/favorite`)
-}
+export const favoritePost = (id: number) =>
+  result.post<unknown, ApiResult<FavoritePostVO>>(`/posts/${id}/favorite`)

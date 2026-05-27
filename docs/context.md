@@ -241,6 +241,11 @@ refreshToken 过期 → 清除 store → 跳转 /login
 - **前端 API `api/posts.ts`** 新增 `createPost`（POST /api/posts）
 - **前端类型新增**：`CreatePostDTO`（title/contentHtml）、`CreatePostVO`（id）
 - **前端依赖**：`@tiptap/extension-link` 已纳入（作为 starter-kit 传递依赖已存在），补录到 `docs/01-requirements-and-plan.md`
+- **代码审查修复（2026-05-27）**：Sprint 3 分支 feature/post-module 完成一轮前后端代码审查，共修复 12 个问题（详见 `docs/Question.md` #22~#33）：
+  - **前端 8 项**：useInfiniteList 空记录死循环、posts.ts 箭头函数语法统一、TipTap Link 协议白名单、handlePublish editor 判空、PostCard liked/collected watch 同步、图片预览 Esc 键修复、CommentThread replyLikes 防 prop mutation、CommentCreate 空模板提交拦截
+  - **后端 5 项**：帖子详情 SQL 加软删除过滤、服务端 Jsoup.clean HTML 清洗（Safelist 白名单）、CursorPageVO.size→count 重命名、cursor 解析 NumberFormatException→400、PostMapper.xml 注释补全
+  - **安全加固**：Link href 协议白名单（http/https/mailto/tel）、服务端 HTML 清洗（Jsoup.clean + Safelist，img src 仅 http/https、a href 仅 http/https/mailto/tel）、软删除查询补漏
+  - **新增后端注释**：16 个文件（Controller/DTO/VO/Mapper/Service/XML）全部补全 Javadoc/XML 注释
 
 ### 开发规范（更新中）
 - **日志追踪（强制）**：后续所有后端功能开发，Controller / Service 必须添加 @Slf4j 注解并使用 log.info/log.warn 打印业务流日志，格式统一为 `log.info("操作描述 关键参数={}", value)`
