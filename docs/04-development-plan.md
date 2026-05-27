@@ -104,10 +104,11 @@ echo-web/src/
 ## Sprint 3（2-3天）：帖子核心
 
 - [ ] OSS 存储实现（新增 OssFileServiceImpl 实现 FileService 接口，由 storage.type 配置切换）
-- [ ] 帖子 CRUD 接口
-- [ ] 前端 Tiptap 富文本编辑器集成（含图片上传 extension）
-- [ ] 前端帖子发布页 + 帖子列表页 + 帖子详情页
-- [ ] jsoup HTML 清洗 + 纯文本提取
+- [x] 帖子 CRUD 接口
+- [x] 前端 Tiptap 富文本编辑器集成（含图片上传 extension）
+- [x] 前端帖子发布页 + 帖子列表页 + 帖子详情页
+- [x] jsoup HTML 清洗 + 纯文本提取
+- [x] 前端评论组件（嵌套展示）
 
 ### Sprint 3 产出物
 
@@ -151,7 +152,6 @@ echo-web/src/
 - [ ] 评论 CRUD 接口（一级评论 + 二级回复）
 - [ ] 点赞/取消接口（Redis Set + MySQL user_like 双写 + 定时同步计数）
 - [ ] 收藏/取消接口
-- [ ] 前端评论组件（嵌套展示）
 - [ ] 前端点赞/收藏交互
 
 ### Sprint 4 产出物

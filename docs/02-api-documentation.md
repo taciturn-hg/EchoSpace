@@ -5,7 +5,9 @@
 - **Base URL**：`http://localhost:8080/api`
 - **认证方式**：除注册/登录/刷新Token外，所有接口请求头须携带 `Authorization: Bearer {accessToken}`
 - **统一响应码**：`code` 为 1 代表成功，0 代表失败
-- **分页响应**中 `data` 为对象，包含 `records`（数组）、`total`（总记录数）、`current`（当前页）、`size`（每页条数）
+- **分页响应**有两种格式：
+  - **游标分页**（帖子列表、用户帖子列表、评论列表）：`data` 包含 `records`（数组）、`cursor`（下页游标，无更多时为 null）、`hasMore`（是否还有更多）、`count`（本次返回的记录数）
+  - **页码分页**（粉丝列表、关注列表等）：`data` 包含 `records`（数组）、`total`（总记录数）、`current`（当前页）、`size`（每页条数）
 
 ---
 
@@ -578,7 +580,7 @@
 >
 > 请求方式：GET
 >
-> 接口描述：该接口用于分页查询指定用户发布的帖子列表
+> 接口描述：该接口用于游标分页查询指定用户发布的帖子列表（无限滚动加载）
 
 #### 2.7.2 请求参数
 
@@ -596,14 +598,15 @@
 
 | 参数名 | 类型 | 是否必须 | 默认值 | 备注 |
 |--------|------|----------|--------|------|
-| current | number | 非必须 | 1 | 页码 |
+| cursor | string | 非必须 | — | 游标，格式 `{timestamp}_{id}`，首次请求不传 |
 | size | number | 非必须 | 10 | 每页条数 |
 | sort | string | 非必须 | created_at | 排序字段：created_at(最新) / like_count(最热) |
 
 请求参数样例：
 
 ```
-/api/users/1/posts?current=1&size=10&sort=created_at
+/api/users/1/posts?size=10&sort=created_at
+/api/users/1/posts?cursor=1704067200000_100&size=10&sort=created_at
 ```
 
 #### 2.7.3 响应数据
@@ -617,9 +620,9 @@
 | code | number | 必须 | 响应码，1 代表成功，0 代表失败 |
 | msg | string | 非必须 | 提示信息 |
 | data | object | 非必须 | 返回的数据 |
-| \|- total | number | 必须 | 总记录数 |
-| \|- current | number | 必须 | 当前页码 |
-| \|- size | number | 必须 | 每页条数 |
+| \|- cursor | string | 非必须 | 下页游标，格式 `{timestamp}_{id}`（无更多数据时为 null） |
+| \|- hasMore | boolean | 必须 | 是否还有更多数据 |
+| \|- count | number | 必须 | 本次返回的记录数 |
 | \|- records | object[] | 必须 | 帖子列表 |
 | \|- records[].id | number | 必须 | 帖子ID |
 | \|- records[].title | string | 必须 | 标题 |
@@ -645,9 +648,9 @@
         "createdAt": "2026-05-20 15:30:00"
       }
     ],
-    "total": 25,
-    "current": 1,
-    "size": 10
+    "cursor": "1704067200000_100",
+    "hasMore": true,
+    "count": 10
   }
 }
 ```
@@ -1116,7 +1119,7 @@
 >
 > 请求方式：GET
 >
-> 接口描述：该接口用于分页查询首页帖子列表
+> 接口描述：该接口用于游标分页查询首页帖子列表（无限滚动加载）
 
 #### 3.5.2 请求参数
 
@@ -1126,14 +1129,15 @@
 
 | 参数名 | 类型 | 是否必须 | 默认值 | 备注 |
 |--------|------|----------|--------|------|
-| current | number | 非必须 | 1 | 页码 |
+| cursor | string | 非必须 | — | 游标，格式 `{timestamp}_{id}`，首次请求不传 |
 | size | number | 非必须 | 10 | 每页条数 |
 | sort | string | 非必须 | created_at | 排序：created_at(最新) / hot(热门) |
 
 请求参数样例：
 
 ```
-/api/posts?current=1&size=10&sort=created_at
+/api/posts?size=10&sort=created_at
+/api/posts?cursor=1704067200000_100&size=10&sort=created_at
 ```
 
 #### 3.5.3 响应数据
@@ -1147,9 +1151,9 @@
 | code | number | 必须 | 响应码，1 代表成功，0 代表失败 |
 | msg | string | 非必须 | 提示信息 |
 | data | object | 非必须 | 返回的数据 |
-| \|- total | number | 必须 | 总记录数 |
-| \|- current | number | 必须 | 当前页码 |
-| \|- size | number | 必须 | 每页条数 |
+| \|- cursor | string | 非必须 | 下页游标，格式 `{timestamp}_{id}`（无更多数据时为 null） |
+| \|- hasMore | boolean | 必须 | 是否还有更多数据 |
+| \|- count | number | 必须 | 本次返回的记录数 |
 | \|- records | object[] | 必须 | 帖子列表 |
 | \|- records[].id | number | 必须 | 帖子ID |
 | \|- records[].title | string | 必须 | 标题 |
@@ -1190,9 +1194,9 @@
         "createdAt": "2026-05-20 15:30:00"
       }
     ],
-    "total": 500,
-    "current": 1,
-    "size": 10
+    "cursor": "1704067200000_100",
+    "hasMore": true,
+    "count": 10
   }
 }
 ```
@@ -1505,7 +1509,7 @@
 >
 > 请求方式：GET
 >
-> 接口描述：该接口用于分页查询帖子的评论列表，每条一级评论附带若干条二级回复
+> 接口描述：该接口用于游标分页查询帖子的评论列表（无限滚动加载），每条一级评论附带若干条二级回复
 
 #### 4.2.2 请求参数
 
@@ -1523,14 +1527,15 @@
 
 | 参数名 | 类型 | 是否必须 | 默认值 | 备注 |
 |--------|------|----------|--------|------|
-| current | number | 非必须 | 1 | 一级评论页码 |
+| cursor | string | 非必须 | — | 游标，格式 `{timestamp}_{id}`，首次请求不传 |
 | size | number | 非必须 | 10 | 每页一级评论条数 |
 | replySize | number | 非必须 | 3 | 每条一级评论下预加载的二级回复数 |
 
 请求参数样例：
 
 ```
-/api/posts/100/comments?current=1&size=10&replySize=3
+/api/posts/100/comments?size=10&replySize=3
+/api/posts/100/comments?cursor=1704067200000_15&size=10&replySize=3
 ```
 
 #### 4.2.3 响应数据
@@ -1544,15 +1549,16 @@
 | code | number | 必须 | 响应码，1 代表成功，0 代表失败 |
 | msg | string | 非必须 | 提示信息 |
 | data | object | 非必须 | 返回的数据 |
-| \|- total | number | 必须 | 一级评论总数 |
-| \|- current | number | 必须 | 当前页码 |
-| \|- size | number | 必须 | 每页一级评论条数 |
+| \|- cursor | string | 非必须 | 下页游标，格式 `{timestamp}_{id}`（无更多数据时为 null） |
+| \|- hasMore | boolean | 必须 | 是否还有更多数据 |
+| \|- count | number | 必须 | 本次返回的记录数 |
 | \|- records | object[] | 必须 | 一级评论列表 |
 | \|- records[].id | number | 必须 | 评论ID |
 | \|- records[].postId | number | 必须 | 所属帖子ID |
 | \|- records[].user | object | 必须 | 评论者信息 |
 | \|- records[].user.id | number | 必须 | 评论者ID |
 | \|- records[].user.username | string | 必须 | 评论者用户名 |
+| \|- records[].user.nickname | string | 非必须 | 评论者昵称（可为空） |
 | \|- records[].user.avatar | string | 非必须 | 评论者头像 URL |
 | \|- records[].content | string | 必须 | 评论内容 |
 | \|- records[].likeCount | number | 必须 | 点赞数 |
@@ -1565,10 +1571,12 @@
 | \|- records[].replies[].user | object | 必须 | 回复者信息 |
 | \|- records[].replies[].user.id | number | 必须 | 回复者ID |
 | \|- records[].replies[].user.username | string | 必须 | 回复者用户名 |
+| \|- records[].replies[].user.nickname | string | 非必须 | 回复者昵称（可为空） |
 | \|- records[].replies[].user.avatar | string | 非必须 | 回复者头像 URL |
 | \|- records[].replies[].replyToUser | object | 非必须 | 被回复的用户信息 |
 | \|- records[].replies[].replyToUser.id | number | 必须 | 被回复的用户ID |
 | \|- records[].replies[].replyToUser.username | string | 必须 | 被回复的用户用户名 |
+| \|- records[].replies[].replyToUser.nickname | string | 非必须 | 被回复的用户昵称（可为空） |
 | \|- records[].replies[].content | string | 必须 | 回复内容 |
 | \|- records[].replies[].likeCount | number | 必须 | 点赞数 |
 | \|- records[].replies[].isLiked | boolean | 必须 | 当前用户是否已点赞 |
@@ -1592,6 +1600,7 @@
         "user": {
           "id": 3,
           "username": "wangwu",
+          "nickname": "王五",
           "avatar": "http://..."
         },
         "content": "写得太好了，支持！",
@@ -1606,11 +1615,13 @@
             "user": {
               "id": 1,
               "username": "zhangsan",
+              "nickname": "张三",
               "avatar": "http://..."
             },
             "replyToUser": {
               "id": 3,
-              "username": "wangwu"
+              "username": "wangwu",
+              "nickname": "王五"
             },
             "content": "谢谢支持！",
             "likeCount": 1,
@@ -1622,9 +1633,9 @@
         "hasMoreReplies": true
       }
     ],
-    "total": 25,
-    "current": 1,
-    "size": 10
+    "cursor": "1704067200000_15",
+    "hasMore": true,
+    "count": 10
   }
 }
 ```
@@ -1981,7 +1992,7 @@
 | 22 | GET | /api/posts/favorites | 我的收藏列表 | 帖子 |
 | 23 | GET | /api/posts/search | 搜索帖子（ES） | 帖子 |
 | 24 | POST | /api/posts/{postId}/comments | 发表评论/回复 | 评论 |
-| 25 | GET | /api/posts/{postId}/comments | 评论列表（含二级回复） | 评论 |
+| 25 | GET | /api/posts/{postId}/comments | 评论列表（游标分页，含二级回复） | 评论 |
 | 26 | GET | /api/comments/{id}/replies | 加载更多二级回复 | 评论 |
 | 27 | DELETE | /api/comments/{id} | 删除评论 | 评论 |
 | 28 | POST | /api/comments/{id}/like | 评论点赞/取消（toggle） | 评论 |

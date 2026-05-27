@@ -59,6 +59,20 @@ public class Result<T> {
     }
 
     /**
+     * 成功响应，携带业务数据和自定义提示信息
+     *
+     * @param data 业务数据
+     * @param msg  提示信息，如"发布成功"
+     */
+    public static <T> Result<T> success(T data, String msg) {
+        Result<T> r = new Result<>();
+        r.code = 1;
+        r.msg = msg;
+        r.data = data;
+        return r;
+    }
+
+    /**
      * 失败响应
      *
      * @param msg 错误描述，直接展示给前端

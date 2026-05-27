@@ -262,14 +262,11 @@ $accent-soft: rgba(37, 99, 235, 0.08);
   background: $bg-page;
   color: $text-primary;
   opacity: 0;
-  transform: translateY(6px);
   transition:
-    opacity 420ms ease,
-    transform 420ms ease;
+    opacity 420ms ease;
 
   &.is-mounted {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 

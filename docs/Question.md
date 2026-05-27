@@ -1353,3 +1353,499 @@ minio:
 ```
 
 > **关键点**：将"直连地址"和"对外访问地址"分离，兼容开发（本地裸 MinIO）和生产（nginx/CDN 反代）两种场景。`publicBaseUrl` 不配 `@NotBlank`，为空时回退到 `endpoint`，开发环境零配置即可工作。如果后续需要预签名 URL（bucket 设为私有时），可以在此基础上引入 MinIO SDK 的 `getPresignedObjectUrl()`，对外访问地址仍从 `publicBaseUrl` 获取。
+
+---
+
+## 前端：数据库查询使用游标实现瀑布式加载
+
+### 21、评论列表无限滚动 — 游标分页替代传统页码分页
+
+**背景**
+
+帖子详情页的评论区一级评论列表采用无限滚动（瀑布流）加载，与首页帖子列表一致。但评论列表接口（4.2）最初设计为传统页码分页（`current`/`size`/`total`），无法直接复用通用的 `useInfiniteList` composable。
+
+**方案设计**
+
+1. **接口层**：将 4.2 评论列表接口从页码分页改造为游标分页，对齐 3.5 帖子列表接口格式。
+
+| 改动点 | 改造前（页码） | 改造后（游标） |
+|--------|---------------|---------------|
+| 请求参数 | `current`, `size`, `replySize` | `cursor`, `size`, `replySize` |
+| 响应字段 | `total`, `current`, `size` | `cursor`, `hasMore`, `size` |
+| 游标格式 | — | `{timestamp}_{id}` |
+| 首次请求 | `current=1` | 不传 `cursor` |
+| 翻页 | `current=2` | `cursor=上页返回的cursor值` |
+
+2. **Composable 层**：将 `usePostList` 重构为通用 `useInfiniteList<T>`，支持双模式：
+
+```typescript
+// 游标模式（帖子列表、评论列表）
+useInfiniteList<PostVO>()                          // 默认 cursor 模式
+
+// 页码模式（粉丝列表、关注列表等传统分页场景）
+useInfiniteList<FollowerVO>({ mode: 'page' })
+```
+
+核心分页逻辑：
+
+```typescript
+// 游标模式 — hasMore 由后端直接返回
+cursor.value = (result.cursor as string) ?? null
+hasMore.value = (result.hasMore as boolean) ?? false
+
+// 页码模式 — hasMore 由前端计算
+hasMore.value = cur * sz < total
+currentPage.value++
+```
+
+3. **前端页面**：PostDetail 评论区使用 `v-infinite-scroll` + `useInfiniteList<CommentVO>`：
+
+```typescript
+const {
+  posts: comments,
+  loading: commentsLoading,
+  hasMore: commentsHasMore,
+  fetchPosts: fetchCommentPage,
+  reset: resetComments,
+} = useInfiniteList<CommentVO>({
+  fetchFn: (params) =>
+    fetchComments(postId.value, {
+      cursor: (params.cursor as string) ?? undefined,
+      size: params.size as number,
+      replySize: 3,
+    }),
+})
+```
+
+```html
+<section
+  v-infinite-scroll="fetchCommentPage"
+  :infinite-scroll-disabled="commentsLoading || !commentsHasMore"
+  :infinite-scroll-immediate="false"
+  infinite-scroll-distance="120"
+>
+  <CommentThread v-for="comment in comments" ... />
+  <p v-if="commentsLoading">加载中...</p>
+  <p v-if="!commentsHasMore && comments.length > 0">没有更多评论了</p>
+</section>
+```
+
+4. **数据库查询**：后端 MyBatis-Plus 按 `(created_at, id)` 复合排序 + `WHERE (created_at, id) < (?, ?)` 实现 keyset pagination，避免 `OFFSET` 在大页码时的性能衰减。
+
+```sql
+-- 首页（无 cursor）
+SELECT * FROM comment
+WHERE post_id = ? AND parent_id = 0 AND is_deleted = 0
+ORDER BY created_at ASC, id ASC
+LIMIT ? + 1  -- 多取一条判断 hasMore
+
+-- 后续页（传入 cursor: {timestamp}_{id}）
+SELECT * FROM comment
+WHERE post_id = ? AND parent_id = 0 AND is_deleted = 0
+  AND (created_at, id) > (?, ?)  -- keyset 条件
+ORDER BY created_at ASC, id ASC
+LIMIT ? + 1
+```
+
+> **关键点**：游标分页的核心优势是在大数据量下保持稳定的查询性能。`OFFSET + LIMIT` 在翻到后面页码时数据库仍需扫描并跳过前面所有行，而 keyset pagination 利用索引直接定位起点，时间复杂度 O(1)。此外，游标分页天然避免"插入新数据导致翻页重复/遗漏"的并发问题。
+
+**影响范围**
+
+| 文件 | 改动 |
+|------|------|
+| `composables/usePostList.ts` → `useInfiniteList.ts` | 重命名，泛型化，增加 `mode` 选项 |
+| `api/comments.ts` | `fetchComments` 参数从 `{current,size}` 改为 `{cursor,size}` |
+| `views/HomePage.vue` | import 路径更新 |
+| `views/PostDetail.vue` | 评论区从 ElPagination 改为 v-infinite-scroll + composable |
+| `docs/02-api-documentation.md` | 4.2 接口改为游标分页格式 |
+
+> 4.3 二级回复接口保持页码分页不变，因为二级回复通过 CommentThread 内置的 ElPagination 展示，不需要无限滚动。
+
+---
+
+## Sprint 3 代码审查：前端问题
+
+### 22、useInfiniteList 提前返回条件在空记录时失效导致无限滚动死循环
+
+**问题**
+
+`useInfiniteList.ts` 第 46 行提前返回条件：
+
+```typescript
+if (loading.value || (!hasMore.value && posts.value.length > 0)) return
+```
+
+`!hasMore.value && posts.value.length > 0` 的本意是"没有更多数据且已有记录时才跳过"。但首次请求返回空 records + `hasMore=false` 时，`posts.value.length` 保持为 0，条件不满足，下次滚动再次触发请求 → 死循环。
+
+**触发路径**：首次请求 → API 返回 `records: [], hasMore: false` → `posts` 仍为 `[]` → 滚动触发 → 条件 `!false && 0>0` = `true && false` = `false` → 放行 → 再次请求 → 死循环。
+
+**解决方案**
+
+去掉多余的 `length > 0` 守卫。首请求时 `hasMore` 初始为 `true`，`!true` 直接短路，根本不需要 `length > 0` 来"放行"：
+
+```typescript
+// ✅ 修复后
+if (loading.value || !hasMore.value) return
+```
+
+| 场景 | hasMore | posts.length | 修复前 | 修复后 |
+|------|---------|-------------|--------|--------|
+| 首请求 | true | 0 | 放行 | 放行 |
+| 有数据+无更多 | false | >0 | 阻止 | 阻止 |
+| 空数据+无更多 | false | 0 | **放行（bug）** | **阻止（修复）** |
+
+**影响范围**
+
+| 文件 | 改动 |
+|------|------|
+| `composables/useInfiniteList.ts` | 第 46 行条件简化 |
+
+### 23、posts.ts 请求函数语法不统一
+
+**问题**
+
+`api/posts.ts` 中 `createPost` 使用箭头函数 `(dto) => ...`，其余函数使用无效的 `const fn() {}` 混合语法（TypeScript 不支持 const + function declaration 写法），编译无法通过。
+
+**解决方案**
+
+统一改为箭头函数写法，与 `createPost` 保持一致：
+
+```typescript
+export const fetchPosts = (params: PostListDTO = {}) =>
+  result.get<...>('/posts', { params })
+
+export const fetchPostDetail = (id: number) =>
+  result.get<...>(`/posts/${id}`)
+
+export const likePost = (id: number) =>
+  result.post<...>(`/posts/${id}/like`)
+
+export const favoritePost = (id: number) =>
+  result.post<...>(`/posts/${id}/favorite`)
+```
+
+**影响范围**
+
+| 文件 | 改动 |
+|------|------|
+| `api/posts.ts` | 4 个函数 `const fn() {}` → 箭头函数 |
+
+### 24、 TipTap Link 缺少协议校验，可插入 javascript: 等危险 scheme
+
+**问题**
+
+`PostCreate.vue` 的 `setLink()` 将用户输入的 URL 直接传入 TipTap：
+
+```typescript
+editor.value?.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+```
+
+无任何协议校验，用户可输入 `javascript:alert(1)`、`data:text/html,...` 等危险 scheme。即使 `PostDetail.vue` 渲染时用了 DOMPurify，防御纵深不足——任何消费端（移动端、RSS、搜索摘要）都可能漏掉净化。
+
+**解决方案**
+
+两层防护：
+
+1. **Link extension `validate` 回调**：TipTap 设置链接前自动调用，返回 `false` 静默拒绝（拦截通过 extendMarkRange 等方式绕过的路径）
+2. **`setLink` 前端校验**：用户输入非法协议时弹 `ElMessage.warning`
+
+```typescript
+const ALLOWED_LINK_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:']
+
+// Link extension 配置
+Link.configure({
+  openOnClick: false,
+  HTMLAttributes: { rel: 'noopener noreferrer' },
+  validate: (href: string) => ALLOWED_LINK_PROTOCOLS.some((p) => href.toLowerCase().startsWith(p)),
+})
+
+// setLink 函数增加校验
+if (!ALLOWED_LINK_PROTOCOLS.some((p) => url.toLowerCase().startsWith(p))) {
+  ElMessage.warning('仅支持 http、https、mailto、tel 协议的链接')
+  return
+}
+```
+
+**影响范围**
+
+| 文件 | 改动 |
+|------|------|
+| `views/PostCreate.vue` | 新增 `ALLOWED_LINK_PROTOCOLS`、Link.validate 配置、setLink 校验 |
+
+### 25、handlePublish 中 editor.value 非空断言，编辑器异步初始化可能为 null
+
+**问题**
+
+`PostCreate.vue` 的 `handlePublish` 使用 `editor.value!.getHTML()` 非空断言。TipTap 的 `useEditor` 初始化是异步的，页面刚进入时编辑器可能尚未 ready，此时点击发布会 NPE。
+
+**解决方案**
+
+在 `canPublish` computed 里增加 `editor.value` 存在性判断，编辑器未就绪时按钮保持禁用：
+
+```typescript
+const canPublish = computed(() => {
+  return editor.value && title.value.trim().length > 0 && hasContent.value && !publishing.value
+})
+```
+
+比在 `handlePublish` 内部判空更合理：按钮状态直接反映发布能力，且 `canPublish` 为 `true` 时 `editor.value` 一定非空。
+
+**影响范围**
+
+| 文件 | 改动 |
+|------|------|
+| `views/PostCreate.vue` | canPublish 增加 `editor.value` 存在性判断 |
+
+### 26、PostCard liked/collected 从 props 初始化后不再同步
+
+**问题**
+
+```typescript
+const liked = ref(props.isLiked)
+const collected = ref(props.isCollected)
+```
+
+用 `ref(props.isLiked)` 初始化后，不再监听 props 变化。当父组件后续更新 `isLiked`/`isCollected`（如列表重刷、API 失败回滚），本地状态不会同步，UI 与真实状态不一致。
+
+**解决方案**
+
+用 `watch` 监听 props，保留乐观更新的即时响应能力，同时能在父组件回写时自动纠正：
+
+```typescript
+watch(() => props.isLiked, (v) => { liked.value = v })
+watch(() => props.isCollected, (v) => { collected.value = v })
+```
+
+不改 `computed` 因为点赞/收藏需要本地即时写入（乐观更新），`computed` 只读无法满足。
+
+**影响范围**
+
+| 文件 | 改动 |
+|------|------|
+| `components/PostCard.vue` | 新增两个 `watch` |
+
+### 27、PostCard 图片预览遮罩键盘事件无效
+
+**问题**
+
+遮罩 div 设置了 `tabindex="-1"`，但打开后从未调用 `.focus()`，导致 `@keydown` 事件永远不会触发，Esc 关闭完全无效。
+
+```html
+<!-- tabindex="-1" + 从未 focus → keydown 永不触发 -->
+<div tabindex="-1" @keydown="onPreviewKeydown" @click="closePreview">
+```
+
+**解决方案**
+
+改为在 `previewVisible` 为 `true` 时监听 document 的 `keydown`，关闭时移除，组件卸载时兜底清理：
+
+```typescript
+watch(previewVisible, (visible) => {
+  if (visible) document.addEventListener('keydown', onEscape)
+  else document.removeEventListener('keydown', onEscape)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', onEscape)
+})
+```
+
+遮罩 div 去掉无用的 `tabindex` 和 `@keydown`。
+
+**影响范围**
+
+| 文件 | 改动 |
+|------|------|
+| `components/PostCard.vue` | document 级 Esc 监听 + onUnmounted 清理，移除 tabindex/@keydown |
+
+### 28、CommentThread 直接 mutate props.comment.replies 嵌套对象
+
+**问题**
+
+`handleToggleLike` 中 `updateLike(visibleReplies.value)` 在未展开时 `visibleReplies` 返回 `props.comment.replies`，直接 mutate 了 prop 内部对象：
+
+```typescript
+target.isLiked = result.liked    // 直接改 props 嵌套字段
+target.likeCount = result.likeCount
+```
+
+违反 Vue 单向数据流，父组件状态不同步。
+
+**解决方案**
+
+维护 `replyLikes` 本地覆盖 Map，点赞结果写入 Map 而非 prop。渲染时用 `resolvedReply(reply)` 合并覆盖值：
+
+```typescript
+const replyLikes = ref<Record<number, { liked: boolean; likeCount: number }>>({})
+
+function resolvedReply(reply: CommentVO): CommentVO {
+  const override = replyLikes.value[reply.id]
+  if (!override) return reply
+  return { ...reply, isLiked: override.liked, likeCount: override.likeCount }
+}
+```
+
+模板中 `:comment="resolvedReply(reply)"`。一级评论的 `parentLiked`/`parentLikeCount` 已正确使用本地 ref，二级回复现在与之统一。
+
+**影响范围**
+
+| 文件 | 改动 |
+|------|------|
+| `components/CommentThread.vue` | 新增 `replyLikes` ref + `resolvedReply`；`handleToggleLike` 重写；模板使用 resolvedReply |
+
+### 29、CommentCreate 回复模式下可提交空模板字符串
+
+**问题**
+
+回复模式预填 `"回复 @xxx："`，`canSubmit` 仅判断 `content.value.trim().length > 0`，前缀本身非空，用户不输入任何内容即可直接提交。
+
+**解决方案**
+
+当 `replyToUser` 存在时，额外判断 trimmed 内容是否等于 `getInitialContent()`（即仅含前缀无实际内容）：
+
+```typescript
+const canSubmit = computed(() => {
+  if (submitting.value) return false
+  const text = content.value.trim()
+  if (text.length === 0) return false
+  if (props.replyToUser && text === getInitialContent()) return false
+  return true
+})
+```
+
+**影响范围**
+
+| 文件 | 改动 |
+|------|------|
+| `components/CommentCreate.vue` | canSubmit 增加空模板判断 |
+
+---
+
+## Sprint 3 代码审查：后端问题
+
+### 30、帖子详情查询未过滤软删除状态
+
+**问题**
+
+`PostMapper.xml` 中 `selectDetailWithAuthor` 的 WHERE 条件只有 `p.id = #{id}`，未过滤 `p.status = 0`（软删除）。而列表查询 `selectListLatest`/`selectListHot` 均有 `WHERE p.status = 1`。
+
+已删除的帖子仍可通过 `/posts/{id}` 直接访问。
+
+**解决方案**
+
+在 `selectDetailWithAuthor` 的 WHERE 中增加软删除过滤，与列表查询保持一致：
+
+```sql
+WHERE p.id = #{id} AND p.status = 1
+```
+
+**影响范围**
+
+| 文件 | 改动 |
+|------|------|
+| `resources/mapper/PostMapper.xml` | `selectDetailWithAuthor` WHERE 条件加 `p.status = 1` |
+
+### 31、服务端未做 HTML 清洗，存在存储型 XSS 风险
+
+**问题**
+
+`PostServiceImpl.createPost` 和 `updatePost` 直接将前端传入的 `contentHtml` 持久化到数据库，未做任何服务端清洗。即使前端渲染时用 DOMPurify 净化，防御纵深不足——其他消费端可能漏掉净化。
+
+**解决方案**
+
+使用 `Jsoup.clean()` + 自定义 `Safelist` 在入库前清洗，白名单与 TipTap（StarterKit + Image + Link）生成的合法标签对齐：
+
+```java
+private static final Safelist POST_SAFELIST;
+
+static {
+    POST_SAFELIST = new Safelist()
+            .addTags("p", "br", "strong", "em", "s", "u",
+                    "h1", "h2", "h3", "h4",
+                    "blockquote", "pre", "code",
+                    "ul", "ol", "li",
+                    "hr", "img", "a")
+            .addAttributes("img", "src", "alt")
+            .addAttributes("a", "href", "rel")
+            .addAttributes("pre", "class")
+            .addAttributes("code", "class")
+            .addProtocols("img", "src", "http", "https")
+            .addProtocols("a", "href", "http", "https", "mailto", "tel");
+}
+```
+
+`createPost` 和 `updatePost` 均先 `sanitizeHtml()` 再持久化，text/cover 提取也基于清洗后的 HTML。
+
+**影响范围**
+
+| 文件 | 改动 |
+|------|------|
+| `service/impl/PostServiceImpl.java` | 新增 `POST_SAFELIST` + `sanitizeHtml()`；createPost/updatePost 调用清洗 |
+
+### 32、CursorPageVO.size 语义不明确
+
+**问题**
+
+`CursorPageVO.size` 字段名暗示"每页条数/请求的 size"，但实际赋值为 `records.size()`（本次返回的实际数量，最后一页会变小）。前后端字段名与语义不匹配。
+
+**解决方案**
+
+字段重命名为 `count`，明确表示"本次返回的实际记录数"：
+
+```java
+// 后端
+private int count;  // 本次返回的实际记录数
+page.setCount(records.size());
+```
+
+```typescript
+// 前端
+export interface CursorPageResult<T> {
+  records: T[]
+  cursor: string | null
+  hasMore: boolean
+  count: number  // 本次返回的实际记录数
+}
+```
+
+**影响范围**
+
+| 文件 | 改动 |
+|------|------|
+| `vo/CursorPageVO.java` | `size` → `count` |
+| `service/impl/PostServiceImpl.java` | `setSize()` → `setCount()` |
+| `api/modules/index.ts` | `CursorPageResult.size` → `count` |
+
+### 33、cursor 解析 NumberFormatException 导致 500
+
+**问题**
+
+`listPosts()` 中 `Integer.parseInt(parts[0])` 和 `Long.parseLong(parts[1])` 在收到非法游标时抛 `NumberFormatException`，未被 catch，最终返回 500 而非预期的 400。
+
+原有的 `parseCursor()` 只校验了 `_` 分隔符的存在性，未校验数字格式。
+
+**解决方案**
+
+用 `CursorParts(long first, long second)` record 替代 `String[]` 返回值，在 `parseCursor` 内部同时完成分隔符校验 + 数字解析，`NumberFormatException` 统一 catch 后抛 `BusinessException("游标格式不正确")` → 400：
+
+```java
+private record CursorParts(long first, long second) {}
+
+private CursorParts parseCursor(String cursor) {
+    int idx = cursor.lastIndexOf('_');
+    if (idx <= 0) throw new BusinessException("游标格式不正确");
+    try {
+        return new CursorParts(
+                Long.parseLong(cursor.substring(0, idx)),
+                Long.parseLong(cursor.substring(idx + 1)));
+    } catch (NumberFormatException e) {
+        throw new BusinessException("游标格式不正确");
+    }
+}
+```
+
+**影响范围**
+
+| 文件 | 改动 |
+|------|------|
+| `service/impl/PostServiceImpl.java` | 新增 `CursorParts` record；`parseCursor` 返回类型改为 `CursorParts`；`listPosts` 两处游标解析适配 |

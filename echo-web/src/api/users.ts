@@ -2,6 +2,7 @@ import result from '@/utils/result'
 import type {
   ApiResult,
   ChangePasswordDTO,
+  FollowVO,
   UpdateProfileDTO,
   UpdateSettingsDTO,
   UploadAvatarVO,
@@ -38,3 +39,6 @@ export const uploadImage = (file: File) => {
 
 export const deleteFile = (url: string) =>
   result.delete<unknown, ApiResult<void>>('/upload/file', { params: { url } })
+
+export const followUser = (id: number) =>
+  result.post<unknown, ApiResult<FollowVO>>(`/users/${id}/follow`)

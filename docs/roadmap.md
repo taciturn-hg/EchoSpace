@@ -9,6 +9,7 @@
 
 - [ ] [忘记密码 / 重置密码](#一忘记密码--重置密码)
 - [ ] [日志系统改造为 AOP](#二日志系统改造为-aop)
+- [ ] [帖子列表瀑布流加载（游标分页）](#三帖子列表瀑布流加载游标分页)
 
 ---
 
@@ -174,3 +175,179 @@ ERROR [!] 异常捕获：UserController.login -> BusinessException: 账号或密
 
 - [Spring AOP 官方文档](https://docs.spring.io/spring-framework/reference/core/aop.html)
 - `@Around` 环绕通知 + `ProceedingJoinPoint` 获取方法签名和参数
+
+---
+
+## 三、帖子列表瀑布流加载（游标分页）
+
+### 背景
+
+当前接口文档（3.5 帖子列表、2.7 用户帖子列表）设计为传统页码分页：前端传 `current`（页码），后端返回 `total`（总数）+ `current`（当前页）+ `records`。前端需改用**无限滚动**（触底加载更多，类似贴吧），不展示页码，不计算总页数。
+
+### 两种分页方式对比
+
+| | 页码分页（当前设计） | 游标分页（目标） |
+|---|---|---|
+| 请求参数 | `current=1, size=10` | `cursor=xxx, size=10`（首次不传 cursor） |
+| 响应参数 | `records, total, current, size` | `records, cursor, hasMore, size` |
+| 翻页方式 | 点"下一页" | 滚到底部自动触发 |
+| SQL 性能 | 越后面越慢（OFFSET 扫描） | 始终恒定（走索引） |
+| 数据一致性 | 翻页间新数据插入会导致重复/遗漏 | 游标天然避免此问题 |
+| 总数查询 | 每次请求都 COUNT | 不查总数，多查 1 条判断 hasMore |
+
+### 数据库现状分析
+
+当前 `post` 表已有联合索引：
+
+```sql
+INDEX idx_status_created (status, created_at)
+```
+
+该索引**已基本满足**游标分页需求。游标查询 SQL 模式：
+
+```sql
+-- 首页（无游标）
+SELECT * FROM post WHERE status = 1 ORDER BY created_at DESC, id DESC LIMIT 21
+
+-- 后续页（传入上一页最后一条的 created_at + id）
+SELECT * FROM post 
+WHERE status = 1 
+  AND (created_at < #{cursorTime} OR (created_at = #{cursorTime} AND id < #{cursorId}))
+ORDER BY created_at DESC, id DESC 
+LIMIT 21
+```
+
+> 多查 1 条（size + 1）：若实际返回条数 > size 则 `hasMore = true`，前端取前 size 条，第 size+1 条作为下一次的 cursor。
+
+### 改动清单
+
+#### 接口文档改动
+
+**3.5 帖子列表：**
+
+```
+改前: GET /api/posts?current=1&size=10&sort=created_at
+改后: GET /api/posts?cursor=1704067200000_100&size=10&sort=created_at
+      首次不传 cursor；cursor 值为上一页最后一条的 "createTime_id"
+```
+
+请求参数变化：
+
+| 参数 | 改前 | 改后 |
+|------|------|------|
+| `current` | 页码，number | **删除** |
+| `cursor` | — | **新增**，游标，string，格式 `{timestamp}_{id}`，首次不传 |
+| `size` | 每页条数 | 不变 |
+| `sort` | 排序 | 不变 |
+
+响应数据变化：
+
+| 字段 | 改前 | 改后 |
+|------|------|------|
+| `total` | 总记录数 | **删除** |
+| `current` | 当前页 | **删除** |
+| `cursor` | — | **新增**，下页游标（无更多时为 null） |
+| `hasMore` | — | **新增**，boolean，是否还有更多 |
+| `records` | 帖子数组 | **不变** |
+
+```
+改前响应: { records: [...], total: 500, current: 1, size: 10 }
+改后响应: { records: [...], cursor: "1704067200000_95", hasMore: true, size: 10 }
+```
+
+**2.7 用户帖子列表**：同上模式修改。
+
+#### 数据库改动
+
+**无需改表**。`idx_status_created (status, created_at)` 已满足需求。
+
+可选优化：将索引调整为 `INDEX idx_status_created (status, created_at, id)` 让 tie-breaker 走索引覆盖，但当前索引下 MySQL 对 `id` 做 filesort 的代价极小（LIMIT 只有几十条），暂不必要。
+
+#### 后端改动
+
+| 文件 | 改动 |
+|------|------|
+| `vo/PageVO.java` | 新增 `CursorPageVO<T>`：`records, cursor, hasMore, size`，保留 `PageVO` 给其他仍用页码分页的接口 |
+| `mapper/PostMapper.java` | 新增游标查询方法（自定义 SQL） |
+| `service/PostService.java` | 接口新增 `listPosts(String cursor, int size, String sort)` |
+| `service/impl/PostServiceImpl.java` | 实现游标查询逻辑（解析 cursor → WHERE 条件 → LIMIT size+1 → 组装 CursorPageVO） |
+| `controller/PostController.java` | `GET /api/posts` 参数 `cursor` 替换 `current` |
+| `controller/UserController.java` | `GET /api/users/{id}/posts` 同上 |
+
+游标编码/解码工具方法：
+
+```java
+// cursor 格式: "{timestamp}_{id}"，如 "1704067200000_100"
+// 前端不解析，原样传回即可
+public record Cursor(long time, long id) {
+    public static Cursor parse(String cursor) {
+        String[] parts = cursor.split("_");
+        return new Cursor(Long.parseLong(parts[0]), Long.parseLong(parts[1]));
+    }
+    public String encode() { return time + "_" + id; }
+}
+```
+
+#### 前端改动
+
+| 文件 | 改动 |
+|------|------|
+| `api/modules/index.ts` | 新增 `fetchPosts(cursor?, size)` API 函数 |
+| `views/HomePage.vue` | 替换原有分页逻辑为 `v-infinite-scroll` 无限滚动 |
+| `stores/` | 可选：新增 `postStore` 管理帖子列表状态（累积、重置） |
+
+Element Plus 内置指令直接支持：
+
+```vue
+<template>
+  <div v-infinite-scroll="loadMore" :infinite-scroll-disabled="!hasMore" infinite-scroll-distance="100">
+    <PostCard v-for="post in posts" :key="post.id" :post="post" />
+  </div>
+  <p v-if="loading">加载中...</p>
+  <p v-if="!hasMore && posts.length > 0">没有更多了</p>
+</template>
+```
+
+### 先做页码分页再重构 vs 直接用游标分页
+
+#### 结论：直接用游标分页，不要分两步走
+
+#### 分析
+
+| 维度 | 先页码再游标 | 直接用游标 |
+|------|-------------|-----------|
+| **后端重复工作** | 写两套查询逻辑（OFFSET + 游标），第一版代码会被完全替换 | 只写一套 |
+| **前端重复工作** | 先做分页器 UI，再改成无限滚动，交互逻辑完全不同 | 只写一次 |
+| **VO 层** | PageVO → 再补 CursorPageVO，Controller 返回值要改 | 一步到位 CursorPageVO |
+| **浪费的代码量** | 约 60% 的帖子列表代码需要重写 | 0% |
+| **额外风险** | 切换分页方式时可能引入回归 bug | 无 |
+
+**具体估算**：
+
+先做页码分页时需写的代码，在迁移时会被改掉的部分：
+
+```
+后端（会被重写的）:
+  - PostServiceImpl.listPosts() 中的 MyBatis-Plus Page 查询 → 改为游标 SQL
+  - PostController 的 @RequestParam current → 改为 cursor
+  - 响应类型 PageVO → CursorPageVO
+
+前端（会被重写的）:
+  - HomePage.vue 的分页器 + 页码状态管理 → 改为 v-infinite-scroll + 累积逻辑
+  - API 函数的 current 参数 → cursor 参数
+  - 响应类型里的 total/current → cursor/hasMore
+
+不变的部分：
+  - PostCard 组件（帖子卡片渲染）—— 这部分不动
+  - Post 类型定义 —— 记录字段不变
+  - 其他帖子接口（详情/发布/编辑/删除）—— 完全不动
+```
+
+迁移成本约占帖子列表功能总工作量的 **50-60%**——相当于做 1.5 遍。考虑到当前 Sprint 3 还没开始写代码，没有理由先走弯路。
+
+### 实施建议
+
+1. 在 Sprint 3 开始时就按游标分页实现 3.5（帖子列表）
+2. 2.7（用户帖子列表）同样使用游标分页
+3. 其他列表接口（2.9 粉丝列表、2.10 关注列表、4.x 评论列表）后续开发时评估是否需要无限滚动——评论通常用页码分页（用户可能想跳页），粉丝/关注列表数据量小，也可以用页码分页
+4. 保留 `PageVO` 不动，只新增 `CursorPageVO`，不需要把所有分页都改成游标
