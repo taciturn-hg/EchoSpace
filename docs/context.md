@@ -332,37 +332,37 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | `echo-server/.../common/GlobalExceptionHandler.java` | 全局异常处理器（含 DuplicateKeyException→409、MissingServletRequestPartException/MultipartException→400 映射） |
 | `echo-server/.../controller/PostController.java` | 帖子模块控制器（发布/详情/编辑/删除/列表 5 端点，游标分页） |
 | `echo-server/.../service/PostService.java` | 帖子模块服务接口 |
-| `echo-server/.../service/impl/PostServiceImpl.java` | 帖子模块服务实现（Jsoup HTML 解析、游标编解码、乐观锁、所有权校验） |
+| `echo-server/.../service/impl/PostServiceImpl.java` | 帖子模块服务实现（Jsoup.clean HTML 清洗、游标编解码+NumberFormatException→400、乐观锁、所有权校验、文本/封面提取） |
 | `echo-server/.../mapper/PostMapper.java` | 帖子 Mapper（BaseMapper + 3 自定义查询） |
 | `echo-server/.../mapper/UserLikeMapper.java` | 点赞关系 Mapper |
 | `echo-server/.../mapper/UserFavoriteMapper.java` | 收藏关系 Mapper |
 | `echo-server/.../mapper/UserFollowMapper.java` | 关注关系 Mapper |
-| `echo-server/src/main/resources/mapper/PostMapper.xml` | 帖子自定义 SQL（游标分页最新/热门 + 详情多表 JOIN） |
+| `echo-server/src/main/resources/mapper/PostMapper.xml` | 帖子自定义 SQL（游标分页最新/热门 + 详情多表 JOIN 含软删除过滤 p.status=1） |
 | `echo-server/.../dto/CreatePostDTO.java` | 发布帖子请求 DTO |
 | `echo-server/.../dto/UpdatePostDTO.java` | 编辑帖子请求 DTO |
 | `echo-server/.../vo/AuthorVO.java` | 作者信息 VO（id/username/nickname/avatar） |
 | `echo-server/.../vo/PostDetailVO.java` | 帖子详情 VO（含 isLiked/isCollected/isFollowed 状态） |
 | `echo-server/.../vo/PostItemVO.java` | 帖子列表项 VO（含嵌套 AuthorVO） |
-| `echo-server/.../vo/CursorPageVO.java` | 游标分页通用 VO（cursor/hasMore/size/records） |
+| `echo-server/.../vo/CursorPageVO.java` | 游标分页通用 VO（cursor/hasMore/count/records，count 为本次返回的实际记录数） |
 | `echo-server/.../vo/CreatePostVO.java` | 创建帖子响应 VO（id） |
 | `echo-web/src/api/users.ts` | 用户模块前端 API（含 uploadAvatar/uploadImage/deleteFile/followUser） |
-| `echo-web/src/api/posts.ts` | 帖子模块前端 API（createPost/fetchPosts/fetchPostDetail/likePost/favoritePost） |
-| `echo-web/src/api/comments.ts` | 评论模块前端 API（fetchComments 游标分页/fetchReplies 页码分页/createComment/likeComment/deleteComment） |
+| `echo-web/src/api/posts.ts` | 帖子模块前端 API（createPost/fetchPosts/fetchPostDetail/likePost/favoritePost，统一箭头函数 + ApiResult 双参数泛型） |
+| `echo-web/src/api/comments.ts` | 评论模块前端 API（fetchComments 游标分页/fetchReplies 页码分页/createComment/likeComment/deleteComment，统一箭头函数 + ApiResult 返回类型） |
 | `echo-web/src/api/modules/index.ts` | 前端类型定义（DTO/VO/Result 泛型，含 CreatePostDTO/CreatePostVO 等） |
-| `echo-web/src/composables/useInfiniteList.ts` | 通用无限列表 composable（泛型 `<T>`，双模式 cursor/page，fetchFn 注入 + baseParams 复用） |
+| `echo-web/src/composables/useInfiniteList.ts` | 通用无限列表 composable（泛型 `<T>`，双模式 cursor/page，fetchFn 注入 + baseParams 复用，已修复空记录提前返回死循环） |
 | `echo-web/src/utils/time.ts` | 共享时间格式化工具（formatRelativeTime 相对时间 / formatDateTime 绝对时间） |
 | `echo-web/src/utils/result.ts` | Axios 封装，含 401 自动刷新逻辑 |
 | `echo-server/.../common/Result.java` | 统一响应包装（success/error，新增 success(data, msg) 工厂方法） |
 | `echo-web/src/stores/userStore.ts` | 用户状态（Token + 用户信息） |
 | `echo-web/src/router/index.ts` | 路由定义与守卫 |
 | `echo-web/src/components/LayoutPage.vue` | 主布局（顶栏 + 可折叠侧边栏 + 内容区），下拉含资料设置/账号设置/修改密码/退出 |
-| `echo-web/src/components/PostCard.vue` | 帖子卡片组件（用户区/帖子区/图片网格/交互区/图片预览，@lucide/vue 图标，共享 utils/time.ts，单图原生比例+多图 4:3 网格） |
+| `echo-web/src/components/PostCard.vue` | 帖子卡片组件（用户区/帖子区/图片网格/交互区/图片预览，@lucide/vue 图标，单图原生比例+多图 4:3 网格，watch props 同步 liked/collected，document 级 Esc 预览关闭） |
 | `echo-web/src/components/CommentCard.vue` | 评论卡片组件（无边框，用户区含"@回复人"昵称+评论内容+底部时间(25%)/点赞回复按钮(37.5%)，Heart红色切换，hideReplyTarget 控制 @ 显隐） |
-| `echo-web/src/components/CommentThread.vue` | 评论线程组件（一级评论+缩进二级回复+加载更多/分页+行内回复编辑器插入，子回复 hideReplyTarget 按 replyToUser.id === 一级作者 id 判断） |
-| `echo-web/src/components/CommentCreate.vue` | 评论发布组件（ElInput textarea+发布按钮，回复预填"回复@{username}："） |
+| `echo-web/src/components/CommentThread.vue` | 评论线程组件（一级评论+缩进二级回复+加载更多/分页+行内回复编辑器插入，replyLikes 本地覆盖防 prop mutation，子回复 hideReplyTarget 按 replyToUser.id === 一级作者 id 判断） |
+| `echo-web/src/components/CommentCreate.vue` | 评论发布组件（ElInput textarea+发布按钮，回复预填"回复@{username}："，空模板保护防提交纯前缀） |
 | `echo-web/src/views/HomePage.vue` | 首页帖子列表（v-infinite-scroll 无限滚动 + useInfiniteList composable） |
 | `echo-web/src/views/PostDetail.vue` | 帖子详情页（淡入动画，作者区+关注按钮+帖子主体 DOMPurify 净化+4 交互按钮，评论区 useInfiniteList<CommentVO> + v-infinite-scroll 无限滚动，乐观更新+回滚） |
-| `echo-web/src/views/PostCreate.vue` | 帖子发布页（TipTap 富文本 + Toolbar 粗体/斜体/标题/引用/代码块/图片/链接 + 图片粘贴拖入上传 + 标题/正文双框布局 + 淡入动画） |
+| `echo-web/src/views/PostCreate.vue` | 帖子发布页（TipTap 富文本 + Toolbar 粗体/斜体/标题/引用/代码块/图片/链接 + Link 协议白名单 http/https/mailto/tel + 图片粘贴拖入上传 + 标题/正文双框布局 + 淡入动画 + editor 就绪保护） |
 | `echo-web/src/views/ProfileSettingsPage.vue` | 资料设置页（头像本地预览+选择图片，保存时统一上传；昵称+简介编辑；保存/取消） |
 | `echo-web/src/views/SettingsPage.vue` | 账号设置页（手机号+邮箱编辑，el-form rules 校验，保存/取消） |
 | `echo-web/src/views/ChangePasswordPage.vue` | 修改密码页（旧密码/新密码/确认密码，show-password 切换，el-form rules 校验，绿色渐变修改密码按钮，忘记密码链接） |
@@ -373,5 +373,5 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | `docs/《EchoSpace》系统设计.md` | 系统设计文档（架构 + 模块 + 数据库 + 设计要点） |
 | `docs/《EchoSpace》系统设计.docx` | 系统设计文档 Word 版（同上，含格式化表格） |
 | `docs/01-requirements-and-plan.md` | 需求与技术方案文档 |
-| `docs/02-api-documentation.md` | API 接口文档（含用户/帖子/评论/文件模块） |
-| `docs/Question.md` | 开发问题记录（按主题分组：后端 Security 构建 / 前端 axios 拦截器 / 后端其他 / 前端其他） |
+| `docs/02-api-documentation.md` | API 接口文档（含用户/帖子/评论/文件模块，游标分页响应字段 size→count） |
+| `docs/Question.md` | 开发问题记录（按主题分组：后端 Security 构建 / 前端 axios 拦截器 / 后端其他 / 前端其他 / Sprint 3 前后端代码审查 #22~#33） |

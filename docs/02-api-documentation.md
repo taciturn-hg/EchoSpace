@@ -6,7 +6,7 @@
 - **认证方式**：除注册/登录/刷新Token外，所有接口请求头须携带 `Authorization: Bearer {accessToken}`
 - **统一响应码**：`code` 为 1 代表成功，0 代表失败
 - **分页响应**有两种格式：
-  - **游标分页**（帖子列表、用户帖子列表、评论列表）：`data` 包含 `records`（数组）、`cursor`（下页游标，无更多时为 null）、`hasMore`（是否还有更多）、`size`（每页条数）
+  - **游标分页**（帖子列表、用户帖子列表、评论列表）：`data` 包含 `records`（数组）、`cursor`（下页游标，无更多时为 null）、`hasMore`（是否还有更多）、`count`（本次返回的记录数）
   - **页码分页**（粉丝列表、关注列表等）：`data` 包含 `records`（数组）、`total`（总记录数）、`current`（当前页）、`size`（每页条数）
 
 ---
@@ -622,7 +622,7 @@
 | data | object | 非必须 | 返回的数据 |
 | \|- cursor | string | 非必须 | 下页游标，格式 `{timestamp}_{id}`（无更多数据时为 null） |
 | \|- hasMore | boolean | 必须 | 是否还有更多数据 |
-| \|- size | number | 必须 | 每页条数 |
+| \|- count | number | 必须 | 本次返回的记录数 |
 | \|- records | object[] | 必须 | 帖子列表 |
 | \|- records[].id | number | 必须 | 帖子ID |
 | \|- records[].title | string | 必须 | 标题 |
@@ -650,7 +650,7 @@
     ],
     "cursor": "1704067200000_100",
     "hasMore": true,
-    "size": 10
+    "count": 10
   }
 }
 ```
@@ -1153,7 +1153,7 @@
 | data | object | 非必须 | 返回的数据 |
 | \|- cursor | string | 非必须 | 下页游标，格式 `{timestamp}_{id}`（无更多数据时为 null） |
 | \|- hasMore | boolean | 必须 | 是否还有更多数据 |
-| \|- size | number | 必须 | 每页条数 |
+| \|- count | number | 必须 | 本次返回的记录数 |
 | \|- records | object[] | 必须 | 帖子列表 |
 | \|- records[].id | number | 必须 | 帖子ID |
 | \|- records[].title | string | 必须 | 标题 |
@@ -1196,7 +1196,7 @@
     ],
     "cursor": "1704067200000_100",
     "hasMore": true,
-    "size": 10
+    "count": 10
   }
 }
 ```
@@ -1551,7 +1551,7 @@
 | data | object | 非必须 | 返回的数据 |
 | \|- cursor | string | 非必须 | 下页游标，格式 `{timestamp}_{id}`（无更多数据时为 null） |
 | \|- hasMore | boolean | 必须 | 是否还有更多数据 |
-| \|- size | number | 必须 | 每页一级评论条数 |
+| \|- count | number | 必须 | 本次返回的记录数 |
 | \|- records | object[] | 必须 | 一级评论列表 |
 | \|- records[].id | number | 必须 | 评论ID |
 | \|- records[].postId | number | 必须 | 所属帖子ID |
@@ -1635,7 +1635,7 @@
     ],
     "cursor": "1704067200000_15",
     "hasMore": true,
-    "size": 10
+    "count": 10
   }
 }
 ```

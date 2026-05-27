@@ -1,22 +1,25 @@
 import result from '@/utils/result'
-import type { PageResult, CursorPageResult, CommentVO, CreateCommentDTO, CreateCommentVO, LikeCommentVO } from '@/api/modules/index'
+import type {
+  PageResult,
+  CursorPageResult,
+  CommentVO,
+  CreateCommentDTO,
+  CreateCommentVO,
+  LikeCommentVO,
+  ApiResult,
+} from '@/api/modules/index'
 
-export function fetchComments(postId: number, params: { cursor?: string | null; size?: number; replySize?: number }) {
-  return result.get<CursorPageResult<CommentVO>>(`/posts/${postId}/comments`, { params })
-}
+export const fetchComments = (postId: number, params: { cursor?: string | null; size?: number; replySize?: number }) =>
+  result.get<unknown, ApiResult<CursorPageResult<CommentVO>>>(`/posts/${postId}/comments`, { params })
 
-export function fetchReplies(commentId: number, params: { current?: number; size?: number }) {
-  return result.get<PageResult<CommentVO>>(`/comments/${commentId}/replies`, { params })
-}
+export const fetchReplies = (commentId: number, params: { current?: number; size?: number }) =>
+  result.get<unknown, ApiResult<PageResult<CommentVO>>>(`/comments/${commentId}/replies`, { params })
 
-export function createComment(postId: number, data: CreateCommentDTO) {
-  return result.post<CreateCommentVO>(`/posts/${postId}/comments`, data)
-}
+export const createComment = (postId: number, data: CreateCommentDTO) =>
+  result.post<unknown, ApiResult<CreateCommentVO>>(`/posts/${postId}/comments`, data)
 
-export function likeComment(commentId: number) {
-  return result.post<LikeCommentVO>(`/comments/${commentId}/like`)
-}
+export const likeComment = (commentId: number) =>
+  result.post<unknown, ApiResult<LikeCommentVO>>(`/comments/${commentId}/like`)
 
-export function deleteComment(commentId: number) {
-  return result.delete(`/comments/${commentId}`)
-}
+export const deleteComment = (commentId: number) =>
+  result.delete<unknown, ApiResult<void>>(`/comments/${commentId}`)

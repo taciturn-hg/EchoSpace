@@ -1,6 +1,5 @@
 package com.echospace.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.echospace.common.BusinessException;
 import com.echospace.dto.CreatePostDTO;
 import com.echospace.dto.UpdatePostDTO;

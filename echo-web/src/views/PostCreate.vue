@@ -33,7 +33,8 @@ const editor = useEditor({
     Link.configure({
       openOnClick: false,
       HTMLAttributes: { rel: 'noopener noreferrer' },
-      validate: (href: string) => ALLOWED_LINK_PROTOCOLS.some((p) => href.toLowerCase().startsWith(p)),
+      validate: (href: string) =>
+        ALLOWED_LINK_PROTOCOLS.some((p) => href.toLowerCase().startsWith(p)),
     }),
   ],
   editorProps: {
@@ -126,7 +127,7 @@ function setLink() {
 // ===== Image Upload =====
 async function uploadAndInsert(file: File) {
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-    ElMessage.error('仅支持 JPG、PNG、GIF、WebP 格式')
+    ElMessage.error('仅支持 JPG、PNG 格式')
     return
   }
   if (file.size > MAX_IMAGE_SIZE) {
