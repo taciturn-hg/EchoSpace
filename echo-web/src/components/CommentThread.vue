@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { ElMessage, ElPagination } from 'element-plus'
+import { ElMessage, ElMessageBox, ElPagination } from 'element-plus'
 import CommentCard from '@/components/CommentCard.vue'
 import CommentCreate from '@/components/CommentCreate.vue'
-import { fetchReplies, likeComment } from '@/api/comments'
+import { fetchReplies, likeComment, deleteComment } from '@/api/comments'
 import type { CommentVO, CommentUser } from '@/api/modules/index'
 
 const props = defineProps<{
@@ -13,6 +13,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'reply-added': []
+  'deleted': [commentId: number]
 }>()
 
 // ===== Reply pagination state =====
@@ -101,6 +102,35 @@ async function handleReplySubmitted() {
   emit('reply-added')
 }
 
+async function handleDelete(commentId: number) {
+  try {
+    await ElMessageBox.confirm('确定要删除这条评论吗？删除后不可恢复。', '删除确认', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return
+  }
+
+  try {
+    await deleteComment(commentId)
+    ElMessage.success('删除成功')
+
+    if (commentId === props.comment.id) {
+      emit('deleted', commentId)
+    } else {
+      if (expanded.value) {
+        paginatedReplies.value = paginatedReplies.value.filter((r) => r.id !== commentId)
+        replyTotal.value = Math.max(0, replyTotal.value - 1)
+      }
+      emit('reply-added')
+    }
+  } catch {
+    ElMessage.error('删除失败，请重试')
+  }
+}
+
 // ===== Like interaction =====
 async function handleToggleLike(commentId: number) {
   try {
@@ -139,6 +169,7 @@ function getReplyUser(commentId: number): CommentUser | null {
       :is-liked="parentComment.isLiked"
       @toggle-like="handleToggleLike"
       @reply="handleReply"
+      @delete="handleDelete"
     />
 
     <!-- ===== 二级回复区域（缩进） ===== -->
@@ -161,6 +192,7 @@ function getReplyUser(commentId: number): CommentUser | null {
           :hide-reply-target="reply.replyToUser?.id === comment.user.id"
           @toggle-like="handleToggleLike"
           @reply="handleReply"
+          @delete="handleDelete"
         />
         <!-- 回复某条二级回复的编辑器（插在该回复下方） -->
         <CommentCreate

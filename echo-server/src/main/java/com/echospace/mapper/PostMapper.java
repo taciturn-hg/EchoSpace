@@ -53,4 +53,19 @@ public interface PostMapper extends BaseMapper<Post> {
      * @param id 帖子 ID
      */
     int incrementViewCount(@Param("id") Long id);
+
+    /**
+     * 帖子评论数 +1（发布评论时调用）
+     *
+     * @param id 帖子 ID
+     */
+    int incrementCommentCount(@Param("id") Long id);
+
+    /**
+     * 帖子评论数 -delta（删除评论时调用）
+     *
+     * @param id    帖子 ID
+     * @param delta 减少的数量
+     */
+    int decrementCommentCount(@Param("id") Long id, @Param("delta") int delta);
 }

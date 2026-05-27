@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+    评论模块自定义 SQL 映射
+    包含：游标分页一级评论、二级回复查询、回复数统计、二级回复页码分页
+-->
+<mapper namespace="com.echospace.mapper.CommentMapper">
+
+    <!-- 一级评论结果映射（含嵌套用户信息 + 点赞状态，不含 replies 列表，由 Service 层填充） -->
+    <resultMap id="commentResultMap" type="com.echospace.vo.CommentVO">
+        <id column="id" property="id"/>
+        <result column="post_id" property="postId"/>
+        <result column="content" property="content"/>
+        <result column="like_count" property="likeCount"/>
+        <result column="is_liked" property="isLiked"/>
+        <result column="created_at" property="createdAt"/>
+        <association property="user" javaType="com.echospace.vo.CommentUserVO">
+            <result column="user_id" property="id"/>
+            <result column="username" property="username"/>
+            <result column="nickname" property="nickname"/>
+            <result column="avatar" property="avatar"/>
+        </association>
+    </resultMap>
+
+    <!-- 二级回复结果映射（含嵌套用户信息 + 被回复用户信息 + 点赞状态） -->
+    <resultMap id="replyResultMap" type="com.echospace.vo.ReplyVO">
+        <id column="id" property="id"/>
+        <result column="post_id" property="postId"/>
+        <result column="parent_id" property="parentId"/>
+        <result column="content" property="content"/>
+        <result column="like_count" property="likeCount"/>
+        <result column="is_liked" property="isLiked"/>
+        <result column="created_at" property="createdAt"/>
+        <association property="user" javaType="com.echospace.vo.CommentUserVO">
+            <result column="user_id" property="id"/>
+            <result column="username" property="username"/>
+            <result column="nickname" property="nickname"/>
+            <result column="avatar" property="avatar"/>
+        </association>
+        <association property="replyToUser" javaType="com.echospace.vo.ReplyToUserVO">
+            <result column="reply_to_user_id" property="id"/>
+            <result column="reply_to_username" property="username"/>
+            <result column="reply_to_nickname" property="nickname"/>
+        </association>
+    </resultMap>
+
+    <!--
+        游标分页查询一级评论（parent_id=0，status=1）
+        游标键：(created_at, id)，按时间倒序
+        多查 1 条用于判断 hasMore（由 Service 层处理）
+    -->
+    <select id="selectTopLevelComments" resultMap="commentResultMap">
+        SELECT c.id, c.post_id, c.content, c.like_count, c.created_at,
+               u.id AS user_id, u.username, u.nickname, u.avatar,
+               IF(lk.id IS NOT NULL, TRUE, FALSE) AS is_liked
+        FROM comment c
+        JOIN user u ON c.user_id = u.id
+        LEFT JOIN user_like lk ON lk.target_id = c.id AND lk.target_type = 2 AND lk.user_id = #{userId}
+        WHERE c.post_id = #{postId}
+          AND c.parent_id = 0
+          AND c.status = 1
+        <if test="cursorTime != null">
+            AND (c.created_at &lt; #{cursorTime}
+                 OR (c.created_at = #{cursorTime} AND c.id &lt; #{cursorId}))
+        </if>
+        ORDER BY c.created_at DESC, c.id DESC
+        LIMIT #{size}
+    </select>
+
+    <!--
+        查询一级评论下状态正常的二级回复
+        按创建时间升序，取最旧的前 limit 条
+    -->
+    <select id="selectReplies" resultMap="replyResultMap">
+        SELECT c.id, c.post_id, c.parent_id, c.content, c.like_count, c.created_at,
+               u.id AS user_id, u.username, u.nickname, u.avatar,
+               ru.id AS reply_to_user_id, ru.username AS reply_to_username,
+               ru.nickname AS reply_to_nickname,
+               IF(lk.id IS NOT NULL, TRUE, FALSE) AS is_liked
+        FROM comment c
+        JOIN user u ON c.user_id = u.id
+        LEFT JOIN user ru ON c.reply_to_uid = ru.id
+        LEFT JOIN user_like lk ON lk.target_id = c.id AND lk.target_type = 2 AND lk.user_id = #{userId}
+        WHERE c.parent_id = #{parentId}
+          AND c.status = 1
+        ORDER BY c.created_at ASC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 统计一级评论下状态正常的二级回复总数 -->
+    <select id="countReplies" resultType="int">
+        SELECT COUNT(*)
+        FROM comment
+        WHERE parent_id = #{parentId}
+          AND status = 1
+    </select>
+
+    <!--
+        页码分页查询二级回复（4.3 加载更多回复）
+        使用 MyBatis-Plus 分页插件拦截，按创建时间升序
+    -->
+    <select id="selectRepliesPage" resultMap="replyResultMap">
+        SELECT c.id, c.post_id, c.parent_id, c.content, c.like_count, c.created_at,
+               u.id AS user_id, u.username, u.nickname, u.avatar,
+               ru.id AS reply_to_user_id, ru.username AS reply_to_username,
+               ru.nickname AS reply_to_nickname,
+               IF(lk.id IS NOT NULL, TRUE, FALSE) AS is_liked
+        FROM comment c
+        JOIN user u ON c.user_id = u.id
+        LEFT JOIN user ru ON c.reply_to_uid = ru.id
+        LEFT JOIN user_like lk ON lk.target_id = c.id AND lk.target_type = 2 AND lk.user_id = #{userId}
+        WHERE c.parent_id = #{parentId}
+          AND c.status = 1
+        ORDER BY c.created_at ASC
+    </select>
+
+</mapper>

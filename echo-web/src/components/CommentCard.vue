@@ -2,7 +2,8 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElAvatar } from 'element-plus'
-import { Heart, MessageCircle } from '@lucide/vue'
+import { Heart, MessageCircle, Trash2 } from '@lucide/vue'
+import { useUserStore } from '@/stores/userStore'
 import type { CommentVO } from '@/api/modules/index'
 import { formatRelativeTime, formatDateTime } from '@/utils/time'
 
@@ -21,9 +22,13 @@ const props = withDefaults(
 const emit = defineEmits<{
   'toggle-like': [commentId: number]
   'reply': [commentId: number]
+  'delete': [commentId: number]
 }>()
 
 const router = useRouter()
+const userStore = useUserStore()
+
+const currentUserId = computed(() => userStore.userInfo?.id)
 
 const displayName = computed(() => props.comment.user.nickname || props.comment.user.username)
 
@@ -49,6 +54,11 @@ function handleLikeClick(e: MouseEvent) {
 function handleReplyClick(e: MouseEvent) {
   e.stopPropagation()
   emit('reply', props.comment.id)
+}
+
+function handleDeleteClick(e: MouseEvent) {
+  e.stopPropagation()
+  emit('delete', props.comment.id)
 }
 </script>
 
@@ -86,6 +96,15 @@ function handleReplyClick(e: MouseEvent) {
           <button class="comment-card__action" aria-label="回复" @click="handleReplyClick">
             <MessageCircle :size="16" />
             <span>回复</span>
+          </button>
+          <button
+            v-if="currentUserId && comment.user.id === currentUserId"
+            class="comment-card__action comment-card__action--delete"
+            aria-label="删除"
+            @click="handleDeleteClick"
+          >
+            <Trash2 :size="16" />
+            <span>删除</span>
           </button>
         </div>
       </div>
@@ -228,6 +247,13 @@ $transition-fast: 150ms ease;
 
   &--liked {
     color: $accent-red;
+  }
+
+  &--delete {
+    &:hover {
+      color: $accent-red;
+      background: #fef2f2;
+    }
   }
 }
 </style>

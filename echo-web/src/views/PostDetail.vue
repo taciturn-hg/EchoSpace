@@ -178,6 +178,13 @@ function handleCommentSubmitted() {
   fetchCommentsList()
 }
 
+function handleCommentDeleted(commentId: number) {
+  const idx = comments.value.findIndex((c) => c.id === commentId)
+  if (idx !== -1) {
+    comments.value.splice(idx, 1)
+  }
+}
+
 // ===== Lifecycle =====
 onMounted(() => {
   loadPost()
@@ -314,6 +321,7 @@ watch(postId, () => {
             :comment="comment"
             :post-id="post.id"
             @reply-added="handleCommentSubmitted"
+            @deleted="handleCommentDeleted"
           />
 
           <p v-if="comments.length === 0 && !commentsLoading" class="post-detail__no-comments">
