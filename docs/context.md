@@ -57,6 +57,7 @@
 │  Controller Layer                                       │
 │    AuthController  (register / login / refresh / me)    │
 │    UserController (profile GET/PUT, settings GET/PUT, password PUT) │
+│    UserPublicController (GET /users/{id} + GET /users/{id}/posts) │
 │    FileController (avatar/image upload)                  │
 │    PostController (posts CRUD + cursor pagination)       │
 │                                                         │
@@ -132,7 +133,7 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | PostDetail.vue | `/post/:id` | 占位 |
 | PostCreate.vue | `/post/create` | 已完成（TipTap 富文本 + Toolbar + 图片上传，详见 Sprint 3） |
 | SearchPage.vue | `/search` | 占位 |
-| UserProfile.vue | `/user/:id` | 占位 |
+| UserProfile.vue | `/user/:id` | 已完成（用户信息卡片 + 帖子列表 + 关注/粉丝弹窗 + PostCard 编辑/删除按钮 + PostCreate 编辑模式） |
 | ProfileSettingsPage.vue | `/settings/profile` | 已完成（头像上传/昵称/简介编辑+保存/取消） |
 | SettingsPage.vue | `/settings` | 已完成（手机号/邮箱编辑+保存/取消，el-form rules 校验） |
 | ChangePasswordPage.vue | `/settings/change-password` | 已完成（el-form rules 校验，旧密码/新密码/确认密码，show-password 切换，修改密码/清空按钮，忘记密码链接） |
@@ -272,8 +273,18 @@ refreshToken 过期 → 清除 store → 跳转 /login
 - [x] 后端实现帖子接口 3.1~3.5（发布/详情/编辑/删除/游标分页列表，含 Jsoup、游标编解码、乐观锁）
 - [x] 开发 PostDetail：帖子详情、评论列表，左上角返回按钮
 - [x] 开发 PostCreate：富文本编辑器（TipTap）发帖，含 toolbar（粗体/斜体/标题/引用/代码块/图片/链接）
-- [ ] 开发 UserProfile：用户主页、发帖列表
+- [x] 开发 UserProfile：用户主页、发帖列表、关注/粉丝弹窗
 - [x] 前端开发评论组件：CommentCard / CommentThread / CommentCreate
+	- [x] **后端 API 2.1** `GET /users/{id}`（公开用户信息）：`UserPublicController.getProfile()` + `UserService.getPublicProfile()` 实现，查询用户基本信息、发帖数（postCount）、粉丝数（followerCount）、关注数（followingCount）、是否已关注（isFollowed），未登录时 isFollowed 恒为 false
+	- [x] **后端 API 2.7** `GET /users/{id}/posts`（用户帖子列表）：`UserPublicController.listUserPosts()` + `PostService.listUserPosts()` 实现，游标分页（支持 created_at/hot 排序），`PostMapper` 新增 `selectListByUserLatest` / `selectListByUserHot` 含 `AND p.user_id = #{userId}` 过滤
+	- [x] `PostServiceImpl` 重构：抽取 `buildCursorPage()` 共享方法，消除 `listPosts` 与 `listUserPosts` 之间的游标分页构建重复
+	- [x] 前端 `api/posts.ts` 新增 `fetchUserPosts(userId, params)`，`UserProfile.vue` 的 `useInfiniteList` 从通用 `fetchPosts` 切换为 `fetchUserPosts`
+	- [x] `application.yaml` 安全白名单新增 `/users/*` 和 `/users/*/posts`，允许未登录访问公开用户端点
+	- [x] **前端个人主页 `UserProfile.vue`**：上下两张圆角卡片——上卡片用户信息（头像+昵称+统计栏：关注数/粉丝数/发帖数 可点击打开弹窗 + 个人简介 + 关注按钮红色/灰色切换 + 乐观更新），下卡片用户帖子列表（v-infinite-scroll + useInfiniteList + fetchUserPosts API）
+	- [x] **PostCard 组件扩展**：新增 `showActions` prop（默认 false）+ `edit`/`delete` emits，用户区右侧显示编辑（Pencil 图标，hover 蓝色）+ 删除（Trash2 图标，hover 红色）按钮，仅在个人自己的主页展示
+	- [x] **UserCard 组件**：关注/粉丝弹窗列表项，头像+昵称+相对时间（"关注于"/"关注你于"），点击跳转个人主页
+	- [x] **PostCreate 编辑模式**：通过 `route.query.editId` 检测编辑模式，`onMounted` 时调 `fetchPostDetail` 回显标题+TipTap 内容，发布按钮变为"保存修改"并调 `updatePost` API
+	- [x] **关注/粉丝弹窗**：Teleport 遮罩弹窗，上部分 tab（关注/粉丝切换），下部分 UserCard 列表（页码分页 prev/next），点击统计栏数字打开对应 tab
 
 ### 中期（社交功能）
 
@@ -318,7 +329,8 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | `echo-server/.../security/JwtAuthFilter.java` | JWT 请求过滤器 |
 | `echo-server/.../security/JwtUtil.java` | Token 生成与解析 |
 | `echo-server/.../service/impl/AuthServiceImpl.java` | 认证业务逻辑 |
-| `echo-server/.../controller/UserController.java` | 用户模块控制器（资料设置/账号设置/修改密码） |
+| `echo-server/.../controller/UserController.java` | 用户模块控制器（资料设置/账号设置/修改密码，需认证） |
+| `echo-server/.../controller/UserPublicController.java` | 公开用户信息控制器（GET /users/{id} 个人主页 + GET /users/{id}/posts 用户帖子列表，无需认证） |
 | `echo-server/.../controller/FileController.java` | 文件上传控制器（头像/图片上传 + 文件删除，需认证） |
 | `echo-server/.../service/FileService.java` | 文件存储服务接口（uploadAvatar / uploadImage / deleteFile） |
 | `echo-server/.../service/impl/UserServiceImpl.java` | 用户模块业务逻辑（含手机/邮箱唯一性校验、BCrypt 改密、空更新保护） |
@@ -345,8 +357,9 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | `echo-server/.../vo/PostItemVO.java` | 帖子列表项 VO（含嵌套 AuthorVO） |
 | `echo-server/.../vo/CursorPageVO.java` | 游标分页通用 VO（cursor/hasMore/count/records，count 为本次返回的实际记录数） |
 | `echo-server/.../vo/CreatePostVO.java` | 创建帖子响应 VO（id） |
-| `echo-web/src/api/users.ts` | 用户模块前端 API（含 uploadAvatar/uploadImage/deleteFile/followUser） |
-| `echo-web/src/api/posts.ts` | 帖子模块前端 API（createPost/fetchPosts/fetchPostDetail/likePost/favoritePost，统一箭头函数 + ApiResult 双参数泛型） |
+| `echo-server/.../vo/PublicUserVO.java` | 公开用户信息 VO（API 2.1 响应：id/username/nickname/avatar/bio/postCount/followerCount/followingCount/isFollowed/createdAt） |
+| `echo-web/src/api/users.ts` | 用户模块前端 API（含 uploadAvatar/uploadImage/deleteFile/followUser/getUserProfile/getFollowers/getFollowing） |
+| `echo-web/src/api/posts.ts` | 帖子模块前端 API（createPost/updatePost/deletePost/fetchPosts/fetchUserPosts/fetchPostDetail/likePost/favoritePost，统一箭头函数 + ApiResult 双参数泛型） |
 | `echo-web/src/api/comments.ts` | 评论模块前端 API（fetchComments 游标分页/fetchReplies 页码分页/createComment/likeComment/deleteComment，统一箭头函数 + ApiResult 返回类型） |
 | `echo-web/src/api/modules/index.ts` | 前端类型定义（DTO/VO/Result 泛型，含 CreatePostDTO/CreatePostVO 等） |
 | `echo-web/src/composables/useInfiniteList.ts` | 通用无限列表 composable（泛型 `<T>`，双模式 cursor/page，fetchFn 注入 + baseParams 复用，已修复空记录提前返回死循环） |
@@ -356,13 +369,15 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | `echo-web/src/stores/userStore.ts` | 用户状态（Token + 用户信息） |
 | `echo-web/src/router/index.ts` | 路由定义与守卫 |
 | `echo-web/src/components/LayoutPage.vue` | 主布局（顶栏 + 可折叠侧边栏 + 内容区），下拉含资料设置/账号设置/修改密码/退出 |
-| `echo-web/src/components/PostCard.vue` | 帖子卡片组件（用户区/帖子区/图片网格/交互区/图片预览，@lucide/vue 图标，单图原生比例+多图 4:3 网格，watch props 同步 liked/collected，document 级 Esc 预览关闭） |
+| `echo-web/src/components/PostCard.vue` | 帖子卡片组件（用户区含 showActions 编辑/删除按钮/帖子区/图片网格/交互区/图片预览，@lucide/vue 图标，单图原生比例+多图 4:3 网格，watch props 同步 liked/collected，document 级 Esc 预览关闭） |
 | `echo-web/src/components/CommentCard.vue` | 评论卡片组件（无边框，用户区含"@回复人"昵称+评论内容+底部时间(25%)/点赞回复按钮(37.5%)，Heart红色切换，hideReplyTarget 控制 @ 显隐） |
 | `echo-web/src/components/CommentThread.vue` | 评论线程组件（一级评论+缩进二级回复+加载更多/分页+行内回复编辑器插入，replyLikes 本地覆盖防 prop mutation，子回复 hideReplyTarget 按 replyToUser.id === 一级作者 id 判断） |
 | `echo-web/src/components/CommentCreate.vue` | 评论发布组件（ElInput textarea+发布按钮，回复预填"回复@{username}："，空模板保护防提交纯前缀） |
+| `echo-web/src/components/UserCard.vue` | 用户卡片组件（头像+昵称+关注时间，点击跳转个人主页，用于关注/粉丝弹窗列表） |
 | `echo-web/src/views/HomePage.vue` | 首页帖子列表（v-infinite-scroll 无限滚动 + useInfiniteList composable） |
 | `echo-web/src/views/PostDetail.vue` | 帖子详情页（淡入动画，作者区+关注按钮+帖子主体 DOMPurify 净化+4 交互按钮，评论区 useInfiniteList<CommentVO> + v-infinite-scroll 无限滚动，乐观更新+回滚） |
-| `echo-web/src/views/PostCreate.vue` | 帖子发布页（TipTap 富文本 + Toolbar 粗体/斜体/标题/引用/代码块/图片/链接 + Link 协议白名单 http/https/mailto/tel + 图片粘贴拖入上传 + 标题/正文双框布局 + 淡入动画 + editor 就绪保护） |
+| `echo-web/src/views/PostCreate.vue` | 帖子发布/编辑页（TipTap 富文本 + Toolbar + 图片上传 + 编辑模式 query.editId 回显 + Link 协议白名单 + 淡入动画） |
+| `echo-web/src/views/UserProfile.vue` | 用户主页（个人资料卡片+帖子列表 v-infinite-scroll + 关注/粉丝 Teleport 弹窗 + PostCard showActions 编辑/删除 + PostCreate 编辑回显） |
 | `echo-web/src/views/ProfileSettingsPage.vue` | 资料设置页（头像本地预览+选择图片，保存时统一上传；昵称+简介编辑；保存/取消） |
 | `echo-web/src/views/SettingsPage.vue` | 账号设置页（手机号+邮箱编辑，el-form rules 校验，保存/取消） |
 | `echo-web/src/views/ChangePasswordPage.vue` | 修改密码页（旧密码/新密码/确认密码，show-password 切换，el-form rules 校验，绿色渐变修改密码按钮，忘记密码链接） |

@@ -3,6 +3,9 @@ import type {
   ApiResult,
   ChangePasswordDTO,
   FollowVO,
+  FollowItemVO,
+  PageResult,
+  PublicUserVO,
   UpdateProfileDTO,
   UpdateSettingsDTO,
   UploadAvatarVO,
@@ -10,6 +13,9 @@ import type {
   UserProfileVO,
   UserSettingsVO,
 } from './modules'
+
+export const getUserProfile = (id: number) =>
+  result.get<unknown, ApiResult<PublicUserVO>>(`/users/${id}`)
 
 export const getProfile = () => result.get<unknown, ApiResult<UserProfileVO>>('/users/me/profile')
 
@@ -42,3 +48,9 @@ export const deleteFile = (url: string) =>
 
 export const followUser = (id: number) =>
   result.post<unknown, ApiResult<FollowVO>>(`/users/${id}/follow`)
+
+export const getFollowers = (id: number, params: { current?: number; size?: number }) =>
+  result.get<unknown, ApiResult<PageResult<FollowItemVO>>>(`/users/${id}/followers`, { params })
+
+export const getFollowing = (id: number, params: { current?: number; size?: number }) =>
+  result.get<unknown, ApiResult<PageResult<FollowItemVO>>>(`/users/${id}/following`, { params })

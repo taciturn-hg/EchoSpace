@@ -3,6 +3,7 @@ package com.echospace.service;
 import com.echospace.dto.ChangePasswordDTO;
 import com.echospace.dto.UpdateProfileDTO;
 import com.echospace.dto.UpdateSettingsDTO;
+import com.echospace.vo.PublicUserVO;
 import com.echospace.vo.UserProfileVO;
 import com.echospace.vo.UserSettingsVO;
 
@@ -17,6 +18,20 @@ import com.echospace.vo.UserSettingsVO;
  * @Author: taciturn-hg
  */
 public interface UserService {
+
+    /**
+     * 查询指定用户的公开信息（个人主页），对应 API 2.1
+     * <p>
+     * 查询内容包括：用户基本信息、发帖总数、粉丝数、关注数。
+     * 若当前用户已登录，还会标记 isFollowed（当前用户是否已关注该目标用户）；
+     * 未登录时 isFollowed 恒为 false。
+     * </p>
+     *
+     * @param userId 目标用户 ID
+     * @return 公开用户信息 VO
+     * @throws com.echospace.common.BusinessException 目标用户不存在时抛出 404
+     */
+    PublicUserVO getPublicProfile(Long userId);
 
     /**
      * 获取当前登录用户的资料设置信息

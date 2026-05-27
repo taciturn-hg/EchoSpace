@@ -53,4 +53,16 @@ public interface PostService {
      * @return 游标分页结果，含下一页游标和 hasMore 标记
      */
     CursorPageVO<PostItemVO> listPosts(String cursor, int size, String sort);
+
+    /**
+     * 游标分页查询指定用户发布的帖子列表（API 2.7）
+     * <p>与 {@link #listPosts} 使用相同的游标分页逻辑，仅额外按 userId 过滤。</p>
+     *
+     * @param userId 目标用户 ID
+     * @param cursor 上一页游标（格式：{排序值}_{id}），首页传 null
+     * @param size   每页条数
+     * @param sort   排序方式：created_at=最新，hot=热门（按点赞数）
+     * @return 游标分页结果，含下一页游标和 hasMore 标记
+     */
+    CursorPageVO<PostItemVO> listUserPosts(Long userId, String cursor, int size, String sort);
 }

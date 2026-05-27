@@ -176,6 +176,51 @@ public class PostServiceImpl implements PostService {
             records = postMapper.selectListLatest(cursorTime, cursorId, size + 1);
         }
 
+        return buildCursorPage(records, size, sort);
+    }
+
+    /**
+     * 查询指定用户发布的帖子列表（API 2.7），游标分页逻辑与 {@link #listPosts} 一致
+     */
+    @Override
+    public CursorPageVO<PostItemVO> listUserPosts(Long userId, String cursor, int size, String sort) {
+        List<PostItemVO> records;
+        if ("hot".equals(sort)) {
+            Integer cursorCount = null;
+            Long cursorId = null;
+            if (cursor != null && !cursor.isEmpty()) {
+                CursorParts parts = parseCursor(cursor);
+                cursorCount = (int) parts.first();
+                cursorId = parts.second();
+            }
+            records = postMapper.selectListByUserHot(userId, cursorCount, cursorId, size + 1);
+        } else {
+            LocalDateTime cursorTime = null;
+            Long cursorId = null;
+            if (cursor != null && !cursor.isEmpty()) {
+                CursorParts parts = parseCursor(cursor);
+                long epochMilli = parts.first();
+                cursorTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMilli), ZONE);
+                cursorId = parts.second();
+            }
+            records = postMapper.selectListByUserLatest(userId, cursorTime, cursorId, size + 1);
+        }
+
+        log.debug("用户帖子列表查询完成 userId={}, sort={}, count={}", userId, sort, records.size());
+        return buildCursorPage(records, size, sort);
+    }
+
+    // ---------- 内部辅助 ----------
+
+    /**
+     * 对游标分页查询结果（size+1 条）进行裁剪，并构造下一页游标
+     *
+     * @param records 查询结果（size+1 条）
+     * @param size    前端请求的每页条数
+     * @param sort    排序方式，用于决定游标编码格式
+     * @return 裁剪后的游标分页结果
+     */
+    private CursorPageVO<PostItemVO> buildCursorPage(List<PostItemVO> records, int size, String sort) {
         boolean hasMore = records.size() > size;
         if (hasMore) {
             records.remove(size);
@@ -194,8 +239,6 @@ public class PostServiceImpl implements PostService {
         page.setCount(records.size());
         return page;
     }
-
-    // ---------- 内部辅助 ----------
 
     /**
      * 从 SecurityContext 获取当前登录用户 ID，未登录则抛出 401

@@ -2,7 +2,7 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElAvatar, ElMessage } from 'element-plus'
-import { MessageCircle, Heart, Bookmark, Share2 } from '@lucide/vue'
+import { MessageCircle, Heart, Bookmark, Share2, Pencil, Trash2 } from '@lucide/vue'
 import type { PostVO } from '@/api/modules/index'
 import { formatRelativeTime } from '@/utils/time'
 
@@ -13,11 +13,13 @@ const props = withDefaults(
     isLiked?: boolean
     isCollected?: boolean
     images?: string[]
+    showActions?: boolean
   }>(),
   {
     isLiked: false,
     isCollected: false,
     images: () => [],
+    showActions: false,
   },
 )
 
@@ -25,6 +27,8 @@ const props = withDefaults(
 const emit = defineEmits<{
   'toggle-like': [postId: number]
   'toggle-collect': [postId: number]
+  'edit': [postId: number]
+  'delete': [postId: number]
 }>()
 
 // ===== Router =====
@@ -88,6 +92,16 @@ function handleShareClick(e: MouseEvent) {
   ElMessage.info('该功能还在开发')
 }
 
+function handleEditClick(e: MouseEvent) {
+  e.stopPropagation()
+  emit('edit', props.post.id)
+}
+
+function handleDeleteClick(e: MouseEvent) {
+  e.stopPropagation()
+  emit('delete', props.post.id)
+}
+
 function closePreview() {
   previewVisible.value = false
 }
@@ -112,13 +126,24 @@ onUnmounted(() => {
 <template>
   <article class="post-card">
     <!-- ===== 用户部分 ===== -->
-    <header class="post-card__header" tabindex="0" role="link" @click="handleUserClick">
-      <ElAvatar :src="post.author.avatar ?? undefined" :size="40" class="post-card__avatar">
-        {{ displayName.charAt(0) }}
-      </ElAvatar>
-      <div class="post-card__user-info">
-        <span class="post-card__nickname">{{ displayName }}</span>
-        <time class="post-card__time">{{ formatRelativeTime(post.createdAt) }}</time>
+    <header class="post-card__header">
+      <div class="post-card__header-left" tabindex="0" role="link" @click="handleUserClick">
+        <ElAvatar :src="post.author.avatar ?? undefined" :size="40" class="post-card__avatar">
+          {{ displayName.charAt(0) }}
+        </ElAvatar>
+        <div class="post-card__user-info">
+          <span class="post-card__nickname">{{ displayName }}</span>
+          <time class="post-card__time">{{ formatRelativeTime(post.createdAt) }}</time>
+        </div>
+      </div>
+
+      <div v-if="showActions" class="post-card__header-actions">
+        <button class="post-card__action-btn post-card__action-btn--edit" aria-label="编辑" @click="handleEditClick">
+          <Pencil :size="15" />
+        </button>
+        <button class="post-card__action-btn post-card__action-btn--delete" aria-label="删除" @click="handleDeleteClick">
+          <Trash2 :size="15" />
+        </button>
       </div>
     </header>
 
@@ -211,6 +236,7 @@ $text-secondary: #6b7280;
 $text-muted: #9ca3af;
 $accent-red: #ef4444;
 $accent-yellow: #eab308;
+$accent-blue: #3b82f6;
 $radius-card: 12px;
 $radius-image: 8px;
 $transition-fast: 150ms ease;
@@ -239,6 +265,14 @@ $transition-fast: 150ms ease;
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.post-card__header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
   cursor: pointer;
   outline: none;
   border-radius: 8px;
@@ -249,6 +283,49 @@ $transition-fast: 150ms ease;
   &:hover,
   &:focus-visible {
     background: #f8f9fa;
+  }
+}
+
+.post-card__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.post-card__action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid $border-color;
+  background: $bg-card;
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    color $transition-fast,
+    background $transition-fast,
+    border-color $transition-fast;
+
+  &--edit {
+    color: $text-muted;
+
+    &:hover {
+      color: $accent-blue;
+      background: #eff6ff;
+      border-color: $accent-blue;
+    }
+  }
+
+  &--delete {
+    color: $text-muted;
+
+    &:hover {
+      color: $accent-red;
+      background: #fef2f2;
+      border-color: $accent-red;
+    }
   }
 }
 
