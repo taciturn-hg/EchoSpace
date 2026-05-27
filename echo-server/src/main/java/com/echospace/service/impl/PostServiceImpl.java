@@ -4,12 +4,19 @@ import com.echospace.common.BusinessException;
 import com.echospace.dto.CreatePostDTO;
 import com.echospace.dto.UpdatePostDTO;
 import com.echospace.entity.Post;
+import com.echospace.entity.UserFavorite;
+import com.echospace.entity.UserLike;
 import com.echospace.mapper.PostMapper;
+import com.echospace.mapper.UserFavoriteMapper;
+import com.echospace.mapper.UserLikeMapper;
 import com.echospace.security.SecurityUtil;
 import com.echospace.service.PostService;
 import com.echospace.vo.CursorPageVO;
+import com.echospace.vo.FavoritePostVO;
+import com.echospace.vo.LikePostVO;
 import com.echospace.vo.PostDetailVO;
 import com.echospace.vo.PostItemVO;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -31,6 +38,8 @@ import java.util.List;
  *   <li>游标分页使用 SQL keyset pagination，游标编码格式为 {@code {排序值}_{id}}</li>
  *   <li>编辑操作使用 MyBatis-Plus 乐观锁（version 字段），并发冲突时提示用户刷新</li>
  *   <li>Jsoup 提取富文本 HTML 中的纯文本摘要和首张封面图</li>
+ *   <li>点赞/收藏采用 toggle 模式：已操作则取消（delete + count-1），未操作则执行（insert + count+1）</li>
+ *   <li>计数更新使用 SQL GREATEST 函数防负值</li>
  * </ul>
  * </p>
  *
@@ -66,6 +75,12 @@ public class PostServiceImpl implements PostService {
 
     @Autowired
     private PostMapper postMapper;
+
+    @Autowired
+    private UserLikeMapper userLikeMapper;
+
+    @Autowired
+    private UserFavoriteMapper userFavoriteMapper;
 
     @Override
     public Long createPost(CreatePostDTO dto) {
@@ -193,6 +208,60 @@ public class PostServiceImpl implements PostService {
         page.setHasMore(hasMore);
         page.setCount(records.size());
         return page;
+    }
+
+    @Override
+    public LikePostVO likePost(Long postId) {
+        Long userId = requireCurrentUserId();
+        Post post = findPostOrThrow(postId);
+
+        LambdaQueryWrapper<UserLike> query = new LambdaQueryWrapper<UserLike>()
+                .eq(UserLike::getUserId, userId)
+                .eq(UserLike::getTargetType, 1)
+                .eq(UserLike::getTargetId, postId);
+        UserLike existing = userLikeMapper.selectOne(query);
+
+        if (existing != null) {
+            userLikeMapper.deleteById(existing.getId());
+            postMapper.decrementLikeCount(postId);
+            log.info("取消点赞 userId={}, postId={}, likeCount={}", userId, postId, post.getLikeCount() - 1);
+            return new LikePostVO(false, post.getLikeCount() - 1);
+        } else {
+            UserLike like = new UserLike();
+            like.setUserId(userId);
+            like.setTargetType(1);
+            like.setTargetId(postId);
+            userLikeMapper.insert(like);
+            postMapper.incrementLikeCount(postId);
+            log.info("点赞成功 userId={}, postId={}, likeCount={}", userId, postId, post.getLikeCount() + 1);
+            return new LikePostVO(true, post.getLikeCount() + 1);
+        }
+    }
+
+    @Override
+    public FavoritePostVO favoritePost(Long postId) {
+        Long userId = requireCurrentUserId();
+        findPostOrThrow(postId);
+
+        LambdaQueryWrapper<UserFavorite> query = new LambdaQueryWrapper<UserFavorite>()
+                .eq(UserFavorite::getUserId, userId)
+                .eq(UserFavorite::getPostId, postId);
+        UserFavorite existing = userFavoriteMapper.selectOne(query);
+
+        if (existing != null) {
+            userFavoriteMapper.deleteById(existing.getId());
+            postMapper.decrementCollectCount(postId);
+            log.info("取消收藏 userId={}, postId={}", userId, postId);
+            return new FavoritePostVO(false);
+        } else {
+            UserFavorite favorite = new UserFavorite();
+            favorite.setUserId(userId);
+            favorite.setPostId(postId);
+            userFavoriteMapper.insert(favorite);
+            postMapper.incrementCollectCount(postId);
+            log.info("收藏成功 userId={}, postId={}", userId, postId);
+            return new FavoritePostVO(true);
+        }
     }
 
     // ---------- 内部辅助 ----------

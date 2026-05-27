@@ -5,41 +5,30 @@ import { ElAvatar, ElMessage } from 'element-plus'
 import { MessageCircle, Heart, Bookmark, Share2 } from '@lucide/vue'
 import type { PostVO } from '@/api/modules/index'
 import { formatRelativeTime } from '@/utils/time'
+import { formatCount } from '@/utils/number'
+import { likePost, favoritePost } from '@/api/posts'
 
-// ===== Props =====
 const props = withDefaults(
   defineProps<{
     post: PostVO
-    isLiked?: boolean
-    isCollected?: boolean
     images?: string[]
   }>(),
   {
-    isLiked: false,
-    isCollected: false,
     images: () => [],
   },
 )
 
-// ===== Emits =====
-const emit = defineEmits<{
-  'toggle-like': [postId: number]
-  'toggle-collect': [postId: number]
-}>()
-
-// ===== Router =====
 const router = useRouter()
 
-// ===== Local state =====
-const liked = ref(props.isLiked)
-const collected = ref(props.isCollected)
-
-watch(() => props.isLiked, (v) => { liked.value = v })
-watch(() => props.isCollected, (v) => { collected.value = v })
+const liked = ref(false)
+const collected = ref(false)
+const likeCount = ref(props.post.likeCount || 0)
+const collectCount = ref(props.post.collectCount || 0)
+const submittingLike = ref(false)
+const submittingCollect = ref(false)
 const previewVisible = ref(false)
 const previewSrc = ref('')
 
-// ===== Computed =====
 const images = computed(() => {
   if (props.images.length > 0) return props.images.slice(0, 3)
   if (props.post.coverImage) return [props.post.coverImage]
@@ -51,7 +40,6 @@ const imageGridClass = computed(() => `images--count-${imageCount.value}`)
 
 const displayName = computed(() => props.post.author.nickname || props.post.author.username)
 
-// ===== Handlers =====
 function handleUserClick() {
   router.push(`/user/${props.post.author.id}`)
 }
@@ -71,16 +59,48 @@ function handleCommentClick(e: MouseEvent) {
   router.push(`/post/${props.post.id}#comments`)
 }
 
-function handleLikeClick(e: MouseEvent) {
+async function handleLikeClick(e: MouseEvent) {
   e.stopPropagation()
+  if (submittingLike.value) return
+  submittingLike.value = true
+
+  const prevLiked = liked.value
+  const prevCount = likeCount.value
   liked.value = !liked.value
-  emit('toggle-like', props.post.id)
+  likeCount.value += liked.value ? 1 : -1
+
+  try {
+    const res = await likePost(props.post.id)
+    liked.value = res.data!.liked
+  } catch {
+    liked.value = prevLiked
+    likeCount.value = prevCount
+    ElMessage.error('操作失败')
+  } finally {
+    submittingLike.value = false
+  }
 }
 
-function handleCollectClick(e: MouseEvent) {
+async function handleCollectClick(e: MouseEvent) {
   e.stopPropagation()
+  if (submittingCollect.value) return
+  submittingCollect.value = true
+
+  const prevCollected = collected.value
+  const prevCount = collectCount.value
   collected.value = !collected.value
-  emit('toggle-collect', props.post.id)
+  collectCount.value += collected.value ? 1 : -1
+
+  try {
+    const res = await favoritePost(props.post.id)
+    collected.value = res.data!.favorited
+  } catch {
+    collected.value = prevCollected
+    collectCount.value = prevCount
+    ElMessage.error('操作失败')
+  } finally {
+    submittingCollect.value = false
+  }
 }
 
 function handleShareClick(e: MouseEvent) {
@@ -149,7 +169,7 @@ onUnmounted(() => {
     <footer class="post-card__footer">
       <button class="post-card__action" aria-label="评论" @click="handleCommentClick">
         <MessageCircle :size="18" />
-        <span>{{ post.commentCount || 0 }}</span>
+        <span>{{ formatCount(post.commentCount || 0) }}</span>
       </button>
 
       <button
@@ -158,7 +178,7 @@ onUnmounted(() => {
         @click="handleLikeClick"
       >
         <Heart :size="18" :fill="liked ? 'currentColor' : 'none'" />
-        <span>{{ post.likeCount || 0 }}</span>
+        <span>{{ formatCount(likeCount || 0) }}</span>
       </button>
 
       <button
@@ -167,7 +187,7 @@ onUnmounted(() => {
         @click="handleCollectClick"
       >
         <Bookmark :size="18" :fill="collected ? 'currentColor' : 'none'" />
-        <span>{{ post.collectCount || 0 }}</span>
+        <span>{{ formatCount(collectCount || 0) }}</span>
       </button>
 
       <button class="post-card__action" aria-label="分享" @click="handleShareClick">

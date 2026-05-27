@@ -6,6 +6,8 @@ import com.echospace.dto.UpdatePostDTO;
 import com.echospace.service.PostService;
 import com.echospace.vo.CreatePostVO;
 import com.echospace.vo.CursorPageVO;
+import com.echospace.vo.FavoritePostVO;
+import com.echospace.vo.LikePostVO;
 import com.echospace.vo.PostDetailVO;
 import com.echospace.vo.PostItemVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,8 +28,9 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * 帖子模块控制器
  * <p>
- * 提供帖子发布、详情查询、编辑、软删除、游标分页列表 5 个 REST 端点。
+ * 提供帖子发布、详情查询、编辑、软删除、游标分页列表、点赞/取消点赞、收藏/取消收藏 7 个 REST 端点。
  * 编辑和删除操作校验帖子所有权，非本人操作返回 403。
+ * 点赞/收藏采用 toggle 模式，同一请求路径反复调用可在开/关状态间切换。
  * </p>
  *
  * @Author: taciturn-hg
@@ -79,6 +82,26 @@ public class PostController {
     public Result<Void> delete(@PathVariable Long id) {
         postService.deletePost(id);
         return Result.success("删除成功");
+    }
+
+    /**
+     * 帖子点赞/取消点赞（toggle 模式）
+     */
+    @Operation(summary = "帖子点赞/取消", description = "对帖子进行点赞或取消点赞，toggle 模式下反复调用可切换状态")
+    @PostMapping("/{id}/like")
+    public Result<LikePostVO> like(@PathVariable Long id) {
+        LikePostVO vo = postService.likePost(id);
+        return Result.success(vo, vo.isLiked() ? "点赞成功" : "已取消点赞");
+    }
+
+    /**
+     * 帖子收藏/取消收藏（toggle 模式）
+     */
+    @Operation(summary = "帖子收藏/取消", description = "收藏或取消收藏帖子，toggle 模式下反复调用可切换状态")
+    @PostMapping("/{id}/favorite")
+    public Result<FavoritePostVO> favorite(@PathVariable Long id) {
+        FavoritePostVO vo = postService.favoritePost(id);
+        return Result.success(vo, vo.isFavorited() ? "收藏成功" : "已取消收藏");
     }
 
     /**

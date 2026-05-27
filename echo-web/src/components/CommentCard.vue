@@ -6,6 +6,7 @@ import { Heart, MessageCircle, Trash2 } from '@lucide/vue'
 import { useUserStore } from '@/stores/userStore'
 import type { CommentVO } from '@/api/modules/index'
 import { formatRelativeTime, formatDateTime } from '@/utils/time'
+import { formatCount } from '@/utils/number'
 
 const props = withDefaults(
   defineProps<{
@@ -91,7 +92,7 @@ function handleDeleteClick(e: MouseEvent) {
             @click="handleLikeClick"
           >
             <Heart :size="16" :fill="liked ? 'currentColor' : 'none'" />
-            <span>{{ comment.likeCount || 0 }}</span>
+            <span>{{ formatCount(comment.likeCount || 0) }}</span>
           </button>
           <button class="comment-card__action" aria-label="回复" @click="handleReplyClick">
             <MessageCircle :size="16" />

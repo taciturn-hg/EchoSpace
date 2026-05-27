@@ -9,11 +9,7 @@ const {
   posts,
   loading,
   hasMore,
-  likedPosts,
-  collectedPosts,
   fetchPosts,
-  toggleLike,
-  toggleCollect,
   setBaseParam,
 } = useInfiniteList({ baseParams: { sort: sort.value } })
 
@@ -51,10 +47,6 @@ onMounted(() => {
         v-for="post in posts"
         :key="post.id"
         :post="post"
-        :is-liked="likedPosts.has(post.id)"
-        :is-collected="collectedPosts.has(post.id)"
-        @toggle-like="toggleLike"
-        @toggle-collect="toggleCollect"
       />
 
       <p v-if="loading" class="home-page__loading">加载中...</p>
