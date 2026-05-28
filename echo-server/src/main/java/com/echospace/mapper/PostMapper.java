@@ -68,4 +68,32 @@ public interface PostMapper extends BaseMapper<Post> {
      * @param delta 减少的数量
      */
     int decrementCommentCount(@Param("id") Long id, @Param("delta") int delta);
+
+    /**
+     * 帖子点赞数 +1（点赞时调用）
+     *
+     * @param id 帖子 ID
+     */
+    int incrementLikeCount(@Param("id") Long id);
+
+    /**
+     * 帖子点赞数 -1（取消点赞时调用，使用 GREATEST 防负值）
+     *
+     * @param id 帖子 ID
+     */
+    int decrementLikeCount(@Param("id") Long id);
+
+    /**
+     * 帖子收藏数 +1（收藏时调用）
+     *
+     * @param id 帖子 ID
+     */
+    int incrementCollectCount(@Param("id") Long id);
+
+    /**
+     * 帖子收藏数 -1（取消收藏时调用，使用 GREATEST 防负值）
+     *
+     * @param id 帖子 ID
+     */
+    int decrementCollectCount(@Param("id") Long id);
 }

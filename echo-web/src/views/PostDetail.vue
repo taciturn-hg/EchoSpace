@@ -20,6 +20,7 @@ import { useInfiniteList } from '@/composables/useInfiniteList'
 import CommentCreate from '@/components/CommentCreate.vue'
 import CommentThread from '@/components/CommentThread.vue'
 import { formatRelativeTime, formatDateTime } from '@/utils/time'
+import { formatCount } from '@/utils/number'
 import type { PostDetailVO, CommentVO } from '@/api/modules/index'
 
 // ===== Router =====
@@ -121,7 +122,9 @@ async function handleToggleCollect() {
   submitting.value.collect = true
 
   const prevCollected = collected.value
+  const prevCollectCount = collectCount.value
   collected.value = !collected.value
+  collectCount.value += collected.value ? 1 : -1
 
   try {
     const res = await favoritePost(post.value.id)
@@ -129,6 +132,7 @@ async function handleToggleCollect() {
     collected.value = result.favorited
   } catch {
     collected.value = prevCollected
+    collectCount.value = prevCollectCount
     ElMessage.error('操作失败')
   } finally {
     submitting.value.collect = false
@@ -270,7 +274,7 @@ watch(postId, () => {
           <div class="post-card__actions-row">
             <button class="post-card__action" aria-label="评论" @click="handleCommentClick">
               <MessageCircle :size="18" />
-              <span>{{ post.commentCount || 0 }}</span>
+              <span>{{ formatCount(post.commentCount || 0) }}</span>
             </button>
 
             <button
@@ -280,7 +284,7 @@ watch(postId, () => {
               @click="handleToggleLike"
             >
               <Heart :size="18" :fill="liked ? 'currentColor' : 'none'" />
-              <span>{{ likeCount || 0 }}</span>
+              <span>{{ formatCount(likeCount || 0) }}</span>
             </button>
 
             <button
@@ -290,7 +294,7 @@ watch(postId, () => {
               @click="handleToggleCollect"
             >
               <Bookmark :size="18" :fill="collected ? 'currentColor' : 'none'" />
-              <span>{{ collectCount || 0 }}</span>
+              <span>{{ formatCount(collectCount || 0) }}</span>
             </button>
 
             <button class="post-card__action" aria-label="分享" @click="handleShare">

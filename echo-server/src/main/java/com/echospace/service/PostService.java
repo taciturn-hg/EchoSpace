@@ -3,6 +3,8 @@ package com.echospace.service;
 import com.echospace.dto.CreatePostDTO;
 import com.echospace.dto.UpdatePostDTO;
 import com.echospace.vo.CursorPageVO;
+import com.echospace.vo.FavoritePostVO;
+import com.echospace.vo.LikePostVO;
 import com.echospace.vo.PostDetailVO;
 import com.echospace.vo.PostItemVO;
 
@@ -53,4 +55,22 @@ public interface PostService {
      * @return 游标分页结果，含下一页游标和 hasMore 标记
      */
     CursorPageVO<PostItemVO> listPosts(String cursor, int size, String sort);
+
+    /**
+     * 帖子点赞/取消点赞（toggle 模式）
+     * <p>已点赞则取消（delete + likeCount-1），未点赞则点赞（insert + likeCount+1）。</p>
+     *
+     * @param postId 帖子 ID
+     * @return 操作后的点赞状态和最新点赞数
+     */
+    LikePostVO likePost(Long postId);
+
+    /**
+     * 帖子收藏/取消收藏（toggle 模式）
+     * <p>已收藏则取消（delete + collectCount-1），未收藏则收藏（insert + collectCount+1）。</p>
+     *
+     * @param postId 帖子 ID
+     * @return 操作后的收藏状态
+     */
+    FavoritePostVO favoritePost(Long postId);
 }
