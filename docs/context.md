@@ -15,7 +15,7 @@
 | ORM | MyBatis-Plus 3.5.7 |
 | 数据库 | MySQL 8.x |
 | 缓存 | Redis（已引入依赖，暂未接入） |
-| 搜索 | Elasticsearch（已引入依赖，暂未接入） |
+| 搜索 | Elasticsearch 8.x（已接入，全文检索 + ik 分词 + 高亮） |
 | 存储 | MinIO / 阿里云 OSS（已引入依赖，暂未接入） |
 | 邮件 | Spring Mail + Gmail SMTP |
 | 消息队列 | RabbitMQ（已引入依赖，暂未接入） |
@@ -58,13 +58,15 @@
 │    AuthController  (register / login / refresh / me)    │
 │    UserController (profile GET/PUT, settings GET/PUT, password PUT) │
 │    FileController (avatar/image upload)                  │
-│    PostController (posts CRUD + cursor pagination + like/favorite toggle)       │
+│    PostController (posts CRUD + cursor pagination + like/favorite/search)       │
 │                                                         │
 │  Service Layer                                          │
 │    AuthServiceImpl                                      │
 │    UserServiceImpl (profile / settings / changePassword) │
 │    FileService → MinioFileServiceImpl (storage.type=minio) │
-│    PostServiceImpl (posts CRUD + 游标分页 + Jsoup)      │
+│    PostServiceImpl (posts CRUD + 游标分页 + Jsoup + ES同步) │
+│    SearchServiceImpl (全文检索 + ik 分词 + 高亮 + 分页)    │
+│    CommentServiceImpl (评论 CRUD + 游标分页 + 级联软删除)   │
 │                                                         │
 │  Security Layer                                         │
 │    JwtAuthFilter → JwtUtil → SecurityUtil               │
@@ -72,8 +74,8 @@
 │                                                         │
 │  Data Layer                                             │
 │    MyBatis-Plus Mapper → MySQL                          │
+│    Elasticsearch (帖子索引 posts，ik 分词，同步写入)      │
 │    [Redis — 待接入]                                     │
-│    [Elasticsearch — 待接入]                             │
 │    MinIO (头像/图片上传，storage.type=minio)             │
 │    [OSS — 待接入]                                       │
 └─────────────────────────────────────────────────────────┘
@@ -138,7 +140,7 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | PostCard.vue | — | 已完成（卡片组件：用户区/帖子区/图片网格/交互区/图片预览） |
 | PostDetail.vue | `/post/:id` | 已完成（淡入动画，作者区+关注+DOMPurify 净化+交互，评论区无限滚动） |
 | PostCreate.vue | `/post/create` | 已完成（TipTap 富文本 + Toolbar + 图片上传，详见 Sprint 3） |
-| SearchPage.vue | `/search` | 占位 |
+| SearchPage.vue | `/search` | 已完成（极简现代风/返回按钮渐变+平滑/骨架屏/空状态/无限滚动/v-html 高亮，复用 PostCard + useInfiniteList 页码模式） |
 | UserProfile.vue | `/user/:id` | 占位 |
 | ProfileSettingsPage.vue | `/settings/profile` | 已完成（头像上传/昵称/简介编辑+保存/取消） |
 | SettingsPage.vue | `/settings` | 已完成（手机号/邮箱编辑+保存/取消，el-form rules 校验） |
@@ -265,6 +267,25 @@ refreshToken 过期 → 清除 store → 跳转 /login
   - 新增 VO：`CommentVO`（含预加载 replies/replyCount/hasMoreReplies）、`ReplyVO`（含嵌套 user + replyToUser）、`CommentUserVO`（id/username/nickname/avatar）、`ReplyToUserVO`（id/username/nickname，无头像）、`CreateCommentVO`（id）
   - 开发计划 `docs/04-development-plan.md` Sprint 4 评论 CRUD 接口已标记完成
 
+**Sprint 5 — 搜索（已完成）**
+- Elasticsearch 8.x 已配置接入（`spring.elasticsearch.uris: http://localhost:9200`）
+- ES 安全配置关闭（`xpack.security.enabled: false` + `xpack.security.http.ssl.enabled: false`）
+- ES 磁盘水位线调高（dev 单节点 `disk.watermark.low: 97%, high: 98%, flood_stage: 99%`）
+- `PostDocument` ES 索引映射实体（@Document(indexName="posts")，ik_max_word/ik_smart 分词，title/contentText 全文检索，username/nickname keyword 精确匹配，createdAt 使用 epoch millis Long）
+- `SearchService` / `SearchServiceImpl`：StringQuery + multi_match 多字段匹配 + fuzziness("AUTO") 模糊容错 → HighlightQuery 高亮（`<em>` 标签包裹）→ 分页排序 → 映射 PostItemVO；索引不存在时捕获 NoSuchIndexException 优雅返回空结果
+- `PostController` 新增搜索端点 GET /api/posts/search（q/current/size/sort 参数，返回 PageVO<PostItemVO>，端点总数 7 → 8）
+- `PostServiceImpl` 帖子发布/更新时同步写入 ES 索引（`syncPostToEs`，try-catch 兜底，ES 失败不影响 MySQL 主流程）
+- `PostService` / `PostServiceImpl` 新增全量同步方法 `syncAllPostsToEs()`，AdminController 新增 POST /api/admin/sync-es 端点
+- 新增 `PostDocument` ES 文档类（document 包）、`SearchService` 接口 + `SearchServiceImpl` 实现
+- 搜索返回字段：title/contentText 含 `<em>` 高亮标签，author 含 id/username/nickname/avatar，likeCount/commentCount/collectCount/createdAt 完整
+- **前端搜索页 SearchPage.vue 已完成**：
+  - 极简现代风格，与首页相同布局（880px 居中），复用 PostCard 组件 + useInfiniteList 页码分页（mode: 'page'）
+  - 左上角 `<` 返回按钮（40px 方形圆角，hover 蓝色渐变背景 + 2px 左滑动效，<960px 隐藏）
+  - 搜索头部："搜索「xxx」"（关键词蓝色可点，dotted 下划线）+ 结果统计 + 排序下拉（最新/最热）
+  - 3 个状态：Skeleton 骨架屏（shimmer 动画 3 行）→ 空结果（搜索图标 + "未找到相关结果"/"换个关键词试试吧"）→ 结果列表（v-infinite-scroll 无限滚动）
+  - 淡入动画（0.35s fadeSlideIn），页面首次加载和重复搜索切换时均触发
+  - 关键词变化时自动重置并重新搜索（watch route.query），LayoutPage 加 `_ts` 时间戳强制触发同关键词导航
+
 ### 开发规范（更新中）
 - **日志追踪（强制）**：后续所有后端功能开发，Controller / Service 必须添加 @Slf4j 注解并使用 log.info/log.warn 打印业务流日志，格式统一为 `log.info("操作描述 关键参数={}", value)`
 - **敏感数据脱敏（强制）**：日志中涉及手机号、邮箱、密码、Token 等敏感字段时，必须通过 `MaskUtil` 工具类脱敏后再输出（`maskPhone` / `maskEmail` / `maskPassword` / `maskToken` / `maskAccount`），禁止明文打印
@@ -303,7 +324,7 @@ refreshToken 过期 → 清除 store → 跳转 /login
 
 ### 远期（搜索 & 存储）
 
-- [ ] 接入 Elasticsearch 实现全文搜索
+- [x] 接入 Elasticsearch 实现全文搜索
 - [x] 接入 MinIO 实现图片上传（头像 + 通用图片）
 - [ ] OSS 存储实现（OssFileServiceImpl，storage.type=oss 时切换）
 - [ ] 404 页面（替换当前静默重定向）
@@ -349,9 +370,9 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | `echo-server/.../vo/UploadImageVO.java` | 图片上传响应 VO |
 | `echo-server/.../util/MaskUtil.java` | 敏感数据脱敏工具（phone/email/password/token/account） |
 | `echo-server/.../common/GlobalExceptionHandler.java` | 全局异常处理器（含 DuplicateKeyException→409、MissingServletRequestPartException/MultipartException→400 映射） |
-| `echo-server/.../controller/PostController.java` | 帖子模块控制器（发布/详情/编辑/删除/列表/点赞/收藏 7 端点，游标分页 + toggle 模式） |
+| `echo-server/.../controller/PostController.java` | 帖子模块控制器（发布/详情/编辑/删除/列表/点赞/收藏/搜索 8 端点，游标分页 + toggle 模式 + ES 全文检索） |
 | `echo-server/.../service/PostService.java` | 帖子模块服务接口（含 likePost/favoritePost toggle 方法） |
-| `echo-server/.../service/impl/PostServiceImpl.java` | 帖子模块服务实现（Jsoup.clean HTML 清洗、游标编解码+NumberFormatException→400、乐观锁、所有权校验、文本/封面提取、点赞/收藏 toggle 逻辑） |
+| `echo-server/.../service/impl/PostServiceImpl.java` | 帖子模块服务实现（Jsoup.clean HTML 清洗、游标编解码+NumberFormatException→400、乐观锁、所有权校验、文本/封面提取、点赞/收藏 toggle 逻辑、ES 同步写入） |
 | `echo-server/.../mapper/PostMapper.java` | 帖子 Mapper（BaseMapper + 3 自定义查询 + 4 计数增减方法：incrementCommentCount/decrementCommentCount/incrementLikeCount/decrementLikeCount/incrementCollectCount/decrementCollectCount） |
 | `echo-server/.../mapper/CommentMapper.java` | 评论 Mapper（4 自定义 SQL：游标分页/预加载回复/回复统计/二级回复分页） |
 | `echo-server/src/main/resources/mapper/CommentMapper.xml` | 评论自定义 SQL（resultMap + 游标分页 + LEFT JOIN user_like + 页码分页） |
@@ -377,8 +398,11 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | `echo-server/.../vo/CreatePostVO.java` | 创建帖子响应 VO（id） |
 | `echo-server/.../vo/LikePostVO.java` | 帖子点赞/取消响应 VO（liked + likeCount，toggle 模式） |
 | `echo-server/.../vo/FavoritePostVO.java` | 帖子收藏/取消响应 VO（favorited，toggle 模式） |
+| `echo-server/.../document/PostDocument.java` | ES 帖子索引映射实体（@Document(indexName="posts")，ik_max_word/ik_smart 分词） |
+| `echo-server/.../service/SearchService.java` | 搜索服务接口（全文检索 + 高亮 + 分页） |
+| `echo-server/.../service/impl/SearchServiceImpl.java` | 搜索服务实现（Criteria 多字段匹配 + HighlightQuery `<em>` 高亮 + PostItemVO 映射） |
 | `echo-web/src/api/users.ts` | 用户模块前端 API（含 uploadAvatar/uploadImage/deleteFile/followUser） |
-| `echo-web/src/api/posts.ts` | 帖子模块前端 API（createPost/fetchPosts/fetchPostDetail/likePost/favoritePost，统一箭头函数 + ApiResult 双参数泛型） |
+| `echo-web/src/api/posts.ts` | 帖子模块前端 API（createPost/fetchPosts/fetchPostDetail/likePost/favoritePost/searchPosts，统一箭头函数 + ApiResult 双参数泛型） |
 | `echo-web/src/api/comments.ts` | 评论模块前端 API（fetchComments 游标分页/fetchReplies 页码分页/createComment/likeComment/deleteComment，统一箭头函数 + ApiResult 返回类型） |
 | `echo-web/src/api/modules/index.ts` | 前端类型定义（DTO/VO/Result 泛型，含 CreatePostDTO/CreatePostVO 等） |
 | `echo-web/src/composables/useInfiniteList.ts` | 通用无限列表 composable（泛型 `<T>`，双模式 cursor/page，fetchFn 注入 + baseParams 复用，已修复空记录提前返回死循环；已移除 likedPosts/collectedPosts，点赞/收藏状态由 PostCard 自管理） |
@@ -389,7 +413,7 @@ refreshToken 过期 → 清除 store → 跳转 /login
 | `echo-web/src/stores/userStore.ts` | 用户状态（Token + 用户信息） |
 | `echo-web/src/router/index.ts` | 路由定义与守卫 |
 | `echo-web/src/components/LayoutPage.vue` | 主布局（顶栏 + 可折叠侧边栏 + 内容区），下拉含资料设置/账号设置/修改密码/退出 |
-| `echo-web/src/components/PostCard.vue` | 帖子卡片组件（用户区/帖子区/图片网格/交互区/图片预览，@lucide/vue 图标，单图原生比例+多图 4:3 网格，点赞/收藏自闭环：内部调 API + 乐观更新+失败回滚 + 内部维护 likeCount/collectCount ref，formatCount 数字格式化，document 级 Esc 预览关闭） |
+| `echo-web/src/components/PostCard.vue` | 帖子卡片组件（用户区/帖子区/图片网格/交互区/图片预览，@lucide/vue 图标，单图原生比例+多图 4:3 网格，点赞/收藏自闭环：内部调 API + 乐观更新+失败回滚 + 内部维护 likeCount/collectCount ref，formatCount 数字格式化，document 级 Esc 预览关闭，标题/摘要 v-html 渲染 + :deep(em) 搜索高亮样式） |
 | `echo-web/src/components/CommentCard.vue` | 评论卡片组件（无边框，用户区含"@回复人"昵称+删除按钮仅本人可见+评论内容+底部时间(25%)/点赞回复删除按钮(37.5%)，Heart红色切换+Trash2 hover红色，emit toggle-like/reply/delete，formatCount 数字格式化） |
 | `echo-web/src/components/CommentThread.vue` | 评论线程组件（一级评论+缩进二级回复+加载更多/分页+行内回复编辑器插入，replyLikes 本地覆盖防 prop mutation，handleDelete ElMessageBox 确认→deleteComment API→emit deleted，子回复 hideReplyTarget 按 replyToUser.id === 一级作者 id 判断） |
 | `echo-web/src/components/CommentCreate.vue` | 评论发布组件（ElInput textarea+发布按钮，回复预填"回复@{username}："，空模板保护防提交纯前缀） |

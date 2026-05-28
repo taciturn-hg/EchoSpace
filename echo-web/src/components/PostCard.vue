@@ -146,8 +146,8 @@ onUnmounted(() => {
 
     <!-- ===== 帖子部分 ===== -->
     <div class="post-card__body" @click="handleBodyClick">
-      <h3 class="post-card__title">{{ post.title }}</h3>
-      <p v-if="post.contentText" class="post-card__summary">{{ post.contentText }}</p>
+      <h3 class="post-card__title" v-html="post.title" />
+      <p v-if="post.contentText" class="post-card__summary" v-html="post.contentText" />
 
       <!-- 图片列表 -->
       <div v-if="imageCount > 0" :class="['post-card__images', imageGridClass]">
@@ -338,6 +338,17 @@ $transition-fast: 150ms ease;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.post-card__title,
+.post-card__summary {
+  :deep(em) {
+    font-style: normal;
+    color: #2563eb;
+    background: rgba(37, 99, 235, 0.08);
+    border-radius: 3px;
+    padding: 0 2px;
+  }
 }
 
 // ===== Images =====

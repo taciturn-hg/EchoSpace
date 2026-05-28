@@ -73,4 +73,11 @@ public interface PostService {
      * @return 操作后的收藏状态
      */
     FavoritePostVO favoritePost(Long postId);
+
+    /**
+     * 全量同步：将数据库中所有未删除的帖子写入 Elasticsearch 索引
+     *
+     * @return 成功同步的帖子数量
+     */
+    int syncAllPostsToEs();
 }
