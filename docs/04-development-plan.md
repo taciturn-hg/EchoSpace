@@ -150,9 +150,9 @@ echo-web/src/
 ## Sprint 4（2天）：评论 + 互动
 
 - [x] 评论 CRUD 接口（一级评论 + 二级回复）
-- [ ] 点赞/取消接口（Redis Set + MySQL user_like 双写 + 定时同步计数）
-- [ ] 收藏/取消接口
-- [ ] 前端点赞/收藏交互
+- [x] 帖子点赞/取消接口（Redis Set + MySQL user_like 双写 + 定时同步计数）
+- [x] 帖子收藏/取消接口
+- [x] 前端点赞/收藏交互
 
 ### Sprint 4 产出物
 
