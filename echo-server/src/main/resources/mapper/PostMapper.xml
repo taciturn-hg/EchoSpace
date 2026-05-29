@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <!--
     帖子模块自定义 SQL 映射
-    包含：游标分页列表（最新/热门）、详情多表联查、浏览数自增
+    包含：游标分页列表（最新/热门）、详情多表联查、浏览数自增、点赞/收藏计数增减
 -->
 <mapper namespace="com.echospace.mapper.PostMapper">
 
@@ -135,6 +135,36 @@
     <!-- 浏览数原子自增，避免读-改-写竞态 -->
     <update id="incrementViewCount">
         UPDATE post SET view_count = view_count + 1 WHERE id = #{id}
+    </update>
+
+    <!-- 帖子评论数 +1 -->
+    <update id="incrementCommentCount">
+        UPDATE post SET comment_count = comment_count + 1 WHERE id = #{id}
+    </update>
+
+    <!-- 帖子评论数 -delta -->
+    <update id="decrementCommentCount">
+        UPDATE post SET comment_count = GREATEST(comment_count - #{delta}, 0) WHERE id = #{id}
+    </update>
+
+    <!-- 帖子点赞数 +1 -->
+    <update id="incrementLikeCount">
+        UPDATE post SET like_count = like_count + 1 WHERE id = #{id}
+    </update>
+
+    <!-- 帖子点赞数 -1（GREATEST 防负值） -->
+    <update id="decrementLikeCount">
+        UPDATE post SET like_count = GREATEST(like_count - 1, 0) WHERE id = #{id}
+    </update>
+
+    <!-- 帖子收藏数 +1 -->
+    <update id="incrementCollectCount">
+        UPDATE post SET collect_count = collect_count + 1 WHERE id = #{id}
+    </update>
+
+    <!-- 帖子收藏数 -1（GREATEST 防负值） -->
+    <update id="decrementCollectCount">
+        UPDATE post SET collect_count = GREATEST(collect_count - 1, 0) WHERE id = #{id}
     </update>
 
 </mapper>

@@ -3,6 +3,8 @@ package com.echospace.service;
 import com.echospace.dto.CreatePostDTO;
 import com.echospace.dto.UpdatePostDTO;
 import com.echospace.vo.CursorPageVO;
+import com.echospace.vo.FavoritePostVO;
+import com.echospace.vo.LikePostVO;
 import com.echospace.vo.PostDetailVO;
 import com.echospace.vo.PostItemVO;
 
@@ -55,14 +57,27 @@ public interface PostService {
     CursorPageVO<PostItemVO> listPosts(String cursor, int size, String sort);
 
     /**
-     * 游标分页查询指定用户发布的帖子列表（API 2.7）
-     * <p>与 {@link #listPosts} 使用相同的游标分页逻辑，仅额外按 userId 过滤。</p>
+     * 帖子点赞/取消点赞（toggle 模式）
+     * <p>已点赞则取消（delete + likeCount-1），未点赞则点赞（insert + likeCount+1）。</p>
      *
-     * @param userId 目标用户 ID
-     * @param cursor 上一页游标（格式：{排序值}_{id}），首页传 null
-     * @param size   每页条数
-     * @param sort   排序方式：created_at=最新，hot=热门（按点赞数）
-     * @return 游标分页结果，含下一页游标和 hasMore 标记
+     * @param postId 帖子 ID
+     * @return 操作后的点赞状态和最新点赞数
      */
-    CursorPageVO<PostItemVO> listUserPosts(Long userId, String cursor, int size, String sort);
+    LikePostVO likePost(Long postId);
+
+    /**
+     * 帖子收藏/取消收藏（toggle 模式）
+     * <p>已收藏则取消（delete + collectCount-1），未收藏则收藏（insert + collectCount+1）。</p>
+     *
+     * @param postId 帖子 ID
+     * @return 操作后的收藏状态
+     */
+    FavoritePostVO favoritePost(Long postId);
+
+    /**
+     * 全量同步：将数据库中所有未删除的帖子写入 Elasticsearch 索引
+     *
+     * @return 成功同步的帖子数量
+     */
+    int syncAllPostsToEs();
 }

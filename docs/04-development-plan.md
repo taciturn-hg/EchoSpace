@@ -149,10 +149,10 @@ echo-web/src/
 
 ## Sprint 4（2天）：评论 + 互动
 
-- [ ] 评论 CRUD 接口（一级评论 + 二级回复）
-- [ ] 点赞/取消接口（Redis Set + MySQL user_like 双写 + 定时同步计数）
-- [ ] 收藏/取消接口
-- [ ] 前端点赞/收藏交互
+- [x] 评论 CRUD 接口（一级评论 + 二级回复）
+- [x] 帖子点赞/取消接口（Redis Set + MySQL user_like 双写 + 定时同步计数）
+- [x] 帖子收藏/取消接口
+- [x] 前端点赞/收藏交互
 
 ### Sprint 4 产出物
 
@@ -186,32 +186,32 @@ echo-web/src/
 
 ## Sprint 5（2天）：搜索
 
-- [ ] Elasticsearch 索引初始化（ik 分词器）
-- [ ] 帖子发布时同步到 ES（直接同步，try-catch 兜底）
-- [ ] 搜索接口（关键词 + 高亮 + 分页）
-- [ ] 前端搜索页面
+- [x] Elasticsearch 索引初始化（ik 分词器）—— PostDocument @Document 注解自动管理
+- [x] 帖子发布时同步到 ES（直接同步，try-catch 兜底）
+- [x] 搜索接口（关键词 + 高亮 + 分页）—— 后端已完成
+- [x] 前端搜索页面
 
 ### Sprint 5 产出物
 
 ```text
 echo-server/src/main/java/com/echospace/
 ├── config/
-│   └── ElasticsearchConfig.java        # ES 客户端配置
+│   └── ElasticsearchConfig.java        # 显式 RestClient（禁用 SSL），覆盖 Spring Boot 自动配置
 ├── service/
-│   ├── SearchService.java
-│   └── impl/SearchServiceImpl.java
-├── repository/
-│   └── PostDocumentRepository.java     # ES 操作封装
+│   ├── SearchService.java              # 搜索服务接口
+│   └── impl/SearchServiceImpl.java     # Criteria 多字段匹配 + HighlightQuery 高亮 + 分页排序
 ├── document/
-│   └── PostDocument.java               # ES 索引映射实体
-└── vo/
-    └── SearchVO.java
+│   └── PostDocument.java               # ES 索引映射实体（@Document + ik 分词）
+└── (无需独立 SearchVO，复用 PageVO<PostItemVO>)
 
 echo-web/src/
 ├── views/
-│   └── Search.vue
-└── api/
-    └── search.ts
+│   └── SearchPage.vue                 # 搜索页（复用 PostCard + useInfiniteList 页码分页，3 状态 + 高亮 + 骨架屏）
+├── api/
+│   └── posts.ts                        # 新增 searchPosts
+└── components/
+    ├── PostCard.vue                    # 标题/摘要 v-html 渲染，:deep(em) 搜索高亮样式
+    └── LayoutPage.vue                  # 搜索栏空白搜索也跳转
 ```
 
 ---

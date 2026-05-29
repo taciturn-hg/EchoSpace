@@ -1,6 +1,7 @@
 import result from '@/utils/result'
 import type {
   CursorPageResult,
+  PageResult,
   PostListDTO,
   PostVO,
   PostDetailVO,
@@ -35,3 +36,6 @@ export const likePost = (id: number) =>
 
 export const favoritePost = (id: number) =>
   result.post<unknown, ApiResult<FavoritePostVO>>(`/posts/${id}/favorite`)
+
+export const searchPosts = (params: { q?: string; current?: number; size?: number; sort?: string }) =>
+  result.get<unknown, ApiResult<PageResult<PostVO>>>('/posts/search', { params })

@@ -8,35 +8,35 @@
 
 ### 后端（echo-server）
 
-| 层次 | 技术 |
-|------|------|
-| 框架 | Spring Boot 3.5.x，Java 17 |
-| 安全 | Spring Security + JWT（jjwt 0.12.6） |
-| ORM | MyBatis-Plus 3.5.7 |
-| 数据库 | MySQL 8.x |
-| 缓存 | Redis（已引入依赖，暂未接入） |
-| 搜索 | Elasticsearch（已引入依赖，暂未接入） |
-| 存储 | MinIO / 阿里云 OSS（已引入依赖，暂未接入） |
-| 邮件 | Spring Mail + Gmail SMTP |
-| 消息队列 | RabbitMQ（已引入依赖，暂未接入） |
-| 文档 | SpringDoc OpenAPI 2.x（Swagger UI） |
-| 构建 | Maven |
+| 层次     | 技术                                                   |
+| -------- | ------------------------------------------------------ |
+| 框架     | Spring Boot 3.5.x，Java 17                             |
+| 安全     | Spring Security + JWT（jjwt 0.12.6）                   |
+| ORM      | MyBatis-Plus 3.5.7                                     |
+| 数据库   | MySQL 8.x                                              |
+| 缓存     | Redis（已引入依赖，暂未接入）                          |
+| 搜索     | Elasticsearch 8.x（已接入，全文检索 + ik 分词 + 高亮） |
+| 存储     | MinIO / 阿里云 OSS（已引入依赖，暂未接入）             |
+| 邮件     | Spring Mail + Gmail SMTP                               |
+| 消息队列 | RabbitMQ（已引入依赖，暂未接入）                       |
+| 文档     | SpringDoc OpenAPI 2.x（Swagger UI）                    |
+| 构建     | Maven                                                  |
 
 ### 前端（echo-web）
 
-| 层次 | 技术 |
-|------|------|
-| 框架 | Vue 3.5.x + TypeScript 6.x |
-| 构建 | Vite 8.x |
-| UI 组件库 | Element Plus 2.x |
-| 状态管理 | Pinia 3.x |
-| 路由 | Vue Router 5.x |
-| HTTP | Axios 1.x（封装于 `utils/result.ts`） |
-| 富文本编辑器 | TipTap 3.x |
-| HTML 净化 | DOMPurify 3.x |
-| 图标 | @lucide/vue（Lucide Icons） |
-| 样式 | SCSS（Sass） |
-| 代码规范 | ESLint + Prettier + Oxlint |
+| 层次         | 技术                                  |
+| ------------ | ------------------------------------- |
+| 框架         | Vue 3.5.x + TypeScript 6.x            |
+| 构建         | Vite 8.x                              |
+| UI 组件库    | Element Plus 2.x                      |
+| 状态管理     | Pinia 3.x                             |
+| 路由         | Vue Router 5.x                        |
+| HTTP         | Axios 1.x（封装于 `utils/result.ts`） |
+| 富文本编辑器 | TipTap 3.x                            |
+| HTML 净化    | DOMPurify 3.x                         |
+| 图标         | @lucide/vue（Lucide Icons）           |
+| 样式         | SCSS（Sass）                          |
+| 代码规范     | ESLint + Prettier + Oxlint            |
 
 ---
 
@@ -59,13 +59,15 @@
 │    UserController (profile GET/PUT, settings GET/PUT, password PUT) │
 │    UserPublicController (GET /users/{id} + GET /users/{id}/posts) │
 │    FileController (avatar/image upload)                  │
-│    PostController (posts CRUD + cursor pagination)       │
+│    PostController (posts CRUD + cursor pagination + like/favorite/search)       │
 │                                                         │
 │  Service Layer                                          │
 │    AuthServiceImpl                                      │
 │    UserServiceImpl (profile / settings / changePassword) │
 │    FileService → MinioFileServiceImpl (storage.type=minio) │
-│    PostServiceImpl (posts CRUD + 游标分页 + Jsoup)      │
+│    PostServiceImpl (posts CRUD + 游标分页 + Jsoup + ES同步) │
+│    SearchServiceImpl (全文检索 + ik 分词 + 高亮 + 分页)    │
+│    CommentServiceImpl (评论 CRUD + 游标分页 + 级联软删除)   │
 │                                                         │
 │  Security Layer                                         │
 │    JwtAuthFilter → JwtUtil → SecurityUtil               │
@@ -73,8 +75,8 @@
 │                                                         │
 │  Data Layer                                             │
 │    MyBatis-Plus Mapper → MySQL                          │
+│    Elasticsearch (帖子索引 posts，ik 分词，同步写入)      │
 │    [Redis — 待接入]                                     │
-│    [Elasticsearch — 待接入]                             │
 │    MinIO (头像/图片上传，storage.type=minio)             │
 │    [OSS — 待接入]                                       │
 └─────────────────────────────────────────────────────────┘
@@ -101,6 +103,7 @@ refreshToken 过期 → 清除 store → 跳转 /login
 ### 已完成模块
 
 #### 认证模块（auth）
+
 - [x] 用户注册（用户名 + 手机号 + 邮箱 + 密码，BCrypt 加密）
 - [x] 用户登录（支持用户名 / 邮箱 / 手机号三合一）
 - [x] JWT 双 Token 机制（accessToken + refreshToken）
@@ -110,11 +113,13 @@ refreshToken 过期 → 清除 store → 跳转 /login
 - [x] 注册页（RegisterPage.vue）
 
 #### 安全配置
+
 - [x] Spring Security 白名单（`/auth/login`、`/auth/register`、`/auth/refresh` 等）
 - [x] JwtAuthFilter（`getServletPath()` 匹配白名单，无 `/api` 前缀）
 - [x] UserPrincipal（存储 userId + username，从 SecurityContext 取用）
 
 #### 文件上传模块（upload）
+
 - [x] FileService 接口（uploadAvatar / uploadImage）
 - [x] MinioFileServiceImpl（`@ConditionalOnProperty(name="storage.type", havingValue="minio")`）
 - [x] FileController（POST /api/upload/avatar + POST /api/upload/image，需认证）
@@ -122,43 +127,53 @@ refreshToken 过期 → 清除 store → 跳转 /login
 - [x] `storage.type` 配置预留 MinIO/OSS 切换（当前值 minio）
 - [x] 前端 uploadAvatar / uploadImage API 函数 + ProfileSettingsPage 头像上传逻辑已放开
 
+#### 评论后端模块（comment）— Sprint 4
+
+- [x] CommentController（POST/GET /posts/{postId}/comments + GET /comments/{commentId}/replies + DELETE /comments/{id}）
+- [x] CommentService / CommentServiceImpl（发表校验/游标分页/预加载回复/级联软删除/评论数同步）
+- [x] CommentMapper + CommentMapper.xml（4 自定义 SQL：游标分页一级评论 + 预加载回复 + 回复统计 + 二级回复页码分页）
+- [x] PostMapper 新增 incrementCommentCount/decrementCommentCount（GREATEST 防负值）
+- [x] CreateCommentDTO / CommentVO / ReplyVO / CommentUserVO / ReplyToUserVO / CreateCommentVO
+
 ### 页面占位（已建文件，内容待开发）
 
-| 页面 | 路由 | 状态 |
-|------|------|------|
-| ForgotPassword.vue | `/forgot-password` | 占位，待 Redis 接入后开发 |
-| ResetPassword.vue | `/reset-password` | 占位，待 Redis 接入后开发 |
-| HomePage.vue | `/` | 已完成（帖子卡片列表 + 模拟数据，游标分页加载待接入） |
-| PostCard.vue | — | 已完成（卡片组件：用户区/帖子区/图片网格/交互区/图片预览） |
-| PostDetail.vue | `/post/:id` | 占位 |
-| PostCreate.vue | `/post/create` | 已完成（TipTap 富文本 + Toolbar + 图片上传，详见 Sprint 3） |
-| SearchPage.vue | `/search` | 占位 |
-| UserProfile.vue | `/user/:id` | 已完成（用户信息卡片 + 帖子列表 + 关注/粉丝弹窗 + PostCard 编辑/删除按钮 + PostCreate 编辑模式） |
-| ProfileSettingsPage.vue | `/settings/profile` | 已完成（头像上传/昵称/简介编辑+保存/取消） |
-| SettingsPage.vue | `/settings` | 已完成（手机号/邮箱编辑+保存/取消，el-form rules 校验） |
-| ChangePasswordPage.vue | `/settings/change-password` | 已完成（el-form rules 校验，旧密码/新密码/确认密码，show-password 切换，修改密码/清空按钮，忘记密码链接） |
+| 页面                    | 路由                        | 状态                                                                                                                |
+| ----------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| ForgotPassword.vue      | `/forgot-password`          | 占位，待 Redis 接入后开发                                                                                           |
+| ResetPassword.vue       | `/reset-password`           | 占位，待 Redis 接入后开发                                                                                           |
+| HomePage.vue            | `/`                         | 已完成（v-infinite-scroll 无限滚动 + useInfiniteList，游标分页已接入后端）                                          |
+| PostCard.vue            | —                           | 已完成（卡片组件：用户区/帖子区/图片网格/交互区/图片预览）                                                          |
+| PostDetail.vue          | `/post/:id`                 | 已完成（淡入动画，作者区+关注+DOMPurify 净化+交互，评论区无限滚动）                                                 |
+| PostCreate.vue          | `/post/create`              | 已完成（TipTap 富文本 + Toolbar + 图片上传，详见 Sprint 3）                                                         |
+| SearchPage.vue          | `/search`                   | 已完成（极简现代风/返回按钮渐变+平滑/骨架屏/空状态/无限滚动/v-html 高亮，复用 PostCard + useInfiniteList 页码模式） |
+| UserProfile.vue         | `/user/:id`                 | 占位                                                                                                                |
+| ProfileSettingsPage.vue | `/settings/profile`         | 已完成（头像上传/昵称/简介编辑+保存/取消）                                                                          |
+| SettingsPage.vue        | `/settings`                 | 已完成（手机号/邮箱编辑+保存/取消，el-form rules 校验）                                                             |
+| ChangePasswordPage.vue  | `/settings/change-password` | 已完成（el-form rules 校验，旧密码/新密码/确认密码，show-password 切换，修改密码/清空按钮，忘记密码链接）           |
 
 ### 数据库实体（已建 Entity）
 
-| 实体 | 说明 |
-|------|------|
-| User | 用户基础信息（id, username, nickname, email, phone, password, avatar, bio, status） |
-| Post | 帖子（待完善） |
-| Comment | 评论（待完善） |
-| UserFavorite | 收藏关系（待完善） |
-| UserFollow | 关注关系（待完善） |
-| UserLike | 点赞关系（待完善） |
+| 实体         | 说明                                                                                                                            |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| User         | 用户基础信息（id, username, nickname, email, phone, password, avatar, bio, status）                                             |
+| Post         | 帖子（id, authorId, title, contentHtml, contentText, cover, likeCount, collectCount, commentCount, viewCount, status, version） |
+| Comment      | 评论（id, postId, userId, parentId, replyToUid, content, likeCount, status）——parentId=0 一级评论，非0 二级回复                 |
+| UserFavorite | 收藏关系（userId + postId，toggle 模式已激活）                                                                                  |
+| UserFollow   | 关注关系（待完善）                                                                                                              |
+| UserLike     | 点赞关系（targetType 1=帖子 2=评论 3=回复）                                                                                     |
 
 ---
 
 ## 当前进度
 
 **Sprint 1 — 认证基础（已完成，已合并至 dev）**
+
 - 后端：注册、登录、刷新 Token、获取当前用户信息
 - 前端：登录页、注册页、路由守卫、Token 自动刷新
 - feature/login-register → dev（PR #3 已合并）
 
 **Sprint 2 — 用户认证与账号管理（已完成，已合并至 dev）**
+
 - 相关分支：feature/user-settings（已合并）、feature/file-upload（安全加固，已合并）
 - 完成了 LayoutPage.vue 布局系统：固定顶栏、可折叠左侧导航、搜索框、用户卡片、发布帖子按钮、下拉菜单（资料设置/账号设置/修改密码/退出登录）
 - 新增 ProfileSettingsPage.vue 完整实现：头像上传（前端校验，上传接口 TODO）、昵称编辑、个人简介编辑（Element Plus textarea，6行固定高度）、取消按钮（重新拉取服务器数据覆盖本地，失败时提示"还原失败"）、保存按钮（绿色渐变，仅脏数据可点击）
@@ -198,37 +213,39 @@ refreshToken 过期 → 清除 store → 跳转 /login
   - 接口文档 02-api-documentation.md 新增 5.3 删除文件接口，附录接口总数更新为 31
   - 开发问题记录 Question.md 新增问题 12~20（Content-Type/boundary、扩展名白名单、文件大小校验、contentType NPE、InputStream 关闭、Content-Type 伪造/XSS、MinIO 配置校验/条件注册、MissingServletRequestPartException、手工拼接 URL、删除回滚）
 
-**Sprint 3 — 帖子核心（进行中，当前分支 feature/post-module）**
-- PostCard 帖子卡片组件已完成（用户区/帖子标题摘要/图片网格/交互区/图片预览，@lucide/vue 图标）
+**Sprint 3 — 帖子核心（已完成，已合并至 dev）**
+
+- PostCard 帖子卡片组件已完成（用户区/帖子标题摘要/图片网格/交互区/图片预览，@lucide/vue 图标，单图原生比例+多图 4:3 网格，点赞/收藏交互自闭环：内部调 likePost/favoritePost API + 乐观更新+失败回滚，内部维护 likeCount/collectCount ref，formatCount 数字格式化，document 级 Esc 预览关闭）
 - HomePage 帖子列表展示已完成（v-infinite-scroll 无限滚动，游标分页，880px 固定宽度）
-- 交互区按钮：评论（跳转详情页 #comments）、点赞（红色填充/灰色轮廓切换）、收藏（黄色填充/灰色轮廓切换）、分享（ElMessage 占位提示）
-- **前端 composable `useInfiniteList`**：由 `usePostList` 重构重命名，泛型化 `useInfiniteList<T>`，支持双模式——游标分页（`mode: 'cursor'`，帖子/评论列表）和传统页码分页（`mode: 'page'`，粉丝/关注列表等），`fetchFn` 注入 + `baseParams` 复用
+- 交互区按钮：评论（跳转详情页 #comments）、点赞（红色填充/灰色轮廓切换，乐观更新+回滚）、收藏（黄色填充/灰色轮廓切换，乐观更新+回滚）、分享（ElMessage 占位提示）
+- **前端 composable `useInfiniteList`**：由 `usePostList` 重构重命名，泛型化 `useInfiniteList<T>`，支持双模式——游标分页（`mode: 'cursor'`，帖子/评论列表）和传统页码分页（`mode: 'page'`，粉丝/关注列表等），`fetchFn` 注入 + `baseParams` 复用（已移除 likedPosts/collectedPosts 本地 Set，点赞/收藏状态由 PostCard 内部自管理）
 - 前端 API `api/posts.ts` 已完成：`fetchPosts` / `fetchPostDetail` / `likePost` / `favoritePost`
 - 前端 API `api/users.ts` 新增：`followUser`（POST `/api/users/{id}/follow`）
 - 前端类型新增：`PostAuthor`、`PostVO`、`PostListDTO`、`CursorPageResult<T>`、`PostDetailVO`（含 isLiked/isCollected/isFollowed/contentHtml/viewCount/updatedAt）、`LikePostVO`、`FavoritePostVO`、`FollowVO`
 - 后端测试数据 `db/data.sql` 已完成：5 个测试用户 + 23 条帖子（覆盖 3 页游标分页）
 - **评论组件**：
-  - `CommentCard.vue` 已完成：无边框卡片，用户区（头像+昵称+相对时间 + 二级回复时显示"@回复人昵称"）+ 评论内容 + 底部操作栏（绝对时间占 25% + 点赞/回复按钮占 37.5%），Heart 图标点赞（红色/暗灰切换），MessageCircle 图标回复；`hideReplyTarget` prop 控制是否隐藏 "@xxx"（回复一级评论时隐藏）
-  - `CommentThread.vue` 已完成：编排一级评论 + 缩进二级回复（左边线 + padding 缩进），默认展示 3 条预览回复 + "加载更多评论"按钮 → 展开后切换为 Element Plus 分页模式（prev/pager/next，10条/页，仅 >1 页显示），行内回复编辑器插入（回复一级→插顶部，回复二级→插其下方）；子回复 `hideReplyTarget` 由 `reply.replyToUser.id === comment.user.id` 判断
-  - `CommentCreate.vue` 已完成：当前用户头像+昵称 + ElInput textarea + 发布/取消按钮，回复时预填"回复 @{username}："，按钮灰色禁用→蓝色可点
+  - `CommentCard.vue` 已完成：无边框卡片，用户区（头像+昵称+相对时间 + 二级回复时显示"@回复人昵称"，`hideReplyTarget` prop 控制显隐）+ 评论内容 + 底部操作栏（绝对时间占 25% + 点赞/回复/删除按钮占 37.5%），Heart 图标点赞（红色/暗灰切换），MessageCircle 图标回复，Trash2 图标删除（仅本人评论可见，通过 `useUserStore` 判断，hover 红色高亮）；emit `toggle-like` / `reply` / `delete`
+  - `CommentThread.vue` 已完成：编排一级评论 + 缩进二级回复（左边线 + padding 缩进），默认展示 3 条预览回复 + "加载更多评论"按钮 → 展开后切换为 Element Plus 分页模式（prev/pager/next，10条/页，仅 >1 页显示），行内回复编辑器插入（回复一级→插顶部，回复二级→插其下方）；子回复 `hideReplyTarget` 由 `reply.replyToUser.id === comment.user.id` 判断；删除操作 `handleDelete`（ElMessageBox 确认 → `deleteComment` API，一级评论 emit `deleted` 给父组件从列表移除，二级回复本地 filter + replyTotal-1）；emit `reply-added` / `deleted`
+  - `CommentCreate.vue` 已完成：当前用户头像+昵称 + ElInput textarea + 发布/取消按钮，回复时预填"回复 @{username}："，按钮灰色禁用→蓝色可点，空模板保护防提交纯前缀
 - 前端类型新增：`CommentUser`（含 nickname）、`ReplyToUser`（含 nickname）、`CommentVO`（含 replies/replyCount/hasMoreReplies/parentId/replyToUser）、`CreateCommentDTO`、`CreateCommentVO`、`LikeCommentVO`
-- 前端 API `api/comments.ts` 已完成：`fetchComments`（游标分页，cursor/size/replySize）/ `fetchReplies`（页码分页，current/size）/ `createComment` / `likeComment` / `deleteComment`
-- **共享工具**：`utils/time.ts`（`formatRelativeTime` / `formatDateTime`），PostCard 已重构为使用共享函数
+- 前端 API `api/comments.ts` 已完成：`fetchComments`（游标分页，cursor/size/replySize）/ `fetchReplies`（页码分页，current/size）/ `createComment` / `likeComment` / `deleteComment`（统一箭头函数 + ApiResult 返回类型）
+- **共享工具**：`utils/time.ts`（`formatRelativeTime` / `formatDateTime`），`utils/number.ts`（`formatCount`：≥10000 → x.xw），PostCard/CommentCard/PostDetail 已统一接入格式化
 - **帖子详情页 PostDetail.vue**：已完成，分上下两张圆角卡片——
   - 上卡片：作者区（头像+昵称+时间+关注按钮，未关注=红色填充/已关注=灰色填充）+ 帖子主体（Eye 浏览数 + 标题 + DOMPurify 净化富文本 + 4 个交互按钮同 PostCard）
-  - 下卡片：CommentCreate 一级评论发布 + CommentThread 无限滚动列表（v-infinite-scroll + useInfiniteList<CommentVO>，游标分页，"加载中..."/"没有更多评论了" 指示）
-  - 淡入动画（0.35s），880px 居中，点赞/收藏/关注均乐观更新 + API 失败回滚
+  - 下卡片：CommentCreate 一级评论发布 + CommentThread 无限滚动列表（v-infinite-scroll + useInfiniteList<CommentVO>，游标分页，"加载中..."/"没有更多评论了" 指示），`@deleted` 事件监听从列表中 splice 移除已删评论
+  - 淡入动画（0.35s），880px 居中，点赞/收藏/关注均乐观更新 + API 失败回滚，交互区数字统一使用 `formatCount` 格式化（≥10000 → x.xw）
 - **API 文档**：4.2 评论列表接口从传统页码分页改为游标分页（`cursor`/`hasMore`/`size`，对齐 3.5 帖子列表），4.3 二级回复保持页码分页不变
 - **开发问题记录**：`docs/Question.md` 新增问题 21——游标瀑布流实现方案（SQL keyset pagination + 前端 useInfiniteList 双模式 + API 对齐）
 - 前端依赖 `@lucide/vue` 已补录到 `docs/01-requirements-and-plan.md`
 - **后端帖子接口 3.1~3.5 已完成**（当前分支 feature/post-module）：
-  - `PostController` 5 个端点：POST /api/posts（发布）、GET /api/posts/{id}（详情）、PUT /api/posts/{id}（编辑）、DELETE /api/posts/{id}（软删除）、GET /api/posts（游标分页列表，sort=created_at/hot）
-  - `PostService` / `PostServiceImpl`：Jsoup 提取纯文本+封面图、游标编解码（`{timestamp}_{id}`）、乐观锁编辑、所有权校验、浏览数+1
-  - `PostMapper` + `PostMapper.xml`：3 个自定义 SQL——`selectListLatest`（游标分页-最新）、`selectListHot`（游标分页-热门）、`selectDetailWithAuthor`（LEFT JOIN user_like/user_favorite/user_follow 查点赞/收藏/关注状态）
+  - `PostController` 7 个端点：POST /api/posts（发布）、GET /api/posts/{id}（详情）、PUT /api/posts/{id}（编辑）、DELETE /api/posts/{id}（软删除）、GET /api/posts（游标分页列表，sort=created_at/hot）、POST /api/posts/{id}/like（点赞/取消 toggle）、POST /api/posts/{id}/favorite（收藏/取消 toggle）
+  - `PostService` / `PostServiceImpl`：Jsoup 提取纯文本+封面图、游标编解码（`{timestamp}_{id}`）、乐观锁编辑、所有权校验、浏览数+1、点赞/收藏 toggle（查已有→存在删+count-1/不存在插+count+1，GREATEST 防负值）
+  - `PostMapper` + `PostMapper.xml`：3 个自定义查询 SQL（`selectListLatest` 游标分页-最新、`selectListHot` 游标分页-热门、`selectDetailWithAuthor` LEFT JOIN 查点赞/收藏/关注状态）+ 4 个计数增减 UPDATE SQL（`incrementLikeCount`/`decrementLikeCount`/`incrementCollectCount`/`decrementCollectCount`，GREATEST 防负值）
   - 新增 Mapper：`UserLikeMapper`、`UserFavoriteMapper`、`UserFollowMapper`
   - 新增 DTO：`CreatePostDTO`、`UpdatePostDTO`
-  - 新增 VO：`AuthorVO`、`PostDetailVO`、`PostItemVO`、`CursorPageVO<T>`、`CreatePostVO`
+  - 新增 VO：`AuthorVO`、`PostDetailVO`、`PostItemVO`、`CursorPageVO<T>`、`CreatePostVO`、`LikePostVO`（liked + likeCount）、`FavoritePostVO`（favorited）
   - `Result.java` 新增 `success(T data, String msg)` 工厂方法
+  - **点赞/收藏接口 3.6~3.7 已完成**：toggle 模式，同一接口反复调用切换状态；点赞返回最新 `likeCount`，收藏按接口文档仅返回 `favorited`（前端本地 ±1 乐观更新）
 - **帖子详情页返回按钮**：PostDetail.vue 左上角圆角方框 `<` 按钮，flex 布局位于卡片左侧外部，上边精确对齐作者块上边，点击跳转首页
 - **帖子发布页 PostCreate.vue**：已完成，极简现代风格——
   - 外层白色大卡片（880px 居中），内嵌套两个圆角子框（标题框 + 正文框），标签区分输入区域
@@ -248,7 +265,39 @@ refreshToken 过期 → 清除 store → 跳转 /login
   - **安全加固**：Link href 协议白名单（http/https/mailto/tel）、服务端 HTML 清洗（Jsoup.clean + Safelist，img src 仅 http/https、a href 仅 http/https/mailto/tel）、软删除查询补漏
   - **新增后端注释**：16 个文件（Controller/DTO/VO/Mapper/Service/XML）全部补全 Javadoc/XML 注释
 
+**Sprint 4 — 评论后端 CRUD（进行中，当前分支 feature/comment-crud）**
+
+- 后端评论模块核心逻辑已完成（已开发，待提交）：
+  - `CommentController` 4 个端点：POST /posts/{postId}/comments（发表）、GET /posts/{postId}/comments（游标分页列表，含预加载二级回复）、GET /comments/{commentId}/replies（二级回复页码分页）、DELETE /comments/{id}（软删除，仅限本人）
+  - `CommentService` / `CommentServiceImpl`：发表校验（帖子存在 + 父评论存在 + 帖子匹配 + 只能回复一级评论）、游标分页（`{timestamp}_{id}` 编解码，NumberFormatException → 400）、二级回复预加载（LIMIT replySize）+ 加载更多（MyBatis-Plus 页码分页）、级联软删除（一级评论 → 其下所有二级回复一并软删除，`deletedCount` 扣减帖子评论数）
+  - `CommentMapper` + `CommentMapper.xml`：4 个自定义 SQL — `selectTopLevelComments`（游标分页，LEFT JOIN user_like 判断 isLiked）、`selectReplies`（预加载回复，ASC）、`countReplies`（统计 status=1 回复数）、`selectRepliesPage`（页码分页，ORDER BY created_at ASC）
+  - `PostMapper` 新增：`incrementCommentCount(id)` / `decrementCommentCount(id, delta)` — MySQL `GREATEST(comment_count - delta, 0)` 防负值
+  - 新增 DTO：`CreateCommentDTO`（parentId/replyToUid/content，@Valid 校验 1~5000 字）
+  - 新增 VO：`CommentVO`（含预加载 replies/replyCount/hasMoreReplies）、`ReplyVO`（含嵌套 user + replyToUser）、`CommentUserVO`（id/username/nickname/avatar）、`ReplyToUserVO`（id/username/nickname，无头像）、`CreateCommentVO`（id）
+  - 开发计划 `docs/04-development-plan.md` Sprint 4 评论 CRUD 接口已标记完成
+
+**Sprint 5 — 搜索（已完成）**
+
+- Elasticsearch 8.x 已配置接入（`spring.elasticsearch.uris: http://localhost:9200`）
+- ES 安全配置关闭（`xpack.security.enabled: false` + `xpack.security.http.ssl.enabled: false`）
+- ES 磁盘水位线调高（dev 单节点 `disk.watermark.low: 97%, high: 98%, flood_stage: 99%`）
+- `PostDocument` ES 索引映射实体（@Document(indexName="posts")，ik_max_word/ik_smart 分词，title/contentText 全文检索，username/nickname keyword 精确匹配，createdAt 使用 epoch millis Long）
+- `SearchService` / `SearchServiceImpl`：StringQuery + multi_match 多字段匹配 + fuzziness("AUTO") 模糊容错 → HighlightQuery 高亮（`<em>` 标签包裹）→ 分页排序 → 映射 PostItemVO；索引不存在时捕获 NoSuchIndexException 优雅返回空结果
+- `PostController` 新增搜索端点 GET /api/posts/search（q/current/size/sort 参数，返回 PageVO<PostItemVO>，端点总数 7 → 8）
+- `PostServiceImpl` 帖子发布/更新时同步写入 ES 索引（`syncPostToEs`，try-catch 兜底，ES 失败不影响 MySQL 主流程）
+- `PostService` / `PostServiceImpl` 新增全量同步方法 `syncAllPostsToEs()`，AdminController 新增 POST /api/admin/sync-es 端点
+- 新增 `PostDocument` ES 文档类（document 包）、`SearchService` 接口 + `SearchServiceImpl` 实现
+- 搜索返回字段：title/contentText 含 `<em>` 高亮标签，author 含 id/username/nickname/avatar，likeCount/commentCount/collectCount/createdAt 完整
+- **前端搜索页 SearchPage.vue 已完成**：
+  - 极简现代风格，与首页相同布局（880px 居中），复用 PostCard 组件 + useInfiniteList 页码分页（mode: 'page'）
+  - 左上角 `<` 返回按钮（40px 方形圆角，hover 蓝色渐变背景 + 2px 左滑动效，<960px 隐藏）
+  - 搜索头部："搜索「xxx」"（关键词蓝色可点，dotted 下划线）+ 结果统计 + 排序下拉（最新/最热）
+  - 3 个状态：Skeleton 骨架屏（shimmer 动画 3 行）→ 空结果（搜索图标 + "未找到相关结果"/"换个关键词试试吧"）→ 结果列表（v-infinite-scroll 无限滚动）
+  - 淡入动画（0.35s fadeSlideIn），页面首次加载和重复搜索切换时均触发
+  - 关键词变化时自动重置并重新搜索（watch route.query），LayoutPage 加 `_ts` 时间戳强制触发同关键词导航
+
 ### 开发规范（更新中）
+
 - **日志追踪（强制）**：后续所有后端功能开发，Controller / Service 必须添加 @Slf4j 注解并使用 log.info/log.warn 打印业务流日志，格式统一为 `log.info("操作描述 关键参数={}", value)`
 - **敏感数据脱敏（强制）**：日志中涉及手机号、邮箱、密码、Token 等敏感字段时，必须通过 `MaskUtil` 工具类脱敏后再输出（`maskPhone` / `maskEmail` / `maskPassword` / `maskToken` / `maskAccount`），禁止明文打印
 - 日志文件通过 logback.xml 输出到 `echo-server/logs/` 目录（已在 .gitignore，不纳入版本管理）
@@ -275,27 +324,18 @@ refreshToken 过期 → 清除 store → 跳转 /login
 - [x] 开发 PostCreate：富文本编辑器（TipTap）发帖，含 toolbar（粗体/斜体/标题/引用/代码块/图片/链接）
 - [x] 开发 UserProfile：用户主页、发帖列表、关注/粉丝弹窗
 - [x] 前端开发评论组件：CommentCard / CommentThread / CommentCreate
-	- [x] **后端 API 2.1** `GET /users/{id}`（公开用户信息）：`UserPublicController.getProfile()` + `UserService.getPublicProfile()` 实现，查询用户基本信息、发帖数（postCount）、粉丝数（followerCount）、关注数（followingCount）、是否已关注（isFollowed），未登录时 isFollowed 恒为 false
-	- [x] **后端 API 2.7** `GET /users/{id}/posts`（用户帖子列表）：`UserPublicController.listUserPosts()` + `PostService.listUserPosts()` 实现，游标分页（支持 created_at/hot 排序），`PostMapper` 新增 `selectListByUserLatest` / `selectListByUserHot` 含 `AND p.user_id = #{userId}` 过滤
-	- [x] `PostServiceImpl` 重构：抽取 `buildCursorPage()` 共享方法，消除 `listPosts` 与 `listUserPosts` 之间的游标分页构建重复
-	- [x] 前端 `api/posts.ts` 新增 `fetchUserPosts(userId, params)`，`UserProfile.vue` 的 `useInfiniteList` 从通用 `fetchPosts` 切换为 `fetchUserPosts`
-	- [x] `application.yaml` 安全白名单新增 `/users/*` 和 `/users/*/posts`，允许未登录访问公开用户端点
-	- [x] **前端个人主页 `UserProfile.vue`**：上下两张圆角卡片——上卡片用户信息（头像+昵称+统计栏：关注数/粉丝数/发帖数 可点击打开弹窗 + 个人简介 + 关注按钮红色/灰色切换 + 乐观更新），下卡片用户帖子列表（v-infinite-scroll + useInfiniteList + fetchUserPosts API）
-	- [x] **PostCard 组件扩展**：新增 `showActions` prop（默认 false）+ `edit`/`delete` emits，用户区右侧显示编辑（Pencil 图标，hover 蓝色）+ 删除（Trash2 图标，hover 红色）按钮，仅在个人自己的主页展示
-	- [x] **UserCard 组件**：关注/粉丝弹窗列表项，头像+昵称+相对时间（"关注于"/"关注你于"），点击跳转个人主页
-	- [x] **PostCreate 编辑模式**：通过 `route.query.editId` 检测编辑模式，`onMounted` 时调 `fetchPostDetail` 回显标题+TipTap 内容，发布按钮变为"保存修改"并调 `updatePost` API
-	- [x] **关注/粉丝弹窗**：Teleport 遮罩弹窗，上部分 tab（关注/粉丝切换），下部分 UserCard 列表（页码分页 prev/next），点击统计栏数字打开对应 tab
+- [x] 后端实现评论 CRUD 接口 4.1~4.4（发表/评论列表游标分页/二级回复页码分页/软删除，含级联删除和评论数同步）
 
 ### 中期（社交功能）
 
-- [ ] 关注 / 取关
-- [ ] 点赞 / 收藏
-- [ ] 评论 / 回复
+- [x] 关注 / 取关（前端交互已完成，后端关注/取关接口待实现）
+- [x] 点赞 / 收藏（后端 toggle 接口已完成 + 前端 PostCard 自闭环交互已完成）
+- [x] 评论 / 回复（后端 CRUD 已完成，前端组件已完成）
 - [ ] 消息通知（RabbitMQ）
 
 ### 远期（搜索 & 存储）
 
-- [ ] 接入 Elasticsearch 实现全文搜索
+- [x] 接入 Elasticsearch 实现全文搜索
 - [x] 接入 MinIO 实现图片上传（头像 + 通用图片）
 - [ ] OSS 存储实现（OssFileServiceImpl，storage.type=oss 时切换）
 - [ ] 404 页面（替换当前静默重定向）
@@ -305,88 +345,101 @@ refreshToken 过期 → 清除 store → 跳转 /login
 
 ## 环境变量清单
 
-| 变量名 | 用途 |
-|--------|------|
-| `DB_USERNAME` | MySQL 用户名 |
-| `DB_PASSWORD` | MySQL 密码 |
-| `JWT_SECRET` | JWT 签名密钥 |
-| `MAIL_USERNAME` | Gmail 发件账号 |
-| `MAIL_PASSWORD` | Gmail 应用专用密码（16位） |
-| `MINIO_ROOT_USER` | MinIO 访问密钥 |
-| `MINIO_ROOT_PASSWORD` | MinIO 密钥 |
-| `OSS_ACCESS_KEY_ID` | 阿里云 OSS Key ID |
-| `OSS_ACCESS_KEY_SECRET` | 阿里云 OSS Key Secret |
+| 变量名                  | 用途                       |
+| ----------------------- | -------------------------- |
+| `DB_USERNAME`           | MySQL 用户名               |
+| `DB_PASSWORD`           | MySQL 密码                 |
+| `JWT_SECRET`            | JWT 签名密钥               |
+| `MAIL_USERNAME`         | Gmail 发件账号             |
+| `MAIL_PASSWORD`         | Gmail 应用专用密码（16位） |
+| `MINIO_ROOT_USER`       | MinIO 访问密钥             |
+| `MINIO_ROOT_PASSWORD`   | MinIO 密钥                 |
+| `OSS_ACCESS_KEY_ID`     | 阿里云 OSS Key ID          |
+| `OSS_ACCESS_KEY_SECRET` | 阿里云 OSS Key Secret      |
 
 ---
 
 ## 关键文件索引
 
-| 文件 | 说明 |
-|------|------|
-| `echo-server/src/main/resources/application.yaml` | 后端全局配置 |
-| `echo-server/src/main/resources/logback.xml` | 日志配置（控制台 + 滚动文件输出到 logs/） |
-| `echo-server/.../security/SecurityConfig.java` | Security 白名单与无状态配置 |
-| `echo-server/.../security/JwtAuthFilter.java` | JWT 请求过滤器 |
-| `echo-server/.../security/JwtUtil.java` | Token 生成与解析 |
-| `echo-server/.../service/impl/AuthServiceImpl.java` | 认证业务逻辑 |
-| `echo-server/.../controller/UserController.java` | 用户模块控制器（资料设置/账号设置/修改密码，需认证） |
-| `echo-server/.../controller/UserPublicController.java` | 公开用户信息控制器（GET /users/{id} 个人主页 + GET /users/{id}/posts 用户帖子列表，无需认证） |
-| `echo-server/.../controller/FileController.java` | 文件上传控制器（头像/图片上传 + 文件删除，需认证） |
-| `echo-server/.../service/FileService.java` | 文件存储服务接口（uploadAvatar / uploadImage / deleteFile） |
-| `echo-server/.../service/impl/UserServiceImpl.java` | 用户模块业务逻辑（含手机/邮箱唯一性校验、BCrypt 改密、空更新保护） |
-| `echo-server/.../service/impl/MinioFileServiceImpl.java` | MinIO 文件存储实现（扩展名白名单、文件大小校验、resolveContentType 防 XSS、try-with-resources、endpoint 规范化、deleteFile 回滚清理） |
-| `echo-server/.../mapper/UserMapper.java` | 用户模块 Mapper（与 AuthMapper 按业务拆分） |
-| `echo-server/.../config/MinioProperties.java` | MinIO 配置属性（endpoint/publicBaseUrl/accessKey/secretKey/bucketName，@NotBlank 启动校验） |
-| `echo-server/.../config/MinioConfig.java` | MinIO 客户端条件注入（storage.type=minio，含 MinioProperties 条件注册绑定） |
-| `echo-server/.../vo/UploadAvatarVO.java` | 头像上传响应 VO |
-| `echo-server/.../vo/UploadImageVO.java` | 图片上传响应 VO |
-| `echo-server/.../util/MaskUtil.java` | 敏感数据脱敏工具（phone/email/password/token/account） |
-| `echo-server/.../common/GlobalExceptionHandler.java` | 全局异常处理器（含 DuplicateKeyException→409、MissingServletRequestPartException/MultipartException→400 映射） |
-| `echo-server/.../controller/PostController.java` | 帖子模块控制器（发布/详情/编辑/删除/列表 5 端点，游标分页） |
-| `echo-server/.../service/PostService.java` | 帖子模块服务接口 |
-| `echo-server/.../service/impl/PostServiceImpl.java` | 帖子模块服务实现（Jsoup.clean HTML 清洗、游标编解码+NumberFormatException→400、乐观锁、所有权校验、文本/封面提取） |
-| `echo-server/.../mapper/PostMapper.java` | 帖子 Mapper（BaseMapper + 3 自定义查询） |
-| `echo-server/.../mapper/UserLikeMapper.java` | 点赞关系 Mapper |
-| `echo-server/.../mapper/UserFavoriteMapper.java` | 收藏关系 Mapper |
-| `echo-server/.../mapper/UserFollowMapper.java` | 关注关系 Mapper |
-| `echo-server/src/main/resources/mapper/PostMapper.xml` | 帖子自定义 SQL（游标分页最新/热门 + 详情多表 JOIN 含软删除过滤 p.status=1） |
-| `echo-server/.../dto/CreatePostDTO.java` | 发布帖子请求 DTO |
-| `echo-server/.../dto/UpdatePostDTO.java` | 编辑帖子请求 DTO |
-| `echo-server/.../vo/AuthorVO.java` | 作者信息 VO（id/username/nickname/avatar） |
-| `echo-server/.../vo/PostDetailVO.java` | 帖子详情 VO（含 isLiked/isCollected/isFollowed 状态） |
-| `echo-server/.../vo/PostItemVO.java` | 帖子列表项 VO（含嵌套 AuthorVO） |
-| `echo-server/.../vo/CursorPageVO.java` | 游标分页通用 VO（cursor/hasMore/count/records，count 为本次返回的实际记录数） |
-| `echo-server/.../vo/CreatePostVO.java` | 创建帖子响应 VO（id） |
-| `echo-server/.../vo/PublicUserVO.java` | 公开用户信息 VO（API 2.1 响应：id/username/nickname/avatar/bio/postCount/followerCount/followingCount/isFollowed/createdAt） |
-| `echo-web/src/api/users.ts` | 用户模块前端 API（含 uploadAvatar/uploadImage/deleteFile/followUser/getUserProfile/getFollowers/getFollowing） |
-| `echo-web/src/api/posts.ts` | 帖子模块前端 API（createPost/updatePost/deletePost/fetchPosts/fetchUserPosts/fetchPostDetail/likePost/favoritePost，统一箭头函数 + ApiResult 双参数泛型） |
-| `echo-web/src/api/comments.ts` | 评论模块前端 API（fetchComments 游标分页/fetchReplies 页码分页/createComment/likeComment/deleteComment，统一箭头函数 + ApiResult 返回类型） |
-| `echo-web/src/api/modules/index.ts` | 前端类型定义（DTO/VO/Result 泛型，含 CreatePostDTO/CreatePostVO 等） |
-| `echo-web/src/composables/useInfiniteList.ts` | 通用无限列表 composable（泛型 `<T>`，双模式 cursor/page，fetchFn 注入 + baseParams 复用，已修复空记录提前返回死循环） |
-| `echo-web/src/utils/time.ts` | 共享时间格式化工具（formatRelativeTime 相对时间 / formatDateTime 绝对时间） |
-| `echo-web/src/utils/result.ts` | Axios 封装，含 401 自动刷新逻辑 |
-| `echo-server/.../common/Result.java` | 统一响应包装（success/error，新增 success(data, msg) 工厂方法） |
-| `echo-web/src/stores/userStore.ts` | 用户状态（Token + 用户信息） |
-| `echo-web/src/router/index.ts` | 路由定义与守卫 |
-| `echo-web/src/components/LayoutPage.vue` | 主布局（顶栏 + 可折叠侧边栏 + 内容区），下拉含资料设置/账号设置/修改密码/退出 |
-| `echo-web/src/components/PostCard.vue` | 帖子卡片组件（用户区含 showActions 编辑/删除按钮/帖子区/图片网格/交互区/图片预览，@lucide/vue 图标，单图原生比例+多图 4:3 网格，watch props 同步 liked/collected，document 级 Esc 预览关闭） |
-| `echo-web/src/components/CommentCard.vue` | 评论卡片组件（无边框，用户区含"@回复人"昵称+评论内容+底部时间(25%)/点赞回复按钮(37.5%)，Heart红色切换，hideReplyTarget 控制 @ 显隐） |
-| `echo-web/src/components/CommentThread.vue` | 评论线程组件（一级评论+缩进二级回复+加载更多/分页+行内回复编辑器插入，replyLikes 本地覆盖防 prop mutation，子回复 hideReplyTarget 按 replyToUser.id === 一级作者 id 判断） |
-| `echo-web/src/components/CommentCreate.vue` | 评论发布组件（ElInput textarea+发布按钮，回复预填"回复@{username}："，空模板保护防提交纯前缀） |
-| `echo-web/src/components/UserCard.vue` | 用户卡片组件（头像+昵称+关注时间，点击跳转个人主页，用于关注/粉丝弹窗列表） |
-| `echo-web/src/views/HomePage.vue` | 首页帖子列表（v-infinite-scroll 无限滚动 + useInfiniteList composable） |
-| `echo-web/src/views/PostDetail.vue` | 帖子详情页（淡入动画，作者区+关注按钮+帖子主体 DOMPurify 净化+4 交互按钮，评论区 useInfiniteList<CommentVO> + v-infinite-scroll 无限滚动，乐观更新+回滚） |
-| `echo-web/src/views/PostCreate.vue` | 帖子发布/编辑页（TipTap 富文本 + Toolbar + 图片上传 + 编辑模式 query.editId 回显 + Link 协议白名单 + 淡入动画） |
-| `echo-web/src/views/UserProfile.vue` | 用户主页（个人资料卡片+帖子列表 v-infinite-scroll + 关注/粉丝 Teleport 弹窗 + PostCard showActions 编辑/删除 + PostCreate 编辑回显） |
-| `echo-web/src/views/ProfileSettingsPage.vue` | 资料设置页（头像本地预览+选择图片，保存时统一上传；昵称+简介编辑；保存/取消） |
-| `echo-web/src/views/SettingsPage.vue` | 账号设置页（手机号+邮箱编辑，el-form rules 校验，保存/取消） |
-| `echo-web/src/views/ChangePasswordPage.vue` | 修改密码页（旧密码/新密码/确认密码，show-password 切换，el-form rules 校验，绿色渐变修改密码按钮，忘记密码链接） |
-| `echo-server/src/main/resources/db/init.sql` | 数据库初始化 DDL（6 张表 + 索引） |
-| `echo-server/src/main/resources/db/data.sql` | 测试数据（5 用户 + 23 帖子） |
-| `docs/roadmap.md` | 待开发功能方案设计（含瀑布流加载/游标分页方案） |
-| `docs/05-feature-flows.md` | 功能模块与流程图（11 张 Mermaid 流程图，含 MinIO/OSS 文件上传） |
-| `docs/《EchoSpace》系统设计.md` | 系统设计文档（架构 + 模块 + 数据库 + 设计要点） |
-| `docs/《EchoSpace》系统设计.docx` | 系统设计文档 Word 版（同上，含格式化表格） |
-| `docs/01-requirements-and-plan.md` | 需求与技术方案文档 |
-| `docs/02-api-documentation.md` | API 接口文档（含用户/帖子/评论/文件模块，游标分页响应字段 size→count） |
-| `docs/Question.md` | 开发问题记录（按主题分组：后端 Security 构建 / 前端 axios 拦截器 / 后端其他 / 前端其他 / Sprint 3 前后端代码审查 #22~#33） |
+| 文件                                                      | 说明                                                                                                                                                                                                                                                                                          |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `echo-server/src/main/resources/application.yaml`         | 后端全局配置                                                                                                                                                                                                                                                                                  |
+| `echo-server/src/main/resources/logback.xml`              | 日志配置（控制台 + 滚动文件输出到 logs/）                                                                                                                                                                                                                                                     |
+| `echo-server/.../security/SecurityConfig.java`            | Security 白名单与无状态配置                                                                                                                                                                                                                                                                   |
+| `echo-server/.../security/JwtAuthFilter.java`             | JWT 请求过滤器                                                                                                                                                                                                                                                                                |
+| `echo-server/.../security/JwtUtil.java`                   | Token 生成与解析                                                                                                                                                                                                                                                                              |
+| `echo-server/.../service/impl/AuthServiceImpl.java`       | 认证业务逻辑                                                                                                                                                                                                                                                                                  |
+| `echo-server/.../controller/UserController.java`          | 用户模块控制器（资料设置/账号设置/修改密码）                                                                                                                                                                                                                                                  |
+| `echo-server/.../controller/FileController.java`          | 文件上传控制器（头像/图片上传 + 文件删除，需认证）                                                                                                                                                                                                                                            |
+| `echo-server/.../service/FileService.java`                | 文件存储服务接口（uploadAvatar / uploadImage / deleteFile）                                                                                                                                                                                                                                   |
+| `echo-server/.../service/impl/UserServiceImpl.java`       | 用户模块业务逻辑（含手机/邮箱唯一性校验、BCrypt 改密、空更新保护）                                                                                                                                                                                                                            |
+| `echo-server/.../service/impl/MinioFileServiceImpl.java`  | MinIO 文件存储实现（扩展名白名单、文件大小校验、resolveContentType 防 XSS、try-with-resources、endpoint 规范化、deleteFile 回滚清理）                                                                                                                                                         |
+| `echo-server/.../mapper/UserMapper.java`                  | 用户模块 Mapper（与 AuthMapper 按业务拆分）                                                                                                                                                                                                                                                   |
+| `echo-server/.../config/MinioProperties.java`             | MinIO 配置属性（endpoint/publicBaseUrl/accessKey/secretKey/bucketName，@NotBlank 启动校验）                                                                                                                                                                                                   |
+| `echo-server/.../config/MinioConfig.java`                 | MinIO 客户端条件注入（storage.type=minio，含 MinioProperties 条件注册绑定）                                                                                                                                                                                                                   |
+| `echo-server/.../vo/UploadAvatarVO.java`                  | 头像上传响应 VO                                                                                                                                                                                                                                                                               |
+| `echo-server/.../vo/UploadImageVO.java`                   | 图片上传响应 VO                                                                                                                                                                                                                                                                               |
+| `echo-server/.../util/MaskUtil.java`                      | 敏感数据脱敏工具（phone/email/password/token/account）                                                                                                                                                                                                                                        |
+| `echo-server/.../common/GlobalExceptionHandler.java`      | 全局异常处理器（含 DuplicateKeyException→409、MissingServletRequestPartException/MultipartException→400 映射）                                                                                                                                                                                |
+| `echo-server/.../controller/PostController.java`          | 帖子模块控制器（发布/详情/编辑/删除/列表/点赞/收藏/搜索 8 端点，游标分页 + toggle 模式 + ES 全文检索）                                                                                                                                                                                        |
+| `echo-server/.../service/PostService.java`                | 帖子模块服务接口（含 likePost/favoritePost toggle 方法）                                                                                                                                                                                                                                      |
+| `echo-server/.../service/impl/PostServiceImpl.java`       | 帖子模块服务实现（Jsoup.clean HTML 清洗、游标编解码+NumberFormatException→400、乐观锁、所有权校验、文本/封面提取、点赞/收藏 toggle 逻辑、ES 同步写入）                                                                                                                                        |
+| `echo-server/.../mapper/PostMapper.java`                  | 帖子 Mapper（BaseMapper + 3 自定义查询 + 4 计数增减方法：incrementCommentCount/decrementCommentCount/incrementLikeCount/decrementLikeCount/incrementCollectCount/decrementCollectCount）                                                                                                      |
+| `echo-server/.../mapper/CommentMapper.java`               | 评论 Mapper（4 自定义 SQL：游标分页/预加载回复/回复统计/二级回复分页）                                                                                                                                                                                                                        |
+| `echo-server/src/main/resources/mapper/CommentMapper.xml` | 评论自定义 SQL（resultMap + 游标分页 + LEFT JOIN user_like + 页码分页）                                                                                                                                                                                                                       |
+| `echo-server/.../controller/CommentController.java`       | 评论控制器（发表/游标分页列表/二级回复分页/软删除 4 端点，所有权校验）                                                                                                                                                                                                                        |
+| `echo-server/.../service/CommentService.java`             | 评论服务接口（createComment/listComments/listReplies/deleteComment）                                                                                                                                                                                                                          |
+| `echo-server/.../service/impl/CommentServiceImpl.java`    | 评论服务实现（发表校验+游标编解码+预加载回复+级联软删除+GREATEST 防负值扣减）                                                                                                                                                                                                                 |
+| `echo-server/.../dto/CreateCommentDTO.java`               | 发表评论请求 DTO（parentId/replyToUid/content，@Valid 1~5000 字）                                                                                                                                                                                                                             |
+| `echo-server/.../vo/CommentVO.java`                       | 一级评论 VO（含预加载 replies/replyCount/hasMoreReplies）                                                                                                                                                                                                                                     |
+| `echo-server/.../vo/ReplyVO.java`                         | 二级回复 VO（含嵌套 user + replyToUser + isLiked）                                                                                                                                                                                                                                            |
+| `echo-server/.../vo/CommentUserVO.java`                   | 评论用户信息 VO（id/username/nickname/avatar）                                                                                                                                                                                                                                                |
+| `echo-server/.../vo/ReplyToUserVO.java`                   | 被回复用户信息 VO（id/username/nickname，无头像）                                                                                                                                                                                                                                             |
+| `echo-server/.../vo/CreateCommentVO.java`                 | 创建评论响应 VO（id）                                                                                                                                                                                                                                                                         |
+| `echo-server/.../mapper/UserLikeMapper.java`              | 点赞关系 Mapper                                                                                                                                                                                                                                                                               |
+| `echo-server/.../mapper/UserFavoriteMapper.java`          | 收藏关系 Mapper                                                                                                                                                                                                                                                                               |
+| `echo-server/.../mapper/UserFollowMapper.java`            | 关注关系 Mapper                                                                                                                                                                                                                                                                               |
+| `echo-server/src/main/resources/mapper/PostMapper.xml`    | 帖子自定义 SQL（游标分页最新/热门 + 详情多表 JOIN 含软删除过滤 p.status=1 + 6 个计数增减 UPDATE：commentCount/likeCount/collectCount ±1，GREATEST 防负值）                                                                                                                                    |
+| `echo-server/.../dto/CreatePostDTO.java`                  | 发布帖子请求 DTO                                                                                                                                                                                                                                                                              |
+| `echo-server/.../dto/UpdatePostDTO.java`                  | 编辑帖子请求 DTO                                                                                                                                                                                                                                                                              |
+| `echo-server/.../vo/AuthorVO.java`                        | 作者信息 VO（id/username/nickname/avatar）                                                                                                                                                                                                                                                    |
+| `echo-server/.../vo/PostDetailVO.java`                    | 帖子详情 VO（含 isLiked/isCollected/isFollowed 状态）                                                                                                                                                                                                                                         |
+| `echo-server/.../vo/PostItemVO.java`                      | 帖子列表项 VO（含嵌套 AuthorVO）                                                                                                                                                                                                                                                              |
+| `echo-server/.../vo/CursorPageVO.java`                    | 游标分页通用 VO（cursor/hasMore/count/records，count 为本次返回的实际记录数）                                                                                                                                                                                                                 |
+| `echo-server/.../vo/CreatePostVO.java`                    | 创建帖子响应 VO（id）                                                                                                                                                                                                                                                                         |
+| `echo-server/.../vo/LikePostVO.java`                      | 帖子点赞/取消响应 VO（liked + likeCount，toggle 模式）                                                                                                                                                                                                                                        |
+| `echo-server/.../vo/FavoritePostVO.java`                  | 帖子收藏/取消响应 VO（favorited，toggle 模式）                                                                                                                                                                                                                                                |
+| `echo-server/.../document/PostDocument.java`              | ES 帖子索引映射实体（@Document(indexName="posts")，ik_max_word/ik_smart 分词）                                                                                                                                                                                                                |
+| `echo-server/.../service/SearchService.java`              | 搜索服务接口（全文检索 + 高亮 + 分页）                                                                                                                                                                                                                                                        |
+| `echo-server/.../service/impl/SearchServiceImpl.java`     | 搜索服务实现（Criteria 多字段匹配 + HighlightQuery `<em>` 高亮 + PostItemVO 映射）                                                                                                                                                                                                            |
+| `echo-web/src/api/users.ts`                               | 用户模块前端 API（含 uploadAvatar/uploadImage/deleteFile/followUser）                                                                                                                                                                                                                         |
+| `echo-web/src/api/posts.ts`                               | 帖子模块前端 API（createPost/fetchPosts/fetchPostDetail/likePost/favoritePost/searchPosts，统一箭头函数 + ApiResult 双参数泛型）                                                                                                                                                              |
+| `echo-web/src/api/comments.ts`                            | 评论模块前端 API（fetchComments 游标分页/fetchReplies 页码分页/createComment/likeComment/deleteComment，统一箭头函数 + ApiResult 返回类型）                                                                                                                                                   |
+| `echo-web/src/api/modules/index.ts`                       | 前端类型定义（DTO/VO/Result 泛型，含 CreatePostDTO/CreatePostVO 等）                                                                                                                                                                                                                          |
+| `echo-web/src/composables/useInfiniteList.ts`             | 通用无限列表 composable（泛型 `<T>`，双模式 cursor/page，fetchFn 注入 + baseParams 复用，已修复空记录提前返回死循环；已移除 likedPosts/collectedPosts，点赞/收藏状态由 PostCard 自管理）                                                                                                      |
+| `echo-web/src/utils/time.ts`                              | 共享时间格式化工具（formatRelativeTime 相对时间 / formatDateTime 绝对时间）                                                                                                                                                                                                                   |
+| `echo-web/src/utils/number.ts`                            | 数字格式化工具（formatCount：≥10000 → x.xw 简写，自动去末尾 0）                                                                                                                                                                                                                               |
+| `echo-web/src/utils/result.ts`                            | Axios 封装，含 401 自动刷新逻辑                                                                                                                                                                                                                                                               |
+| `echo-server/.../common/Result.java`                      | 统一响应包装（success/error，新增 success(data, msg) 工厂方法）                                                                                                                                                                                                                               |
+| `echo-web/src/stores/userStore.ts`                        | 用户状态（Token + 用户信息）                                                                                                                                                                                                                                                                  |
+| `echo-web/src/router/index.ts`                            | 路由定义与守卫                                                                                                                                                                                                                                                                                |
+| `echo-web/src/components/LayoutPage.vue`                  | 主布局（顶栏 + 可折叠侧边栏 + 内容区），下拉含资料设置/账号设置/修改密码/退出                                                                                                                                                                                                                 |
+| `echo-web/src/components/PostCard.vue`                    | 帖子卡片组件（用户区/帖子区/图片网格/交互区/图片预览，@lucide/vue 图标，单图原生比例+多图 4:3 网格，点赞/收藏自闭环：内部调 API + 乐观更新+失败回滚 + 内部维护 likeCount/collectCount ref，formatCount 数字格式化，document 级 Esc 预览关闭，标题/摘要 v-html 渲染 + :deep(em) 搜索高亮样式） |
+| `echo-web/src/components/CommentCard.vue`                 | 评论卡片组件（无边框，用户区含"@回复人"昵称+删除按钮仅本人可见+评论内容+底部时间(25%)/点赞回复删除按钮(37.5%)，Heart红色切换+Trash2 hover红色，emit toggle-like/reply/delete，formatCount 数字格式化）                                                                                        |
+| `echo-web/src/components/CommentThread.vue`               | 评论线程组件（一级评论+缩进二级回复+加载更多/分页+行内回复编辑器插入，replyLikes 本地覆盖防 prop mutation，handleDelete ElMessageBox 确认→deleteComment API→emit deleted，子回复 hideReplyTarget 按 replyToUser.id === 一级作者 id 判断）                                                     |
+| `echo-web/src/components/CommentCreate.vue`               | 评论发布组件（ElInput textarea+发布按钮，回复预填"回复@{username}："，空模板保护防提交纯前缀）                                                                                                                                                                                                |
+| `echo-web/src/views/HomePage.vue`                         | 首页帖子列表（v-infinite-scroll 无限滚动 + useInfiniteList composable，PostCard 点赞/收藏交互已下沉到组件内部自闭环）                                                                                                                                                                         |
+| `echo-web/src/views/PostDetail.vue`                       | 帖子详情页（淡入动画，作者区+关注按钮+帖子主体 DOMPurify 净化+4 交互按钮，评论区 useInfiniteList<CommentVO> + v-infinite-scroll 无限滚动，乐观更新+回滚，handleCommentDeleted splice 移除已删评论，formatCount 数字格式化）                                                                   |
+| `echo-web/src/views/PostCreate.vue`                       | 帖子发布页（TipTap 富文本 + Toolbar 粗体/斜体/标题/引用/代码块/图片/链接 + Link 协议白名单 http/https/mailto/tel + 图片粘贴拖入上传 + 标题/正文双框布局 + 淡入动画 + editor 就绪保护）                                                                                                        |
+| `echo-web/src/views/ProfileSettingsPage.vue`              | 资料设置页（头像本地预览+选择图片，保存时统一上传；昵称+简介编辑；保存/取消）                                                                                                                                                                                                                 |
+| `echo-web/src/views/SettingsPage.vue`                     | 账号设置页（手机号+邮箱编辑，el-form rules 校验，保存/取消）                                                                                                                                                                                                                                  |
+| `echo-web/src/views/ChangePasswordPage.vue`               | 修改密码页（旧密码/新密码/确认密码，show-password 切换，el-form rules 校验，绿色渐变修改密码按钮，忘记密码链接）                                                                                                                                                                              |
+| `echo-server/src/main/resources/db/init.sql`              | 数据库初始化 DDL（6 张表 + 索引）                                                                                                                                                                                                                                                             |
+| `echo-server/src/main/resources/db/data.sql`              | 测试数据（5 用户 + 23 帖子）                                                                                                                                                                                                                                                                  |
+| `docs/roadmap.md`                                         | 待开发功能方案设计（含瀑布流加载/游标分页方案）                                                                                                                                                                                                                                               |
+| `docs/05-feature-flows.md`                                | 功能模块与流程图（11 张 Mermaid 流程图，含 MinIO/OSS 文件上传）                                                                                                                                                                                                                               |
+| `docs/《EchoSpace》系统设计.md`                           | 系统设计文档（架构 + 模块 + 数据库 + 设计要点）                                                                                                                                                                                                                                               |
+| `docs/《EchoSpace》系统设计.docx`                         | 系统设计文档 Word 版（同上，含格式化表格）                                                                                                                                                                                                                                                    |
+| `docs/01-requirements-and-plan.md`                        | 需求与技术方案文档                                                                                                                                                                                                                                                                            |
+| `docs/02-api-documentation.md`                            | API 接口文档（含用户/帖子/评论/文件模块，游标分页响应字段 size→count）                                                                                                                                                                                                                        |
+| `docs/Question.md`                                        | 开发问题记录（按主题分组：后端 Security 构建 / 前端 axios 拦截器 / 后端其他 / 前端其他 / Sprint 3 前后端代码审查 #22~#33）                                                                                                                                                                    |

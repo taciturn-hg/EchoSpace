@@ -101,9 +101,7 @@ function handleDropdown(command: 'profile-settings' | 'settings' | 'change-passw
 }
 
 function handleSearch(): void {
-  const q = searchQuery.value.trim()
-  if (!q) return
-  router.push({ name: 'search', query: { q } })
+  router.push({ name: 'search', query: { q: searchQuery.value.trim() || '', _ts: Date.now().toString() } })
 }
 
 onMounted(async () => {

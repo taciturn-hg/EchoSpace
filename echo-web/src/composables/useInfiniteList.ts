@@ -33,10 +33,6 @@ export function useInfiniteList<T = PostVO>(options?: UseInfiniteListOptions) {
   const currentPage = ref(1)
   const error = ref<string | null>(null)
 
-  // ---- post-specific local toggle state (unused for non-post types) ----
-  const likedPosts = ref<Set<number>>(new Set())
-  const collectedPosts = ref<Set<number>>(new Set())
-
   function setBaseParam(key: string, value: unknown): void {
     baseParams.value = { ...baseParams.value, [key]: value }
     reset()
@@ -81,26 +77,6 @@ export function useInfiniteList<T = PostVO>(options?: UseInfiniteListOptions) {
     }
   }
 
-  function toggleLike(postId: number): void {
-    const next = new Set(likedPosts.value)
-    if (next.has(postId)) {
-      next.delete(postId)
-    } else {
-      next.add(postId)
-    }
-    likedPosts.value = next
-  }
-
-  function toggleCollect(postId: number): void {
-    const next = new Set(collectedPosts.value)
-    if (next.has(postId)) {
-      next.delete(postId)
-    } else {
-      next.add(postId)
-    }
-    collectedPosts.value = next
-  }
-
   function reset(): void {
     posts.value = []
     cursor.value = null
@@ -108,8 +84,6 @@ export function useInfiniteList<T = PostVO>(options?: UseInfiniteListOptions) {
     hasMore.value = true
     loading.value = false
     error.value = null
-    likedPosts.value = new Set()
-    collectedPosts.value = new Set()
   }
 
   return {
@@ -118,11 +92,7 @@ export function useInfiniteList<T = PostVO>(options?: UseInfiniteListOptions) {
     hasMore,
     cursor,
     error,
-    likedPosts,
-    collectedPosts,
     fetchPosts,
-    toggleLike,
-    toggleCollect,
     reset,
     setBaseParam,
   }

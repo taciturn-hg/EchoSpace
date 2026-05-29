@@ -43,6 +43,8 @@ spring:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
       mail.smtp.starttls.required: true
+  elasticsearch:
+    uris: http://localhost:9200
 
 mybatis-plus:
   mapper-locations: classpath:mapper/*.xml
@@ -80,5 +82,6 @@ security:
     - /error
     - /swagger-ui/**
     - /v3/api-docs/**
+
 
 
