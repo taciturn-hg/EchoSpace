@@ -1849,3 +1849,93 @@ private CursorParts parseCursor(String cursor) {
 | 文件 | 改动 |
 |------|------|
 | `service/impl/PostServiceImpl.java` | 新增 `CursorParts` record；`parseCursor` 返回类型改为 `CursorParts`；`listPosts` 两处游标解析适配 |
+
+---
+
+## 后端：Elasticsearch 集成
+
+### 34、ES 8.x HTTP 层默认 SSL，即使关闭安全认证也无法连接
+
+**问题**
+
+ES 8.x 有双层独立的安全开关：`xpack.security.enabled`（认证）和 `xpack.security.http.ssl`（HTTP 层 TLS）。只关闭 `xpack.security.enabled: false`，HTTP 层仍然默认走 HTTPS。浏览器访问 `http://localhost:9200` 会通过重定向 + 自签名证书绕过 SSL，但 Java 客户端（`elasticsearch-java` / `RestClient`）不会，导致连接失败。
+
+**解决方案**
+
+`elasticsearch.yml` 中同时关闭两层：
+
+```yaml
+xpack.security.enabled: false
+xpack.security.http.ssl.enabled: false
+```
+
+Spring Boot 侧使用自动配置，application.yaml 只需一行：
+
+```yaml
+spring:
+  elasticsearch:
+    uris: http://localhost:9200
+```
+
+### 35、ES 磁盘水位线到达后集群变 RED，所有索引被强制只读
+
+**问题**
+
+ES 有三层磁盘水位线保护机制（`disk.watermark.low` / `high` / `flood_stage`），默认阈值分别为 85% / 90% / 95%。当磁盘使用率超过 `high`（90%），ES 拒绝在当前节点分配分片；超过 `flood_stage`（95%），所有索引被标记为 `read-only-allow-delete`，写入和搜索全部拒绝。
+
+由于磁盘已用 93%+，虽然能 connect、能 DELETE 索引、能 PUT 创建新索引，但创建后分片无法分配，集群状态立即变为 RED，`esOps.save()` 和搜索请求全部失败。
+
+**解决方案**
+
+单节点开发环境在 `elasticsearch.yml` 中调高水位线：
+
+```yaml
+cluster.routing.allocation.disk.watermark.low: 97%
+cluster.routing.allocation.disk.watermark.high: 98%
+cluster.routing.allocation.disk.watermark.flood_stage: 99%
+```
+
+重启 ES 后，已变红的索引执行：
+
+```
+PUT /posts/_settings
+{
+  "index.blocks.read_only_allow_delete": null
+}
+```
+
+> **总结**：ES 连接成功 ≠ 可以读写。每次遇到 `all shards failed` / `primary shard is not active` / `503 unavailable_shards_exception`，先检查 ES 磁盘使用率是否超过 90%。
+
+### 36、Spring Data ES 的 `StringQuery` 双层 query 包裹问题
+
+**问题**
+
+`StringQuery` 传入的 JSON 字符串会被 Spring Data ES 作为 query 本体拼接进 `{"query": <your-dsl>}` 的请求体中。如果 DSL 字符串本身是完整的 ES 查询体（包含外层 `from`/`size`/`sort`），就会产生双层 `query` 嵌套：
+
+```java
+// ❌ 错误：DSL 包含外层 from/size/sort
+StringQuery query = new StringQuery(
+    "{\"query\":{\"multi_match\":{...}}, \"from\":0, \"size\":10, \"sort\":[...]}");
+// 实际发送给 ES：{"query": {"query": {...}}} → parsing_exception
+```
+
+错误日志：`unknown query [query]`
+
+**解决方案**
+
+`StringQuery` 的 DSL 参数**只写 query 本体**（不上任何外层包装），`from`/`size`/`sort` 使用 Spring Data 的 `query.setPageable()` / `query.addSort()` 设置：
+
+```java
+// ✅ 正确：DSL 只写 query 本体
+String dsl = "{\"multi_match\":{"
+        + "\"query\":\"" + escapeJson(q) + "\","
+        + "\"fields\":[\"title\",\"contentText\"],"
+        + "\"fuzziness\":\"AUTO\""
+        + "}}";
+
+StringQuery query = new StringQuery(dsl);
+query.setPageable(PageRequest.of(current - 1, size));
+query.addSort(Sort.by(Sort.Order.desc(sortField)));
+```
+
+> **关键点**：`StringQuery` DSL 的内容会被塞进 `{"query": <dsl>}`，所以 DSL 里面不要再写一层 `"query": {...}`。分页和排序等外层属性通过 Spring Data 的 setter 方法设置，由框架统一拼装。此外，手动拼 JSON 时需要对用户输入做 `escapeJson()` 转义，防止引号、反斜杠等破坏 JSON 结构。
