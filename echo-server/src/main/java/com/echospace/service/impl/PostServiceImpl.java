@@ -34,6 +34,10 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * 帖子业务实现
@@ -423,11 +427,15 @@ public class PostServiceImpl implements PostService {
             return 0;
         }
 
+        Set<Long> userIds = posts.stream().map(Post::getUserId).collect(Collectors.toSet());
+        Map<Long, User> userMap = userMapper.selectBatchIds(userIds).stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
         int success = 0;
         int fail = 0;
         for (Post post : posts) {
             try {
-                User user = userMapper.selectById(post.getUserId());
+                User user = userMap.get(post.getUserId());
                 if (user == null) {
                     log.warn("ES 同步跳过：作者不存在 postId={}, userId={}", post.getId(), post.getUserId());
                     continue;
