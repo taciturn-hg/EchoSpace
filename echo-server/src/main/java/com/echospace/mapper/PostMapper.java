@@ -19,24 +19,60 @@ public interface PostMapper extends BaseMapper<Post> {
     /**
      * 按最新排序游标分页查询帖子列表
      *
+     * @param userId     当前登录用户 ID，用于 LEFT JOIN 获取点赞/收藏状态；未登录传 0
      * @param cursorTime 上一页最后一条的创建时间
      * @param cursorId   上一页最后一条的帖子 ID
      * @param size       查询条数（实际取 size+1 用于判断 hasMore）
      */
-    List<PostItemVO> selectListLatest(@Param("cursorTime") LocalDateTime cursorTime,
+    List<PostItemVO> selectListLatest(@Param("userId") Long userId,
+                                      @Param("cursorTime") LocalDateTime cursorTime,
                                       @Param("cursorId") Long cursorId,
                                       @Param("size") int size);
 
     /**
+     * 按最新排序游标分页查询指定用户的帖子列表（API 2.7）
+     * <p>与 {@link #selectListLatest} 的区别：额外按 targetUserId 过滤，仅返回该用户的帖子。</p>
+     *
+     * @param userId       当前登录用户 ID，用于 LEFT JOIN 获取点赞/收藏状态；未登录传 0
+     * @param targetUserId 目标用户 ID（帖子作者）
+     * @param cursorTime   上一页最后一条的创建时间
+     * @param cursorId     上一页最后一条的帖子 ID
+     * @param size         查询条数（实际取 size+1 用于判断 hasMore）
+     */
+    List<PostItemVO> selectListByUserLatest(@Param("userId") Long userId,
+                                            @Param("targetUserId") Long targetUserId,
+                                            @Param("cursorTime") LocalDateTime cursorTime,
+                                            @Param("cursorId") Long cursorId,
+                                            @Param("size") int size);
+
+    /**
      * 按热门排序游标分页查询帖子列表
      *
+     * @param userId      当前登录用户 ID，用于 LEFT JOIN 获取点赞/收藏状态；未登录传 0
      * @param cursorCount 上一页最后一条的点赞数
      * @param cursorId    上一页最后一条的帖子 ID
      * @param size        查询条数（实际取 size+1 用于判断 hasMore）
      */
-    List<PostItemVO> selectListHot(@Param("cursorCount") Integer cursorCount,
+    List<PostItemVO> selectListHot(@Param("userId") Long userId,
+                                   @Param("cursorCount") Integer cursorCount,
                                    @Param("cursorId") Long cursorId,
                                    @Param("size") int size);
+
+    /**
+     * 按热门排序游标分页查询指定用户的帖子列表（API 2.7）
+     * <p>与 {@link #selectListHot} 的区别：额外按 targetUserId 过滤，仅返回该用户的帖子。</p>
+     *
+     * @param userId       当前登录用户 ID，用于 LEFT JOIN 获取点赞/收藏状态；未登录传 0
+     * @param targetUserId 目标用户 ID（帖子作者）
+     * @param cursorCount  上一页最后一条的点赞数
+     * @param cursorId     上一页最后一条的帖子 ID
+     * @param size         查询条数（实际取 size+1 用于判断 hasMore）
+     */
+    List<PostItemVO> selectListByUserHot(@Param("userId") Long userId,
+                                          @Param("targetUserId") Long targetUserId,
+                                          @Param("cursorCount") Integer cursorCount,
+                                          @Param("cursorId") Long cursorId,
+                                          @Param("size") int size);
 
     /**
      * 查询帖子详情，含作者信息、当前用户点赞/收藏/关注状态（多表 LEFT JOIN）

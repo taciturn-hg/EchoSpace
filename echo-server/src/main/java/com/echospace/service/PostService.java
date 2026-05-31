@@ -57,6 +57,17 @@ public interface PostService {
     CursorPageVO<PostItemVO> listPosts(String cursor, int size, String sort);
 
     /**
+     * 游标分页查询指定用户发布的帖子列表
+     *
+     * @param userId 目标用户 ID
+     * @param cursor 上一页游标，首页传 null
+     * @param size   每页条数
+     * @param sort   排序方式：created_at=最新，hot=热门
+     * @return 游标分页结果
+     */
+    CursorPageVO<PostItemVO> listUserPosts(Long userId, String cursor, int size, String sort);
+
+    /**
      * 帖子点赞/取消点赞（toggle 模式）
      * <p>已点赞则取消（delete + likeCount-1），未点赞则点赞（insert + likeCount+1）。</p>
      *

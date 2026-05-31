@@ -2,7 +2,7 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElAvatar, ElMessage } from 'element-plus'
-import { MessageCircle, Heart, Bookmark, Share2 } from '@lucide/vue'
+import { MessageCircle, Heart, Bookmark, Share2, Pencil, Trash2 } from '@lucide/vue'
 import type { PostVO } from '@/api/modules/index'
 import { formatRelativeTime } from '@/utils/time'
 import { formatCount } from '@/utils/number'
@@ -12,16 +12,25 @@ const props = withDefaults(
   defineProps<{
     post: PostVO
     images?: string[]
+    showActions?: boolean
   }>(),
   {
     images: () => [],
+    showActions: false,
   },
 )
 
+// ===== Emits =====
+const emit = defineEmits<{
+  edit: [postId: number]
+  delete: [postId: number]
+}>()
+
+// ===== Router =====
 const router = useRouter()
 
-const liked = ref(false)
-const collected = ref(false)
+const liked = ref(props.post.isLiked || false)
+const collected = ref(props.post.isCollected || false)
 const likeCount = ref(props.post.likeCount || 0)
 const collectCount = ref(props.post.collectCount || 0)
 const submittingLike = ref(false)
@@ -72,6 +81,7 @@ async function handleLikeClick(e: MouseEvent) {
   try {
     const res = await likePost(props.post.id)
     liked.value = res.data!.liked
+    likeCount.value = res.data!.likeCount
   } catch {
     liked.value = prevLiked
     likeCount.value = prevCount
@@ -108,6 +118,16 @@ function handleShareClick(e: MouseEvent) {
   ElMessage.info('该功能还在开发')
 }
 
+function handleEditClick(e: MouseEvent) {
+  e.stopPropagation()
+  emit('edit', props.post.id)
+}
+
+function handleDeleteClick(e: MouseEvent) {
+  e.stopPropagation()
+  emit('delete', props.post.id)
+}
+
 function closePreview() {
   previewVisible.value = false
 }
@@ -132,13 +152,32 @@ onUnmounted(() => {
 <template>
   <article class="post-card">
     <!-- ===== 用户部分 ===== -->
-    <header class="post-card__header" tabindex="0" role="link" @click="handleUserClick">
-      <ElAvatar :src="post.author.avatar ?? undefined" :size="40" class="post-card__avatar">
-        {{ displayName.charAt(0) }}
-      </ElAvatar>
-      <div class="post-card__user-info">
-        <span class="post-card__nickname">{{ displayName }}</span>
-        <time class="post-card__time">{{ formatRelativeTime(post.createdAt) }}</time>
+    <header class="post-card__header">
+      <div class="post-card__header-left" tabindex="0" role="link" @click="handleUserClick">
+        <ElAvatar :src="post.author.avatar ?? undefined" :size="40" class="post-card__avatar">
+          {{ displayName.charAt(0) }}
+        </ElAvatar>
+        <div class="post-card__user-info">
+          <span class="post-card__nickname">{{ displayName }}</span>
+          <time class="post-card__time">{{ formatRelativeTime(post.createdAt) }}</time>
+        </div>
+      </div>
+
+      <div v-if="showActions" class="post-card__header-actions">
+        <button
+          class="post-card__action-btn post-card__action-btn--edit"
+          aria-label="编辑"
+          @click="handleEditClick"
+        >
+          <Pencil :size="15" />
+        </button>
+        <button
+          class="post-card__action-btn post-card__action-btn--delete"
+          aria-label="删除"
+          @click="handleDeleteClick"
+        >
+          <Trash2 :size="15" />
+        </button>
       </div>
     </header>
 
@@ -146,7 +185,7 @@ onUnmounted(() => {
 
     <!-- ===== 帖子部分 ===== -->
     <div class="post-card__body" @click="handleBodyClick">
-      <h3 class="post-card__title" v-html="post.title" />
+      <h3 class="post-card__title">{{ post.title }}</h3>
       <p v-if="post.contentText" class="post-card__summary" v-html="post.contentText" />
 
       <!-- 图片列表 -->
@@ -198,11 +237,7 @@ onUnmounted(() => {
     <!-- ===== 图片预览遮罩 ===== -->
     <Teleport to="body">
       <Transition name="preview-fade">
-        <div
-          v-if="previewVisible"
-          class="image-preview-overlay"
-          @click="closePreview"
-        >
+        <div v-if="previewVisible" class="image-preview-overlay" @click="closePreview">
           <button class="image-preview-close" aria-label="关闭预览" @click="closePreview">
             <svg
               viewBox="0 0 24 24"
@@ -231,6 +266,7 @@ $text-secondary: #6b7280;
 $text-muted: #9ca3af;
 $accent-red: #ef4444;
 $accent-yellow: #eab308;
+$accent-blue: #3b82f6;
 $radius-card: 12px;
 $radius-image: 8px;
 $transition-fast: 150ms ease;
@@ -259,6 +295,14 @@ $transition-fast: 150ms ease;
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.post-card__header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
   cursor: pointer;
   outline: none;
   border-radius: 8px;
@@ -269,6 +313,49 @@ $transition-fast: 150ms ease;
   &:hover,
   &:focus-visible {
     background: #f8f9fa;
+  }
+}
+
+.post-card__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.post-card__action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid $border-color;
+  background: $bg-card;
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    color $transition-fast,
+    background $transition-fast,
+    border-color $transition-fast;
+
+  &--edit {
+    color: $text-muted;
+
+    &:hover {
+      color: $accent-blue;
+      background: #eff6ff;
+      border-color: $accent-blue;
+    }
+  }
+
+  &--delete {
+    color: $text-muted;
+
+    &:hover {
+      color: $accent-red;
+      background: #fef2f2;
+      border-color: $accent-red;
+    }
   }
 }
 

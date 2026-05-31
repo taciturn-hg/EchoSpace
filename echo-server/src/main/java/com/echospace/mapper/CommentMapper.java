@@ -60,4 +60,18 @@ public interface CommentMapper extends BaseMapper<Comment> {
     Page<ReplyVO> selectRepliesPage(Page<ReplyVO> page,
                                      @Param("parentId") Long parentId,
                                      @Param("userId") Long userId);
+
+    /**
+     * 评论点赞数 +1（点赞时调用）
+     *
+     * @param id 评论 ID
+     */
+    int incrementLikeCount(@Param("id") Long id);
+
+    /**
+     * 评论点赞数 -1（取消点赞时调用，使用 GREATEST 防负值）
+     *
+     * @param id 评论 ID
+     */
+    int decrementLikeCount(@Param("id") Long id);
 }

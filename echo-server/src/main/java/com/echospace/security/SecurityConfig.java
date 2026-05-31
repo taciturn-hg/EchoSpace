@@ -3,7 +3,6 @@ package com.echospace.security;
 import com.echospace.common.Result;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -25,14 +24,17 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Autowired
-    private JwtAuthFilter jwtAuthFilter;
+    private final JwtAuthFilter jwtAuthFilter;
+    private final ObjectMapper objectMapper;
+    private final SecurityProperties securityProperties;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
-    private SecurityProperties securityProperties;
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter,
+                          ObjectMapper objectMapper,
+                          SecurityProperties securityProperties) {
+        this.jwtAuthFilter = jwtAuthFilter;
+        this.objectMapper = objectMapper;
+        this.securityProperties = securityProperties;
+    }
 
     /**
      * 配置 Security 过滤器链

@@ -2,6 +2,8 @@ target/
 echo-server/.mvn/
 !**/src/main/**/target/
 !**/src/test/**/target/
+.claude/PRPs
+.claude/skills
 
 ### STS ###
 .apt_generated

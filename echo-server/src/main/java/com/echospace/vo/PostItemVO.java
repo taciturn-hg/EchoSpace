@@ -26,6 +26,8 @@ public class PostItemVO {
     private Integer likeCount;
     private Integer commentCount;
     private Integer collectCount;
+    private Boolean isLiked;
+    private Boolean isCollected;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;

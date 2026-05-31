@@ -6,7 +6,6 @@ import com.echospace.vo.AuthorVO;
 import com.echospace.vo.PageVO;
 import com.echospace.vo.PostItemVO;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.NoSuchIndexException;
@@ -44,8 +43,11 @@ import java.time.ZoneId;
 @Service
 public class SearchServiceImpl implements SearchService {
 
-    @Autowired
-    private ElasticsearchOperations esOps;
+    private final ElasticsearchOperations esOps;
+
+    public SearchServiceImpl(ElasticsearchOperations esOps) {
+        this.esOps = esOps;
+    }
 
     @Override
     public PageVO<PostItemVO> search(String keyword, int current, int size, String sort) {

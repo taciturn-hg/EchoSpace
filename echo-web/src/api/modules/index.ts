@@ -134,6 +134,8 @@ export interface PostVO {
   likeCount: number
   commentCount: number
   collectCount: number
+  isLiked: boolean
+  isCollected: boolean
   createdAt: string
 }
 
@@ -240,5 +242,34 @@ export interface CreateCommentVO {
 
 export interface LikeCommentVO {
   liked: boolean
-  likeCount: number
+}
+
+// ===== 用户主页相关 =====
+
+export interface PublicUserVO {
+  id: number
+  username: string
+  nickname: string | null
+  avatar?: string | null
+  bio: string | null
+  postCount: number
+  followerCount: number
+  followingCount: number
+  isFollowed: boolean
+  createdAt: string
+}
+
+export interface FollowItemVO {
+  id: number
+  username: string
+  nickname: string | null
+  avatar?: string | null
+  followedAt: string
+}
+
+// ===== 帖子编辑 =====
+
+export interface UpdatePostDTO {
+  title: string
+  contentHtml: string
 }

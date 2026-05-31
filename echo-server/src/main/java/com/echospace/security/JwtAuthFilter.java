@@ -10,7 +10,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -31,14 +30,17 @@ import java.util.List;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    private final JwtUtil jwtUtil;
+    private final ObjectMapper objectMapper;
+    private final SecurityProperties securityProperties;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
-    private SecurityProperties securityProperties;
+    public JwtAuthFilter(JwtUtil jwtUtil,
+                         ObjectMapper objectMapper,
+                         SecurityProperties securityProperties) {
+        this.jwtUtil = jwtUtil;
+        this.objectMapper = objectMapper;
+        this.securityProperties = securityProperties;
+    }
 
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 

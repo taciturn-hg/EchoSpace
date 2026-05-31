@@ -25,10 +25,11 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.safety.Safelist;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.elasticsearch.NoSuchIndexException;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -83,20 +84,23 @@ public class PostServiceImpl implements PostService {
                 .addProtocols("a", "href", "http", "https", "mailto", "tel");
     }
 
-    @Autowired
-    private PostMapper postMapper;
+    private final PostMapper postMapper;
+    private final UserLikeMapper userLikeMapper;
+    private final UserFavoriteMapper userFavoriteMapper;
+    private final UserMapper userMapper;
+    private final ElasticsearchOperations esOps;
 
-    @Autowired
-    private UserLikeMapper userLikeMapper;
-
-    @Autowired
-    private UserFavoriteMapper userFavoriteMapper;
-
-    @Autowired
-    private UserMapper userMapper;
-
-    @Autowired
-    private ElasticsearchOperations esOps;
+    public PostServiceImpl(PostMapper postMapper,
+                           UserLikeMapper userLikeMapper,
+                           UserFavoriteMapper userFavoriteMapper,
+                           UserMapper userMapper,
+                           ElasticsearchOperations esOps) {
+        this.postMapper = postMapper;
+        this.userLikeMapper = userLikeMapper;
+        this.userFavoriteMapper = userFavoriteMapper;
+        this.userMapper = userMapper;
+        this.esOps = esOps;
+    }
 
     @Override
     public Long createPost(CreatePostDTO dto) {
@@ -187,6 +191,10 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public CursorPageVO<PostItemVO> listPosts(String cursor, int size, String sort) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        // 未登录时传 0，LEFT JOIN 匹配不到即 IF(NULL) → FALSE
+        long uid = userId != null ? userId : 0L;
+
         List<PostItemVO> records;
         if ("hot".equals(sort)) {
             Integer cursorCount = null;
@@ -196,7 +204,7 @@ public class PostServiceImpl implements PostService {
                 cursorCount = (int) parts.first();
                 cursorId = parts.second();
             }
-            records = postMapper.selectListHot(cursorCount, cursorId, size + 1);
+            records = postMapper.selectListHot(uid, cursorCount, cursorId, size + 1);
         } else {
             LocalDateTime cursorTime = null;
             Long cursorId = null;
@@ -206,9 +214,57 @@ public class PostServiceImpl implements PostService {
                 cursorTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMilli), ZONE);
                 cursorId = parts.second();
             }
-            records = postMapper.selectListLatest(cursorTime, cursorId, size + 1);
+            records = postMapper.selectListLatest(uid, cursorTime, cursorId, size + 1);
         }
 
+        return buildCursorPage(records, size, sort);
+    }
+
+    /**
+     * 查询指定用户发布的帖子列表（API 2.7），游标分页逻辑与 {@link #listPosts} 一致
+     */
+    @Override
+    public CursorPageVO<PostItemVO> listUserPosts(Long targetUserId, String cursor, int size, String sort) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        long uid = userId != null ? userId : 0L;
+
+        List<PostItemVO> records;
+        if ("hot".equals(sort)) {
+            Integer cursorCount = null;
+            Long cursorId = null;
+            if (cursor != null && !cursor.isEmpty()) {
+                CursorParts parts = parseCursor(cursor);
+                cursorCount = (int) parts.first();
+                cursorId = parts.second();
+            }
+            records = postMapper.selectListByUserHot(uid, targetUserId, cursorCount, cursorId, size + 1);
+        } else {
+            LocalDateTime cursorTime = null;
+            Long cursorId = null;
+            if (cursor != null && !cursor.isEmpty()) {
+                CursorParts parts = parseCursor(cursor);
+                long epochMilli = parts.first();
+                cursorTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMilli), ZONE);
+                cursorId = parts.second();
+            }
+            records = postMapper.selectListByUserLatest(uid, targetUserId, cursorTime, cursorId, size + 1);
+        }
+
+        log.debug("用户帖子列表查询完成 userId={}, sort={}, count={}", targetUserId, sort, records.size());
+        return buildCursorPage(records, size, sort);
+    }
+
+    // ---------- 内部辅助 ----------
+
+    /**
+     * 对游标分页查询结果（size+1 条）进行裁剪，并构造下一页游标
+     *
+     * @param records 查询结果（size+1 条）
+     * @param size    前端请求的每页条数
+     * @param sort    排序方式，用于决定游标编码格式
+     * @return 裁剪后的游标分页结果
+     */
+    private CursorPageVO<PostItemVO> buildCursorPage(List<PostItemVO> records, int size, String sort) {
         boolean hasMore = records.size() > size;
         if (hasMore) {
             records.remove(size);
@@ -229,6 +285,7 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
+    @Transactional
     public LikePostVO likePost(Long postId) {
         Long userId = requireCurrentUserId();
         Post post = findPostOrThrow(postId);
@@ -242,21 +299,30 @@ public class PostServiceImpl implements PostService {
         if (existing != null) {
             userLikeMapper.deleteById(existing.getId());
             postMapper.decrementLikeCount(postId);
-            log.info("取消点赞 userId={}, postId={}, likeCount={}", userId, postId, post.getLikeCount() - 1);
-            return new LikePostVO(false, post.getLikeCount() - 1);
+            Post updated = postMapper.selectById(postId);
+            log.info("取消点赞 userId={}, postId={}, likeCount={}", userId, postId, updated.getLikeCount());
+            return new LikePostVO(false, updated.getLikeCount());
         } else {
             UserLike like = new UserLike();
             like.setUserId(userId);
             like.setTargetType(1);
             like.setTargetId(postId);
-            userLikeMapper.insert(like);
+            try {
+                userLikeMapper.insert(like);
+            } catch (DuplicateKeyException e) {
+                log.info("点赞已存在（并发冲突） userId={}, postId={}", userId, postId);
+                Post updated = postMapper.selectById(postId);
+                return new LikePostVO(true, updated.getLikeCount());
+            }
             postMapper.incrementLikeCount(postId);
-            log.info("点赞成功 userId={}, postId={}, likeCount={}", userId, postId, post.getLikeCount() + 1);
-            return new LikePostVO(true, post.getLikeCount() + 1);
+            Post updated = postMapper.selectById(postId);
+            log.info("点赞成功 userId={}, postId={}, likeCount={}", userId, postId, updated.getLikeCount());
+            return new LikePostVO(true, updated.getLikeCount());
         }
     }
 
     @Override
+    @Transactional
     public FavoritePostVO favoritePost(Long postId) {
         Long userId = requireCurrentUserId();
         findPostOrThrow(postId);
@@ -275,7 +341,12 @@ public class PostServiceImpl implements PostService {
             UserFavorite favorite = new UserFavorite();
             favorite.setUserId(userId);
             favorite.setPostId(postId);
-            userFavoriteMapper.insert(favorite);
+            try {
+                userFavoriteMapper.insert(favorite);
+            } catch (DuplicateKeyException e) {
+                log.info("收藏已存在（并发冲突） userId={}, postId={}", userId, postId);
+                return new FavoritePostVO(true);
+            }
             postMapper.incrementCollectCount(postId);
             log.info("收藏成功 userId={}, postId={}", userId, postId);
             return new FavoritePostVO(true);

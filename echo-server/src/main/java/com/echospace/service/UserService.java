@@ -3,6 +3,10 @@ package com.echospace.service;
 import com.echospace.dto.ChangePasswordDTO;
 import com.echospace.dto.UpdateProfileDTO;
 import com.echospace.dto.UpdateSettingsDTO;
+import com.echospace.vo.FollowItemVO;
+import com.echospace.vo.FollowVO;
+import com.echospace.vo.PageVO;
+import com.echospace.vo.PublicUserVO;
 import com.echospace.vo.UserProfileVO;
 import com.echospace.vo.UserSettingsVO;
 
@@ -17,6 +21,20 @@ import com.echospace.vo.UserSettingsVO;
  * @Author: taciturn-hg
  */
 public interface UserService {
+
+    /**
+     * 查询指定用户的公开信息（个人主页），对应 API 2.1
+     * <p>
+     * 查询内容包括：用户基本信息、发帖总数、粉丝数、关注数。
+     * 若当前用户已登录，还会标记 isFollowed（当前用户是否已关注该目标用户）；
+     * 未登录时 isFollowed 恒为 false。
+     * </p>
+     *
+     * @param userId 目标用户 ID
+     * @return 公开用户信息 VO
+     * @throws com.echospace.common.BusinessException 目标用户不存在时抛出 404
+     */
+    PublicUserVO getPublicProfile(Long userId);
 
     /**
      * 获取当前登录用户的资料设置信息
@@ -72,4 +90,42 @@ public interface UserService {
      * @throws com.echospace.common.BusinessException 校验失败时抛出 400
      */
     void changePassword(ChangePasswordDTO dto);
+
+    /**
+     * 关注或取消关注指定用户（toggle 模式），对应 API 2.8
+     * <p>
+     * 已关注则删除关注关系，返回 followed=false；
+     * 未关注则创建关注关系，返回 followed=true。
+     * 不允许关注自己，调用时抛出 400。
+     * </p>
+     *
+     * @param followedId 被关注的用户 ID
+     * @return 关注状态 VO
+     * @throws com.echospace.common.BusinessException 目标用户不存在时抛出 404，关注自己时抛出 400
+     */
+    FollowVO followUser(Long followedId);
+
+    /**
+     * 分页查询指定用户的粉丝列表，对应 API 2.9
+     * <p>按关注时间倒序排列，未登录用户也可访问。</p>
+     *
+     * @param userId  目标用户 ID
+     * @param current 页码，默认 1
+     * @param size    每页条数，默认 10
+     * @return 页码分页的粉丝列表
+     * @throws com.echospace.common.BusinessException 目标用户不存在时抛出 404
+     */
+    PageVO<FollowItemVO> listFollowers(Long userId, int current, int size);
+
+    /**
+     * 分页查询指定用户关注的人的列表，对应 API 2.10
+     * <p>按关注时间倒序排列，未登录用户也可访问。</p>
+     *
+     * @param userId  目标用户 ID
+     * @param current 页码，默认 1
+     * @param size    每页条数，默认 10
+     * @return 页码分页的关注列表
+     * @throws com.echospace.common.BusinessException 目标用户不存在时抛出 404
+     */
+    PageVO<FollowItemVO> listFollowing(Long userId, int current, int size);
 }

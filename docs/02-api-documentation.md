@@ -629,6 +629,8 @@
 | \|- records[].coverImage | string | 非必须 | 封面图 URL |
 | \|- records[].likeCount | number | 必须 | 点赞数 |
 | \|- records[].commentCount | number | 必须 | 评论数 |
+| \|- records[].isLiked | boolean | 必须 | 当前用户是否已点赞（未登录时为 false） |
+| \|- records[].isCollected | boolean | 必须 | 当前用户是否已收藏（未登录时为 false） |
 | \|- records[].createdAt | string | 必须 | 发布时间 |
 
 响应数据样例：
@@ -645,6 +647,8 @@
         "coverImage": "http://localhost:9000/echospace/posts/100/cover.jpg",
         "likeCount": 32,
         "commentCount": 8,
+        "isLiked": true,
+        "isCollected": false,
         "createdAt": "2026-05-20 15:30:00"
       }
     ],
@@ -1167,6 +1171,8 @@
 | \|- records[].likeCount | number | 必须 | 点赞数 |
 | \|- records[].commentCount | number | 必须 | 评论数 |
 | \|- records[].collectCount | number | 必须 | 收藏数 |
+| \|- records[].isLiked | boolean | 必须 | 当前用户是否已点赞（未登录时为 false） |
+| \|- records[].isCollected | boolean | 必须 | 当前用户是否已收藏（未登录时为 false） |
 | \|- records[].createdAt | string | 必须 | 发布时间 |
 
 响应数据样例：
@@ -1191,6 +1197,8 @@
         "likeCount": 32,
         "commentCount": 8,
         "collectCount": 5,
+        "isLiked": true,
+        "isCollected": false,
         "createdAt": "2026-05-20 15:30:00"
       }
     ],
@@ -1804,7 +1812,6 @@
 | msg | string | 非必须 | 提示信息 |
 | data | object | 非必须 | 返回的数据 |
 | \|- liked | boolean | 必须 | true=已点赞，false=已取消 |
-| \|- likeCount | number | 必须 | 操作后的最新点赞数 |
 
 响应数据样例：
 
@@ -1812,7 +1819,7 @@
 {
   "code": 1,
   "msg": "点赞成功",
-  "data": { "liked": true, "likeCount": 6 }
+  "data": { "liked": true }
 }
 ```
 

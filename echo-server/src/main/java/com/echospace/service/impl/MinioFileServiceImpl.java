@@ -7,7 +7,6 @@ import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -26,11 +25,13 @@ import java.util.UUID;
 @ConditionalOnProperty(name = "storage.type", havingValue = "minio")
 public class MinioFileServiceImpl implements FileService {
 
-    @Autowired
-    private MinioClient minioClient;
+    private final MinioClient minioClient;
+    private final MinioProperties minioProperties;
 
-    @Autowired
-    private MinioProperties minioProperties;
+    public MinioFileServiceImpl(MinioClient minioClient, MinioProperties minioProperties) {
+        this.minioClient = minioClient;
+        this.minioProperties = minioProperties;
+    }
 
     @Override
     public String uploadAvatar(MultipartFile file) {

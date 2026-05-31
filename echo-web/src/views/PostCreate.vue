@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Link from '@tiptap/extension-link'
 import { Bold, Italic, Heading2, Quote, Code2, ImagePlus, Link2 } from '@lucide/vue'
-import { createPost } from '@/api/posts'
+import { createPost, updatePost, fetchPostDetail } from '@/api/posts'
 import { uploadImage } from '@/api/users'
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png']
@@ -15,6 +15,11 @@ const MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 10MB
 const ALLOWED_LINK_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:']
 
 const router = useRouter()
+const route = useRoute()
+
+const editId = ref<number | null>(null)
+const isEditMode = computed(() => editId.value !== null)
+const loadingDraft = ref(false)
 
 const title = ref('')
 const hasContent = ref(false)
@@ -157,17 +162,43 @@ function handleSave() {
   ElMessage.info('功能开发中')
 }
 
+// ===== Lifecycle =====
+onMounted(async () => {
+  const eid = route.query.editId
+  if (eid && typeof eid === 'string') {
+    editId.value = Number(eid)
+    loadingDraft.value = true
+    try {
+      const res = await fetchPostDetail(editId.value)
+      const data = res.data!
+      title.value = data.title
+      editor.value?.commands.setContent(data.contentHtml)
+    } catch {
+      ElMessage.error('加载帖子数据失败')
+    } finally {
+      loadingDraft.value = false
+    }
+  }
+})
+
 async function handlePublish() {
   if (!canPublish.value) return
 
   publishing.value = true
   try {
     const html = editor.value!.getHTML()
-    const res = await createPost({ title: title.value.trim(), contentHtml: html })
-    ElMessage.success('发布成功')
-    router.push(`/post/${res.data!.id}`)
+    const dto = { title: title.value.trim(), contentHtml: html }
+    if (isEditMode.value) {
+      await updatePost(editId.value!, dto)
+      ElMessage.success('修改成功')
+      router.push(`/post/${editId.value}`)
+    } else {
+      const res = await createPost(dto)
+      ElMessage.success('发布成功')
+      router.push(`/post/${res.data!.id}`)
+    }
   } catch {
-    ElMessage.error('发布失败，请稍后重试')
+    ElMessage.error(isEditMode.value ? '修改失败，请稍后重试' : '发布失败，请稍后重试')
   } finally {
     publishing.value = false
   }
@@ -186,7 +217,7 @@ async function handlePublish() {
           :disabled="!canPublish"
           @click="handlePublish"
         >
-          {{ publishing ? '发布中...' : '发布' }}
+          {{ publishing ? (isEditMode ? '保存中...' : '发布中...') : (isEditMode ? '保存修改' : '发布') }}
         </button>
       </div>
     </div>

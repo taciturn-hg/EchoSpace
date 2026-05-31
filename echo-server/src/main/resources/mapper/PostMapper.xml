@@ -6,7 +6,7 @@
 -->
 <mapper namespace="com.echospace.mapper.PostMapper">
 
-    <!-- 帖子列表项结果映射（含嵌套作者信息） -->
+    <!-- 帖子列表项结果映射（含嵌套作者信息 + 当前用户点赞/收藏状态） -->
     <resultMap id="postItemResultMap" type="com.echospace.vo.PostItemVO">
         <id column="id" property="id"/>
         <result column="title" property="title"/>
@@ -15,6 +15,8 @@
         <result column="like_count" property="likeCount"/>
         <result column="comment_count" property="commentCount"/>
         <result column="collect_count" property="collectCount"/>
+        <result column="is_liked" property="isLiked"/>
+        <result column="is_collected" property="isCollected"/>
         <result column="created_at" property="createdAt"/>
         <association property="author" javaType="com.echospace.vo.AuthorVO">
             <id column="author_id" property="id"/>
@@ -46,15 +48,40 @@
         </association>
     </resultMap>
 
-    <!-- 按最新排序的游标分页：游标键为 (created_at, id) -->
+    <!-- 按最新排序的游标分页：游标键为 (created_at, id)。userId 用于 LEFT JOIN 标记当前用户的点赞/收藏状态，未登录时传 0 则 IF(NULL) → FALSE -->
     <select id="selectListLatest" resultMap="postItemResultMap">
         SELECT p.id, p.title, p.cover_image, p.content_text,
                p.like_count, p.comment_count, p.collect_count, p.created_at,
                u.id AS author_id, u.username AS author_username,
-               u.nickname AS author_nickname, u.avatar AS author_avatar
+               u.nickname AS author_nickname, u.avatar AS author_avatar,
+               IF(lk.id IS NOT NULL, TRUE, FALSE) AS is_liked,
+               IF(fav.id IS NOT NULL, TRUE, FALSE) AS is_collected
         FROM post p
         JOIN user u ON p.user_id = u.id
+        LEFT JOIN user_like lk ON lk.target_id = p.id AND lk.target_type = 1 AND lk.user_id = #{userId}
+        LEFT JOIN user_favorite fav ON fav.post_id = p.id AND fav.user_id = #{userId}
         WHERE p.status = 1
+        <if test="cursorTime != null">
+            AND (p.created_at &lt; #{cursorTime}
+                 OR (p.created_at = #{cursorTime} AND p.id &lt; #{cursorId}))
+        </if>
+        ORDER BY p.created_at DESC, p.id DESC
+        LIMIT #{size}
+    </select>
+
+    <!-- 按最新排序的指定用户游标分页：API 2.7，游标键为 (created_at, id) -->
+    <select id="selectListByUserLatest" resultMap="postItemResultMap">
+        SELECT p.id, p.title, p.cover_image, p.content_text,
+               p.like_count, p.comment_count, p.collect_count, p.created_at,
+               u.id AS author_id, u.username AS author_username,
+               u.nickname AS author_nickname, u.avatar AS author_avatar,
+               IF(lk.id IS NOT NULL, TRUE, FALSE) AS is_liked,
+               IF(fav.id IS NOT NULL, TRUE, FALSE) AS is_collected
+        FROM post p
+        JOIN user u ON p.user_id = u.id
+        LEFT JOIN user_like lk ON lk.target_id = p.id AND lk.target_type = 1 AND lk.user_id = #{userId}
+        LEFT JOIN user_favorite fav ON fav.post_id = p.id AND fav.user_id = #{userId}
+        WHERE p.status = 1 AND p.user_id = #{targetUserId}
         <if test="cursorTime != null">
             AND (p.created_at &lt; #{cursorTime}
                  OR (p.created_at = #{cursorTime} AND p.id &lt; #{cursorId}))
@@ -68,10 +95,35 @@
         SELECT p.id, p.title, p.cover_image, p.content_text,
                p.like_count, p.comment_count, p.collect_count, p.created_at,
                u.id AS author_id, u.username AS author_username,
-               u.nickname AS author_nickname, u.avatar AS author_avatar
+               u.nickname AS author_nickname, u.avatar AS author_avatar,
+               IF(lk.id IS NOT NULL, TRUE, FALSE) AS is_liked,
+               IF(fav.id IS NOT NULL, TRUE, FALSE) AS is_collected
         FROM post p
         JOIN user u ON p.user_id = u.id
+        LEFT JOIN user_like lk ON lk.target_id = p.id AND lk.target_type = 1 AND lk.user_id = #{userId}
+        LEFT JOIN user_favorite fav ON fav.post_id = p.id AND fav.user_id = #{userId}
         WHERE p.status = 1
+        <if test="cursorCount != null">
+            AND (p.like_count &lt; #{cursorCount}
+                 OR (p.like_count = #{cursorCount} AND p.id &lt; #{cursorId}))
+        </if>
+        ORDER BY p.like_count DESC, p.id DESC
+        LIMIT #{size}
+    </select>
+
+    <!-- 按热门排序的指定用户游标分页：API 2.7，游标键为 (like_count, id) -->
+    <select id="selectListByUserHot" resultMap="postItemResultMap">
+        SELECT p.id, p.title, p.cover_image, p.content_text,
+               p.like_count, p.comment_count, p.collect_count, p.created_at,
+               u.id AS author_id, u.username AS author_username,
+               u.nickname AS author_nickname, u.avatar AS author_avatar,
+               IF(lk.id IS NOT NULL, TRUE, FALSE) AS is_liked,
+               IF(fav.id IS NOT NULL, TRUE, FALSE) AS is_collected
+        FROM post p
+        JOIN user u ON p.user_id = u.id
+        LEFT JOIN user_like lk ON lk.target_id = p.id AND lk.target_type = 1 AND lk.user_id = #{userId}
+        LEFT JOIN user_favorite fav ON fav.post_id = p.id AND fav.user_id = #{userId}
+        WHERE p.status = 1 AND p.user_id = #{targetUserId}
         <if test="cursorCount != null">
             AND (p.like_count &lt; #{cursorCount}
                  OR (p.like_count = #{cursorCount} AND p.id &lt; #{cursorId}))
