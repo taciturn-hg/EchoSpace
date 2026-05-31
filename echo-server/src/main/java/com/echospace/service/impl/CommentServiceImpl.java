@@ -22,7 +22,7 @@ import com.echospace.vo.ReplyVO;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Safelist;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,14 +52,17 @@ public class CommentServiceImpl implements CommentService {
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
 
-    @Autowired
-    private CommentMapper commentMapper;
+    private final CommentMapper commentMapper;
+    private final PostMapper postMapper;
+    private final UserLikeMapper userLikeMapper;
 
-    @Autowired
-    private PostMapper postMapper;
-
-    @Autowired
-    private UserLikeMapper userLikeMapper;
+    public CommentServiceImpl(CommentMapper commentMapper,
+                              PostMapper postMapper,
+                              UserLikeMapper userLikeMapper) {
+        this.commentMapper = commentMapper;
+        this.postMapper = postMapper;
+        this.userLikeMapper = userLikeMapper;
+    }
 
     @Override
     public CreateCommentVO createComment(Long postId, CreateCommentDTO dto) {
@@ -216,6 +219,7 @@ public class CommentServiceImpl implements CommentService {
      * </p>
      */
     @Override
+    @Transactional
     public LikeCommentVO likeComment(Long commentId) {
         Long userId = requireCurrentUserId();
 
@@ -242,7 +246,12 @@ public class CommentServiceImpl implements CommentService {
         like.setUserId(userId);
         like.setTargetType(2);
         like.setTargetId(commentId);
-        userLikeMapper.insert(like);
+        try {
+            userLikeMapper.insert(like);
+        } catch (DuplicateKeyException e) {
+            log.info("评论点赞已存在（并发冲突） userId={}, commentId={}", userId, commentId);
+            return new LikeCommentVO(true);
+        }
         commentMapper.incrementLikeCount(commentId);
         log.info("评论点赞成功 userId={}, commentId={}", userId, commentId);
         return new LikeCommentVO(true);

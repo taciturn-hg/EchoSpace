@@ -230,25 +230,25 @@ echo-web/src/
 ```text
 echo-server/src/main/java/com/echospace/
 ├── controller/
-│   └── UserController.java             # /api/users/{id}, /api/users/{id}/posts, /api/users/{id}/follow, followers, following
+│   └── UserPublicController.java         # /users/{id}, /users/{id}/posts, /users/{id}/follow, followers, following
 ├── service/
-│   ├── FollowService.java
-│   ├── TimelineService.java
 │   └── impl/
-│       ├── FollowServiceImpl.java
-│       └── TimelineServiceImpl.java
+│       └── UserServiceImpl.java          # 关注/取消关注 toggle + 粉丝/关注列表分页（已集成）
 └── vo/
-    ├── UserProfileVO.java
-    ├── UserPostVO.java
-    └── TimelineVO.java
+    ├── PublicUserVO.java                 # 用户公开信息 VO
+    ├── FollowVO.java                     # 关注/取消关注响应 VO
+    └── FollowItemVO.java                 # 粉丝/关注列表项 VO
 
 echo-web/src/
 ├── views/
-│   ├── UserProfile.vue                 # 个人主页
-│   └── FollowList.vue                  # 关注/粉丝列表
+│   └── UserProfile.vue                   # 个人主页 + 关注/粉丝弹窗（内嵌 Dialog）
+├── components/
+│   └── UserCard.vue                      # 关注/粉丝列表用户卡片
 └── api/
-    └── user.ts
+    └── users.ts                          # 用户模块前端 API（含 followUser/getFollowers/getFollowing）
 ```
+
+> 注：关注时间线功能尚未实现，相关后端接口和前端页面待后续 Sprint 添加。
 
 ---
 

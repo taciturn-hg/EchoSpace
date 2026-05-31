@@ -23,12 +23,16 @@ import com.echospace.vo.PublicUserVO;
 import com.echospace.vo.UserProfileVO;
 import com.echospace.vo.UserSettingsVO;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -44,19 +48,19 @@ import java.util.stream.Collectors;
 @Service
 public class UserServiceImpl implements UserService {
 
-    @Autowired
-    private UserMapper userMapper;
+    private final UserMapper userMapper;
+    private final PostMapper postMapper;
+    private final UserFollowMapper userFollowMapper;
+    private final BCryptPasswordEncoder passwordEncoder;
 
-    @Autowired
-    private PostMapper postMapper;
-
-    @Autowired
-    private UserFollowMapper userFollowMapper;
-
-    /**
-     * 密码加密器：与注册/登录保持一致，避免哈希算法/盐策略不同导致校验失败
-     */
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    public UserServiceImpl(UserMapper userMapper,
+                           PostMapper postMapper,
+                           UserFollowMapper userFollowMapper) {
+        this.userMapper = userMapper;
+        this.postMapper = postMapper;
+        this.userFollowMapper = userFollowMapper;
+        this.passwordEncoder = new BCryptPasswordEncoder();
+    }
 
     /**
      * 查询指定用户的公开信息（个人主页），对应 API 2.1
@@ -265,6 +269,7 @@ public class UserServiceImpl implements UserService {
      * </p>
      */
     @Override
+    @Transactional
     public FollowVO followUser(Long followedId) {
         Long userId = currentUserIdOrThrow();
 
@@ -294,7 +299,12 @@ public class UserServiceImpl implements UserService {
         UserFollow follow = new UserFollow();
         follow.setFollowerId(userId);
         follow.setFollowedId(followedId);
-        userFollowMapper.insert(follow);
+        try {
+            userFollowMapper.insert(follow);
+        } catch (DuplicateKeyException e) {
+            log.info("关注已存在（并发冲突） userId={}, followedId={}", userId, followedId);
+            return new FollowVO(true);
+        }
         log.info("关注成功 userId={}, followedId={}", userId, followedId);
         return new FollowVO(true);
     }
@@ -320,8 +330,14 @@ public class UserServiceImpl implements UserService {
                         .orderByDesc(UserFollow::getCreatedAt)
         );
 
+        Set<Long> followerIds = page.getRecords().stream()
+                .map(UserFollow::getFollowerId)
+                .collect(Collectors.toSet());
+        Map<Long, User> userMap = userMapper.selectBatchIds(followerIds).stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
         List<FollowItemVO> records = page.getRecords().stream().map(uf -> {
-            User follower = userMapper.selectById(uf.getFollowerId());
+            User follower = userMap.get(uf.getFollowerId());
             return FollowItemVO.builder()
                     .id(follower.getId())
                     .username(follower.getUsername())
@@ -357,8 +373,14 @@ public class UserServiceImpl implements UserService {
                         .orderByDesc(UserFollow::getCreatedAt)
         );
 
+        Set<Long> followedIds = page.getRecords().stream()
+                .map(UserFollow::getFollowedId)
+                .collect(Collectors.toSet());
+        Map<Long, User> userMap = userMapper.selectBatchIds(followedIds).stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
         List<FollowItemVO> records = page.getRecords().stream().map(uf -> {
-            User followed = userMapper.selectById(uf.getFollowedId());
+            User followed = userMap.get(uf.getFollowedId());
             return FollowItemVO.builder()
                     .id(followed.getId())
                     .username(followed.getUsername())

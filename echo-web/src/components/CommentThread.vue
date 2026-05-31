@@ -36,20 +36,17 @@ const replyingToId = ref<number | null>(null)
 
 // ===== Computed =====
 const visibleReplies = computed<CommentVO[]>(() => {
-  if (expanded.value) return paginatedReplies.value
-  return props.comment.replies ?? []
+  const source = expanded.value ? paginatedReplies.value : (props.comment.replies ?? [])
+  return source.map((r) => {
+    const override = replyLikes.value[r.id]
+    if (!override) return r
+    return { ...r, isLiked: override.liked, likeCount: override.likeCount }
+  })
 })
 
 const hasMoreReplies = computed(() => props.comment.hasMoreReplies ?? false)
 
 const showPagination = computed(() => expanded.value && replyTotal.value > REPLY_PAGE_SIZE)
-
-/** 合并 prop reply 与本地 like 覆盖，避免直接 mutate props */
-function resolvedReply(reply: CommentVO): CommentVO {
-  const override = replyLikes.value[reply.id]
-  if (!override) return reply
-  return { ...reply, isLiked: override.liked, likeCount: override.likeCount }
-}
 
 const parentComment = computed<CommentVO>(() => ({
   ...props.comment,
@@ -141,6 +138,18 @@ async function handleToggleLike(commentId: number) {
       parentLikeCount.value += result.liked ? 1 : -1
       if (parentLikeCount.value < 0) parentLikeCount.value = 0
     } else {
+      if (!replyLikes.value[commentId]) {
+        const allReplies = expanded.value
+          ? paginatedReplies.value
+          : (props.comment.replies ?? [])
+        const found = allReplies.find((r) => r.id === commentId)
+        if (found) {
+          replyLikes.value = {
+            ...replyLikes.value,
+            [commentId]: { liked: found.isLiked, likeCount: found.likeCount },
+          }
+        }
+      }
       const prev = replyLikes.value[commentId]
       const prevLiked = prev?.liked ?? false
       const prevCount = prev?.likeCount ?? 0
@@ -194,8 +203,8 @@ function getReplyUser(commentId: number): CommentUser | null {
       <!-- 预加载的 3 条回复 / 分页回复 -->
       <template v-for="reply in visibleReplies" :key="reply.id">
         <CommentCard
-          :comment="resolvedReply(reply)"
-          :is-liked="resolvedReply(reply).isLiked"
+          :comment="reply"
+          :is-liked="reply.isLiked"
           :hide-reply-target="reply.replyToUser?.id === comment.user.id"
           @toggle-like="handleToggleLike"
           @reply="handleReply"

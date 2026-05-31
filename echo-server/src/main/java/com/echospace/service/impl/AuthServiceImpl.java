@@ -17,7 +17,6 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -36,13 +35,15 @@ public class AuthServiceImpl implements AuthService {
     @Value("${jwt.access-token-expiration:1800000}")
     private long accessExpire;
 
-    @Autowired
-    private AuthMapper authMapper;
+    private final AuthMapper authMapper;
+    private final JwtUtil jwtUtil;
+    private final BCryptPasswordEncoder passwordEncoder;
 
-    @Autowired
-    private JwtUtil jwtUtil;
-
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    public AuthServiceImpl(AuthMapper authMapper, JwtUtil jwtUtil) {
+        this.authMapper = authMapper;
+        this.jwtUtil = jwtUtil;
+        this.passwordEncoder = new BCryptPasswordEncoder();
+    }
 
     /**
      * 用户注册

@@ -22,8 +22,6 @@ const props = withDefaults(
 
 // ===== Emits =====
 const emit = defineEmits<{
-  'toggle-like': [postId: number]
-  'toggle-collect': [postId: number]
   edit: [postId: number]
   delete: [postId: number]
 }>()
@@ -83,6 +81,7 @@ async function handleLikeClick(e: MouseEvent) {
   try {
     const res = await likePost(props.post.id)
     liked.value = res.data!.liked
+    likeCount.value = res.data!.likeCount
   } catch {
     liked.value = prevLiked
     likeCount.value = prevCount
@@ -186,7 +185,7 @@ onUnmounted(() => {
 
     <!-- ===== 帖子部分 ===== -->
     <div class="post-card__body" @click="handleBodyClick">
-      <h3 class="post-card__title" v-html="post.title" />
+      <h3 class="post-card__title">{{ post.title }}</h3>
       <p v-if="post.contentText" class="post-card__summary" v-html="post.contentText" />
 
       <!-- 图片列表 -->

@@ -8,7 +8,7 @@ import UserCard from '@/components/UserCard.vue'
 import { useInfiniteList } from '@/composables/useInfiniteList'
 import { useUserStore } from '@/stores/userStore'
 import { getUserProfile, followUser, getFollowers, getFollowing } from '@/api/users'
-import { fetchUserPosts as apiFetchUserPosts, deletePost, likePost, favoritePost } from '@/api/posts'
+import { fetchUserPosts as apiFetchUserPosts, deletePost } from '@/api/posts'
 import { formatRelativeTime } from '@/utils/time'
 import type { PublicUserVO, PostVO, FollowItemVO } from '@/api/modules/index'
 
@@ -58,9 +58,8 @@ const {
   pageSize: 10,
 })
 
-// ===== Local like/collect state for PostCard =====
-const likedPosts = ref(new Set<number>())
-const collectedPosts = ref(new Set<number>())
+// ===== Request cancellation =====
+let requestSeq = 0
 
 // ===== Follow/Follower Dialog =====
 const dialogVisible = ref(false)
@@ -75,18 +74,23 @@ const DIALOG_PAGE_SIZE = 12
 async function loadProfile() {
   profileLoading.value = true
   profileError.value = null
+  const seq = ++requestSeq
   try {
     const res = await getUserProfile(userId.value)
+    if (seq !== requestSeq) return
     const data = res.data!
     profile.value = data
     followed.value = data.isFollowed
     followerCount.value = data.followerCount
     followingCount.value = data.followingCount
   } catch {
+    if (seq !== requestSeq) return
     profileError.value = '用户信息加载失败'
     ElMessage.error('用户信息加载失败')
   } finally {
-    profileLoading.value = false
+    if (seq === requestSeq) {
+      profileLoading.value = false
+    }
   }
 }
 
@@ -104,57 +108,17 @@ async function handleToggleFollow() {
     const result = res.data!
     followed.value = result.followed
     ElMessage.success(followed.value ? '已关注' : '已取消关注')
+    const profileRes = await getUserProfile(userId.value)
+    if (profileRes.data) {
+      followerCount.value = profileRes.data.followerCount
+      followingCount.value = profileRes.data.followingCount
+    }
   } catch {
     followed.value = prevFollowed
     followerCount.value += prevFollowed ? 1 : -1
     ElMessage.error('操作失败')
   } finally {
     followSubmitting.value = false
-  }
-}
-
-// ===== Post interaction =====
-async function handleToggleLike(postId: number) {
-  const isLiked = likedPosts.value.has(postId)
-  if (isLiked) {
-    likedPosts.value.delete(postId)
-  } else {
-    likedPosts.value.add(postId)
-  }
-  likedPosts.value = new Set(likedPosts.value)
-  try {
-    await likePost(postId)
-  } catch {
-    const rollback = new Set(likedPosts.value)
-    if (isLiked) {
-      rollback.add(postId)
-    } else {
-      rollback.delete(postId)
-    }
-    likedPosts.value = rollback
-    ElMessage.error('操作失败')
-  }
-}
-
-async function handleToggleCollect(postId: number) {
-  const isCollected = collectedPosts.value.has(postId)
-  if (isCollected) {
-    collectedPosts.value.delete(postId)
-  } else {
-    collectedPosts.value.add(postId)
-  }
-  collectedPosts.value = new Set(collectedPosts.value)
-  try {
-    await favoritePost(postId)
-  } catch {
-    const rollback = new Set(collectedPosts.value)
-    if (isCollected) {
-      rollback.add(postId)
-    } else {
-      rollback.delete(postId)
-    }
-    collectedPosts.value = rollback
-    ElMessage.error('操作失败')
   }
 }
 
@@ -240,6 +204,7 @@ onMounted(() => {
 })
 
 watch(userId, () => {
+  ++requestSeq
   loadProfile()
   resetPosts()
   fetchUserPosts()
@@ -329,11 +294,7 @@ watch(userId, () => {
             v-for="post in posts"
             :key="post.id"
             :post="post"
-            :is-liked="likedPosts.has(post.id)"
-            :is-collected="collectedPosts.has(post.id)"
             :show-actions="isOwnProfile"
-            @toggle-like="handleToggleLike"
-            @toggle-collect="handleToggleCollect"
             @edit="handleEditPost"
             @delete="handleDeletePost"
           />

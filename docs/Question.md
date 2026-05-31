@@ -1939,3 +1939,63 @@ query.addSort(Sort.by(Sort.Order.desc(sortField)));
 ```
 
 > **关键点**：`StringQuery` DSL 的内容会被塞进 `{"query": <dsl>}`，所以 DSL 里面不要再写一层 `"query": {...}`。分页和排序等外层属性通过 Spring Data 的 setter 方法设置，由框架统一拼装。此外，手动拼 JSON 时需要对用户输入做 `escapeJson()` 转义，防止引号、反斜杠等破坏 JSON 结构。
+
+---
+
+## 代码审查：Spring 依赖注入方式选择（PR #12 审查修复）
+
+### 问题
+
+项目中所有 Service 和 Controller 均使用 `@Autowired` 字段注入：
+
+```java
+// 字段注入（不推荐）
+@Autowired
+private PostMapper postMapper;
+@Autowired
+private UserLikeMapper userLikeMapper;
+```
+
+### 为什么字段注入不好
+
+1. **无法声明 `final`**：字段注入的依赖不能声明为 `final`，意味着任何方法都可以意外将其置为 null 或重新赋值，破坏了不可变性原则。
+2. **单元测试必须启动 Spring 容器**：测试时无法直接 `new` 对象并传入 mock，必须用 `@SpringBootTest` + `@MockBean`（重、慢），而构造器注入只需要 `new PostServiceImpl(mockPostMapper, mockLikeMapper, ...)`。
+3. **依赖关系不可见**：当字段有 5+ 个 `@Autowired` 时（如 `PostServiceImpl`），无法一眼看出这个类到底依赖了几个外部组件。构造器参数列表直接暴露依赖数量，依赖过多本身就是重构信号。
+4. **隐藏依赖**：可能写出"偷偷加一个字段就能用"的代码，而不经过有意识的构造函数修改。
+
+### 解决方案：构造器注入
+
+```java
+// 构造器注入（推荐）
+private final PostMapper postMapper;
+private final UserLikeMapper userLikeMapper;
+private final ElasticsearchOperations esOps;
+
+public PostServiceImpl(PostMapper postMapper,
+                       UserLikeMapper userLikeMapper,
+                       ElasticsearchOperations esOps) {
+    this.postMapper = postMapper;
+    this.userLikeMapper = userLikeMapper;
+    this.esOps = esOps;
+}
+```
+
+**优势**：
+- 依赖字段可以声明为 `final`，编译期保证不可变
+- 单元测试可以直接 `new` 并传入 mock，无需 Spring 容器
+- 构造器签名直观展示类的依赖数量和类型
+- 当依赖超过 4-5 个时，构造器本身就是"需要拆分"的信号
+
+> **注意**：Spring 4.3+ 对**单构造器**的类自动执行注入，无需 `@Autowired` 注解。Lombok `@RequiredArgsConstructor` 也可以简化构造器编写，但本项目未引入 Lombok 对构造器的依赖，故手动编写。
+
+### 本次修复范围（PR #12）
+
+| 文件 | 依赖数 | 状态 |
+|------|--------|------|
+| `PostServiceImpl` | 5 | 已改为构造器注入 |
+| `UserServiceImpl` | 3 | 已改为构造器注入 |
+| `CommentServiceImpl` | 3 | 已改为构造器注入 |
+| `UserPublicController` | 2 | 已改为构造器注入 |
+| `CommentController` | 1 | 已改为构造器注入 |
+
+其他未在本次 PR 中修改的文件保留现有字段注入方式，后续逐步迁移。
