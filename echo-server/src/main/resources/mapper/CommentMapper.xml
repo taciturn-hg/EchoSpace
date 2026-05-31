@@ -114,4 +114,14 @@
         ORDER BY c.created_at ASC
     </select>
 
+    <!-- 评论点赞数 +1 -->
+    <update id="incrementLikeCount">
+        UPDATE comment SET like_count = like_count + 1 WHERE id = #{id}
+    </update>
+
+    <!-- 评论点赞数 -1（GREATEST 防负值） -->
+    <update id="decrementLikeCount">
+        UPDATE comment SET like_count = GREATEST(like_count - 1, 0) WHERE id = #{id}
+    </update>
+
 </mapper>

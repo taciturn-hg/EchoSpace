@@ -187,6 +187,10 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public CursorPageVO<PostItemVO> listPosts(String cursor, int size, String sort) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        // 未登录时传 0，LEFT JOIN 匹配不到即 IF(NULL) → FALSE
+        long uid = userId != null ? userId : 0L;
+
         List<PostItemVO> records;
         if ("hot".equals(sort)) {
             Integer cursorCount = null;
@@ -196,7 +200,7 @@ public class PostServiceImpl implements PostService {
                 cursorCount = (int) parts.first();
                 cursorId = parts.second();
             }
-            records = postMapper.selectListHot(cursorCount, cursorId, size + 1);
+            records = postMapper.selectListHot(uid, cursorCount, cursorId, size + 1);
         } else {
             LocalDateTime cursorTime = null;
             Long cursorId = null;
@@ -206,7 +210,7 @@ public class PostServiceImpl implements PostService {
                 cursorTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMilli), ZONE);
                 cursorId = parts.second();
             }
-            records = postMapper.selectListLatest(cursorTime, cursorId, size + 1);
+            records = postMapper.selectListLatest(uid, cursorTime, cursorId, size + 1);
         }
 
         return buildCursorPage(records, size, sort);
@@ -216,7 +220,10 @@ public class PostServiceImpl implements PostService {
      * 查询指定用户发布的帖子列表（API 2.7），游标分页逻辑与 {@link #listPosts} 一致
      */
     @Override
-    public CursorPageVO<PostItemVO> listUserPosts(Long userId, String cursor, int size, String sort) {
+    public CursorPageVO<PostItemVO> listUserPosts(Long targetUserId, String cursor, int size, String sort) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        long uid = userId != null ? userId : 0L;
+
         List<PostItemVO> records;
         if ("hot".equals(sort)) {
             Integer cursorCount = null;
@@ -226,7 +233,7 @@ public class PostServiceImpl implements PostService {
                 cursorCount = (int) parts.first();
                 cursorId = parts.second();
             }
-            records = postMapper.selectListByUserHot(userId, cursorCount, cursorId, size + 1);
+            records = postMapper.selectListByUserHot(uid, targetUserId, cursorCount, cursorId, size + 1);
         } else {
             LocalDateTime cursorTime = null;
             Long cursorId = null;
@@ -236,10 +243,10 @@ public class PostServiceImpl implements PostService {
                 cursorTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMilli), ZONE);
                 cursorId = parts.second();
             }
-            records = postMapper.selectListByUserLatest(userId, cursorTime, cursorId, size + 1);
+            records = postMapper.selectListByUserLatest(uid, targetUserId, cursorTime, cursorId, size + 1);
         }
 
-        log.debug("用户帖子列表查询完成 userId={}, sort={}, count={}", userId, sort, records.size());
+        log.debug("用户帖子列表查询完成 userId={}, sort={}, count={}", targetUserId, sort, records.size());
         return buildCursorPage(records, size, sort);
     }
 

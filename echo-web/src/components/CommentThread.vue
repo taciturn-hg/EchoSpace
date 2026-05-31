@@ -138,11 +138,18 @@ async function handleToggleLike(commentId: number) {
     const result = res.data!
     if (commentId === props.comment.id) {
       parentLiked.value = result.liked
-      parentLikeCount.value = result.likeCount
+      parentLikeCount.value += result.liked ? 1 : -1
+      if (parentLikeCount.value < 0) parentLikeCount.value = 0
     } else {
+      const prev = replyLikes.value[commentId]
+      const prevLiked = prev?.liked ?? false
+      const prevCount = prev?.likeCount ?? 0
       replyLikes.value = {
         ...replyLikes.value,
-        [commentId]: { liked: result.liked, likeCount: result.likeCount },
+        [commentId]: {
+          liked: result.liked,
+          likeCount: Math.max(0, prevCount + (result.liked ? 1 : (prevLiked ? -1 : 0))),
+        },
       }
     }
   } catch {

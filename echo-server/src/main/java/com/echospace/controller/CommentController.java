@@ -6,6 +6,7 @@ import com.echospace.service.CommentService;
 import com.echospace.vo.CommentVO;
 import com.echospace.vo.CreateCommentVO;
 import com.echospace.vo.CursorPageVO;
+import com.echospace.vo.LikeCommentVO;
 import com.echospace.vo.PageVO;
 import com.echospace.vo.ReplyVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -75,6 +76,21 @@ public class CommentController {
             @RequestParam(defaultValue = "10") int size) {
         PageVO<ReplyVO> page = commentService.listReplies(commentId, current, size);
         return Result.success(page);
+    }
+
+    /**
+     * 评论点赞/取消（toggle 模式），对应 API 4.5
+     * <p>已点赞则取消，未点赞则点赞。仅返回 liked 状态，前端本地 ±1 更新 UI。</p>
+     *
+     * @param id 评论 ID
+     * @return 点赞状态
+     */
+    @Operation(summary = "评论点赞/取消", description = "toggle 模式：已点赞则取消，未点赞则点赞，返回操作后的点赞状态")
+    @PostMapping("/comments/{id}/like")
+    public Result<LikeCommentVO> like(@PathVariable Long id) {
+        log.info("评论点赞请求 commentId={}", id);
+        LikeCommentVO vo = commentService.likeComment(id);
+        return Result.success(vo, vo.isLiked() ? "点赞成功" : "已取消点赞");
     }
 
     /**

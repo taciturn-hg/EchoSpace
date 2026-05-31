@@ -31,8 +31,8 @@ const emit = defineEmits<{
 // ===== Router =====
 const router = useRouter()
 
-const liked = ref(false)
-const collected = ref(false)
+const liked = ref(props.post.isLiked || false)
+const collected = ref(props.post.isCollected || false)
 const likeCount = ref(props.post.likeCount || 0)
 const collectCount = ref(props.post.collectCount || 0)
 const submittingLike = ref(false)

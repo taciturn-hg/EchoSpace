@@ -4,6 +4,9 @@ import com.echospace.common.Result;
 import com.echospace.service.PostService;
 import com.echospace.service.UserService;
 import com.echospace.vo.CursorPageVO;
+import com.echospace.vo.FollowItemVO;
+import com.echospace.vo.FollowVO;
+import com.echospace.vo.PageVO;
 import com.echospace.vo.PostItemVO;
 import com.echospace.vo.PublicUserVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -51,6 +55,61 @@ public class UserPublicController {
         log.info("获取用户公开信息请求 targetUserId={}", id);
         PublicUserVO profile = userService.getPublicProfile(id);
         return Result.success(profile);
+    }
+
+    /**
+     * 关注或取消关注指定用户（toggle 模式），对应 API 2.8
+     * <p>已关注则取消，未关注则关注。需认证，不允许关注自己。</p>
+     *
+     * @param id 被关注的用户 ID
+     * @return 关注状态
+     */
+    @Operation(summary = "关注/取消关注用户", description = "toggle 模式：已关注则取消，未关注则关注，不允许关注自己")
+    @PostMapping("/{id:[0-9]+}/follow")
+    public Result<FollowVO> follow(@PathVariable Long id) {
+        log.info("关注/取消关注请求 targetUserId={}", id);
+        FollowVO vo = userService.followUser(id);
+        return Result.success(vo, vo.isFollowed() ? "关注成功" : "已取消关注");
+    }
+
+    /**
+     * 分页查询指定用户的粉丝列表，对应 API 2.9
+     * <p>按关注时间倒序排列，返回粉丝基本信息。</p>
+     *
+     * @param id      用户 ID
+     * @param current 页码，默认 1
+     * @param size    每页条数，默认 10
+     * @return 粉丝列表分页结果
+     */
+    @Operation(summary = "粉丝列表", description = "分页查询指定用户的粉丝列表，按关注时间倒序")
+    @GetMapping("/{id:[0-9]+}/followers")
+    public Result<PageVO<FollowItemVO>> listFollowers(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "1") int current,
+            @RequestParam(defaultValue = "10") int size) {
+        log.info("查询粉丝列表请求 targetUserId={}, current={}, size={}", id, current, size);
+        PageVO<FollowItemVO> page = userService.listFollowers(id, current, size);
+        return Result.success(page);
+    }
+
+    /**
+     * 分页查询指定用户关注的人的列表，对应 API 2.10
+     * <p>按关注时间倒序排列，返回被关注用户基本信息。</p>
+     *
+     * @param id      用户 ID
+     * @param current 页码，默认 1
+     * @param size    每页条数，默认 10
+     * @return 关注列表分页结果
+     */
+    @Operation(summary = "关注列表", description = "分页查询指定用户关注的人的列表，按关注时间倒序")
+    @GetMapping("/{id:[0-9]+}/following")
+    public Result<PageVO<FollowItemVO>> listFollowing(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "1") int current,
+            @RequestParam(defaultValue = "10") int size) {
+        log.info("查询关注列表请求 targetUserId={}, current={}, size={}", id, current, size);
+        PageVO<FollowItemVO> page = userService.listFollowing(id, current, size);
+        return Result.success(page);
     }
 
     /**

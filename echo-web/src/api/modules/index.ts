@@ -134,6 +134,8 @@ export interface PostVO {
   likeCount: number
   commentCount: number
   collectCount: number
+  isLiked: boolean
+  isCollected: boolean
   createdAt: string
 }
 
@@ -240,7 +242,6 @@ export interface CreateCommentVO {
 
 export interface LikeCommentVO {
   liked: boolean
-  likeCount: number
 }
 
 // ===== 用户主页相关 =====

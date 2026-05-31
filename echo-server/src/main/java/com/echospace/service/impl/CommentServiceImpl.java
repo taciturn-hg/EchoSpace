@@ -1,18 +1,22 @@
 package com.echospace.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.echospace.common.BusinessException;
 import com.echospace.dto.CreateCommentDTO;
 import com.echospace.entity.Comment;
 import com.echospace.entity.Post;
+import com.echospace.entity.UserLike;
 import com.echospace.mapper.CommentMapper;
 import com.echospace.mapper.PostMapper;
+import com.echospace.mapper.UserLikeMapper;
 import com.echospace.security.SecurityUtil;
 import com.echospace.service.CommentService;
 import com.echospace.vo.CommentVO;
 import com.echospace.vo.CreateCommentVO;
 import com.echospace.vo.CursorPageVO;
+import com.echospace.vo.LikeCommentVO;
 import com.echospace.vo.PageVO;
 import com.echospace.vo.ReplyVO;
 import lombok.extern.slf4j.Slf4j;
@@ -53,6 +57,9 @@ public class CommentServiceImpl implements CommentService {
 
     @Autowired
     private PostMapper postMapper;
+
+    @Autowired
+    private UserLikeMapper userLikeMapper;
 
     @Override
     public CreateCommentVO createComment(Long postId, CreateCommentDTO dto) {
@@ -185,7 +192,7 @@ public class CommentServiceImpl implements CommentService {
 
         if (comment.getParentId() == 0) {
             List<Comment> replies = commentMapper.selectList(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Comment>()
+                    new LambdaQueryWrapper<Comment>()
                             .eq(Comment::getParentId, commentId)
                             .eq(Comment::getStatus, 1));
             for (Comment reply : replies) {
@@ -198,6 +205,47 @@ public class CommentServiceImpl implements CommentService {
 
         postMapper.decrementCommentCount(comment.getPostId(), deletedCount);
         log.info("评论删除完成 userId={}, commentId={}, deletedCount={}", userId, commentId, deletedCount);
+    }
+
+    /**
+     * 对评论进行点赞或取消点赞（toggle 模式），对应 API 4.5
+     * <p>
+     * targetType=2 表示评论点赞。
+     * 已点赞则删除记录并减一计数，未点赞则插入记录并加一计数。
+     * 仅返回操作后的点赞状态，前端本地 ±1 更新 UI，具体数据在刷新时同步。
+     * </p>
+     */
+    @Override
+    public LikeCommentVO likeComment(Long commentId) {
+        Long userId = requireCurrentUserId();
+
+        Comment comment = commentMapper.selectById(commentId);
+        if (comment == null || comment.getStatus() != 1) {
+            log.warn("点赞评论失败：评论不存在 commentId={}", commentId);
+            throw BusinessException.notFound("评论不存在");
+        }
+
+        LambdaQueryWrapper<UserLike> query = new LambdaQueryWrapper<UserLike>()
+                .eq(UserLike::getUserId, userId)
+                .eq(UserLike::getTargetType, 2)
+                .eq(UserLike::getTargetId, commentId);
+        UserLike existing = userLikeMapper.selectOne(query);
+
+        if (existing != null) {
+            userLikeMapper.deleteById(existing.getId());
+            commentMapper.decrementLikeCount(commentId);
+            log.info("取消评论点赞 userId={}, commentId={}", userId, commentId);
+            return new LikeCommentVO(false);
+        }
+
+        UserLike like = new UserLike();
+        like.setUserId(userId);
+        like.setTargetType(2);
+        like.setTargetId(commentId);
+        userLikeMapper.insert(like);
+        commentMapper.incrementLikeCount(commentId);
+        log.info("评论点赞成功 userId={}, commentId={}", userId, commentId);
+        return new LikeCommentVO(true);
     }
 
     // ---------- 内部辅助 ----------

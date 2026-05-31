@@ -4,6 +4,7 @@ import com.echospace.dto.CreateCommentDTO;
 import com.echospace.vo.CommentVO;
 import com.echospace.vo.CreateCommentVO;
 import com.echospace.vo.CursorPageVO;
+import com.echospace.vo.LikeCommentVO;
 import com.echospace.vo.PageVO;
 import com.echospace.vo.ReplyVO;
 
@@ -54,4 +55,19 @@ public interface CommentService {
      * @param commentId 评论 ID
      */
     void deleteComment(Long commentId);
+
+    /**
+     * 对评论进行点赞或取消点赞（toggle 模式），对应 API 4.5
+     * <p>
+     * 已点赞则取消点赞（删除 user_like 记录 + 评论 likeCount-1），
+     * 未点赞则创建点赞（插入 user_like 记录 + 评论 likeCount+1）。
+     * targetType=2 表示评论点赞。
+     * 仅返回操作后的点赞状态（liked），前端本地 ±1 更新 UI，具体数据在刷新时同步。
+     * </p>
+     *
+     * @param commentId 评论 ID
+     * @return 点赞状态 VO，含 liked 布尔值
+     * @throws com.echospace.common.BusinessException 评论不存在时抛出 404
+     */
+    LikeCommentVO likeComment(Long commentId);
 }

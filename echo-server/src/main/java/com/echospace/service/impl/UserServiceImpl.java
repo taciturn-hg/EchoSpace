@@ -1,6 +1,8 @@
 package com.echospace.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.echospace.common.BusinessException;
 import com.echospace.dto.ChangePasswordDTO;
 import com.echospace.dto.UpdateProfileDTO;
@@ -14,6 +16,9 @@ import com.echospace.mapper.UserMapper;
 import com.echospace.security.SecurityUtil;
 import com.echospace.service.UserService;
 import com.echospace.util.MaskUtil;
+import com.echospace.vo.FollowItemVO;
+import com.echospace.vo.FollowVO;
+import com.echospace.vo.PageVO;
 import com.echospace.vo.PublicUserVO;
 import com.echospace.vo.UserProfileVO;
 import com.echospace.vo.UserSettingsVO;
@@ -22,7 +27,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * 用户模块服务实现：资料设置、账号设置、修改密码
@@ -247,6 +254,123 @@ public class UserServiceImpl implements UserService {
         update.setPassword(passwordEncoder.encode(dto.getNewPassword()));
         userMapper.updateById(update);
         log.info("密码修改完成 userId={}", current.getId());
+    }
+
+    /**
+     * 关注或取消关注指定用户（toggle 模式），对应 API 2.8
+     * <p>
+     * 已关注则删除关注关系并返回 followed=false；
+     * 未关注则创建关注关系并返回 followed=true。
+     * 不允许关注自己。
+     * </p>
+     */
+    @Override
+    public FollowVO followUser(Long followedId) {
+        Long userId = currentUserIdOrThrow();
+
+        if (userId.equals(followedId)) {
+            log.warn("关注失败：不能关注自己 userId={}", userId);
+            throw new BusinessException("不能关注自己");
+        }
+
+        User target = userMapper.selectById(followedId);
+        if (target == null) {
+            log.warn("关注失败：目标用户不存在 followedId={}", followedId);
+            throw BusinessException.notFound("用户不存在");
+        }
+
+        UserFollow existing = userFollowMapper.selectOne(
+                new LambdaQueryWrapper<UserFollow>()
+                        .eq(UserFollow::getFollowerId, userId)
+                        .eq(UserFollow::getFollowedId, followedId)
+        );
+
+        if (existing != null) {
+            userFollowMapper.deleteById(existing.getId());
+            log.info("已取消关注 userId={}, followedId={}", userId, followedId);
+            return new FollowVO(false);
+        }
+
+        UserFollow follow = new UserFollow();
+        follow.setFollowerId(userId);
+        follow.setFollowedId(followedId);
+        userFollowMapper.insert(follow);
+        log.info("关注成功 userId={}, followedId={}", userId, followedId);
+        return new FollowVO(true);
+    }
+
+    /**
+     * 分页查询指定用户的粉丝列表，对应 API 2.9
+     * <p>
+     * 按关注时间倒序排列，JOIN user 表取粉丝信息。
+     * 未登录用户也可访问（不依赖 SecurityContext）。
+     * </p>
+     */
+    @Override
+    public PageVO<FollowItemVO> listFollowers(Long userId, int current, int size) {
+        if (userMapper.selectById(userId) == null) {
+            log.warn("查询粉丝列表失败：用户不存在 userId={}", userId);
+            throw BusinessException.notFound("用户不存在");
+        }
+
+        IPage<UserFollow> page = userFollowMapper.selectPage(
+                new Page<>(current, size),
+                new LambdaQueryWrapper<UserFollow>()
+                        .eq(UserFollow::getFollowedId, userId)
+                        .orderByDesc(UserFollow::getCreatedAt)
+        );
+
+        List<FollowItemVO> records = page.getRecords().stream().map(uf -> {
+            User follower = userMapper.selectById(uf.getFollowerId());
+            return FollowItemVO.builder()
+                    .id(follower.getId())
+                    .username(follower.getUsername())
+                    .nickname(follower.getNickname())
+                    .avatar(follower.getAvatar())
+                    .followedAt(uf.getCreatedAt())
+                    .build();
+        }).collect(Collectors.toList());
+
+        log.debug("粉丝列表查询完成 targetUserId={}, current={}, size={}, total={}",
+                userId, current, size, page.getTotal());
+        return new PageVO<>(records, page.getTotal(), page.getCurrent(), page.getSize());
+    }
+
+    /**
+     * 分页查询指定用户关注的人的列表，对应 API 2.10
+     * <p>
+     * 按关注时间倒序排列，JOIN user 表取被关注用户信息。
+     * 未登录用户也可访问（不依赖 SecurityContext）。
+     * </p>
+     */
+    @Override
+    public PageVO<FollowItemVO> listFollowing(Long userId, int current, int size) {
+        if (userMapper.selectById(userId) == null) {
+            log.warn("查询关注列表失败：用户不存在 userId={}", userId);
+            throw BusinessException.notFound("用户不存在");
+        }
+
+        IPage<UserFollow> page = userFollowMapper.selectPage(
+                new Page<>(current, size),
+                new LambdaQueryWrapper<UserFollow>()
+                        .eq(UserFollow::getFollowerId, userId)
+                        .orderByDesc(UserFollow::getCreatedAt)
+        );
+
+        List<FollowItemVO> records = page.getRecords().stream().map(uf -> {
+            User followed = userMapper.selectById(uf.getFollowedId());
+            return FollowItemVO.builder()
+                    .id(followed.getId())
+                    .username(followed.getUsername())
+                    .nickname(followed.getNickname())
+                    .avatar(followed.getAvatar())
+                    .followedAt(uf.getCreatedAt())
+                    .build();
+        }).collect(Collectors.toList());
+
+        log.debug("关注列表查询完成 targetUserId={}, current={}, size={}, total={}",
+                userId, current, size, page.getTotal());
+        return new PageVO<>(records, page.getTotal(), page.getCurrent(), page.getSize());
     }
 
     // ---------- 内部辅助 ----------

@@ -45,11 +45,7 @@ const {
   posts,
   loading: postsLoading,
   hasMore: postsHasMore,
-  likedPosts,
-  collectedPosts,
   fetchPosts: fetchUserPosts,
-  toggleLike: localToggleLike,
-  toggleCollect: localToggleCollect,
   reset: resetPosts,
 } = useInfiniteList<PostVO>({
   fetchFn: (params: Record<string, unknown>) => {
@@ -61,6 +57,10 @@ const {
   mode: 'cursor',
   pageSize: 10,
 })
+
+// ===== Local like/collect state for PostCard =====
+const likedPosts = ref(new Set<number>())
+const collectedPosts = ref(new Set<number>())
 
 // ===== Follow/Follower Dialog =====
 const dialogVisible = ref(false)
@@ -115,21 +115,45 @@ async function handleToggleFollow() {
 
 // ===== Post interaction =====
 async function handleToggleLike(postId: number) {
-  localToggleLike(postId)
+  const isLiked = likedPosts.value.has(postId)
+  if (isLiked) {
+    likedPosts.value.delete(postId)
+  } else {
+    likedPosts.value.add(postId)
+  }
+  likedPosts.value = new Set(likedPosts.value)
   try {
     await likePost(postId)
   } catch {
-    localToggleLike(postId)
+    const rollback = new Set(likedPosts.value)
+    if (isLiked) {
+      rollback.add(postId)
+    } else {
+      rollback.delete(postId)
+    }
+    likedPosts.value = rollback
     ElMessage.error('操作失败')
   }
 }
 
 async function handleToggleCollect(postId: number) {
-  localToggleCollect(postId)
+  const isCollected = collectedPosts.value.has(postId)
+  if (isCollected) {
+    collectedPosts.value.delete(postId)
+  } else {
+    collectedPosts.value.add(postId)
+  }
+  collectedPosts.value = new Set(collectedPosts.value)
   try {
     await favoritePost(postId)
   } catch {
-    localToggleCollect(postId)
+    const rollback = new Set(collectedPosts.value)
+    if (isCollected) {
+      rollback.add(postId)
+    } else {
+      rollback.delete(postId)
+    }
+    collectedPosts.value = rollback
     ElMessage.error('操作失败')
   }
 }
