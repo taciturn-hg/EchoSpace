@@ -66,7 +66,7 @@ public class GlobalExceptionHandler {
 
     /**
      * 处理上传文件超过大小限制（servlet 层拦截，无法进入业务层）。
-     * 映射为 HTTP 413 Content Too Large。
+     * 映射为 HTTP 413 Payload Too Large。
      */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)

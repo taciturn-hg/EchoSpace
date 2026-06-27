@@ -79,6 +79,7 @@ public class PostServiceImpl implements PostService {
                 .addAttributes("a", "href", "rel")
                 .addAttributes("pre", "class")
                 .addAttributes("code", "class")
+                .addProtocols("img", "src", "http", "https", "data")
                 .addProtocols("a", "href", "http", "https", "mailto", "tel");
     }
 
@@ -397,10 +398,10 @@ public class PostServiceImpl implements PostService {
     /**
      * 从 safeHtml 提取纯文本摘要。
      * doc.text() 会解码 HTML 实体（&amp;lt; → &lt;），可能复活被前端转义过的危险标签。
-     * 因此解码后过一遍 POST_SAFELIST 清洗，剥离复活的不安全属性（如 onerror）。
-     * 由于 POST_SAFELIST 包含了 img 等合法标签，doc.text() 解码后如果有真标签
-     * 会被 Jsoup.clean 清理掉不合法属性后保留合法标签。
-     * 如果 decoded 中不包含任何合法标签（正常情况），Jsoup.clean 原样返回纯文本。
+     * 因此解码后使用 Safelist.none() 再清洗，确保最终只保留纯文本（剥离任何“复活”的标签/属性）。
+     * 这里不使用 POST_SAFELIST，是为了避免合法标签（如 img/a）在摘要中被保留，
+     * 防止前端使用 v-html 渲染摘要时产生意外的 HTML 渲染/样式影响。
+     * 如果 decoded 本身不包含可解析的 HTML 标签（正常情况），Jsoup.clean 会原样返回文本。
      */
     private String extractText(String safeHtml) {
         Document doc = Jsoup.parse(safeHtml);
