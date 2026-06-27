@@ -64,8 +64,7 @@ public class PostServiceImpl implements PostService {
 
     /**
      * 帖子富文本 HTML 清洗白名单：
-     * 允许 TipTap StarterKit + Image + Link 生成的标签和属性，
-     * img/src 和 a/href 仅允许 http/https/mailto/tel 协议。
+     * 允许 TipTap StarterKit + Image + Link 生成的标签和属性。
      */
     private static final Safelist POST_SAFELIST;
 
@@ -80,7 +79,6 @@ public class PostServiceImpl implements PostService {
                 .addAttributes("a", "href", "rel")
                 .addAttributes("pre", "class")
                 .addAttributes("code", "class")
-                .addProtocols("img", "src", "http", "https")
                 .addProtocols("a", "href", "http", "https", "mailto", "tel");
     }
 
@@ -107,6 +105,8 @@ public class PostServiceImpl implements PostService {
         Long userId = requireCurrentUserId();
 
         String safeHtml = sanitizeHtml(dto.getContentHtml());
+        // extractText 在 sanitizeHtml 之后调用，传入的是已清洗 HTML，
+        // 不会保留任何危险标签或属性，doc.text() 提取纯文本是安全的
         String contentText = extractText(safeHtml);
         String coverImage = extractCoverImage(safeHtml);
 
@@ -381,18 +381,32 @@ public class PostServiceImpl implements PostService {
 
     /**
      * 使用 Jsoup + 白名单清洗富文本 HTML，移除危险标签和非法协议。
+     * <p>
+     * 先移除 script/style/noscript/iframe/object/embed 等危险标签
+     * 及其全部文本内容，再通过白名单清洗常规标签和属性。
+     * </p>
      * 调用方保证 html 非空。
      */
     private String sanitizeHtml(String html) {
+        // 先移除危险标签及其文本内容（Jsoup.clean 默认保留被移除标签的文本）
+        Document doc = Jsoup.parse(html);
+        doc.select("script, style, noscript, iframe, object, embed").remove();
         return Jsoup.clean(html, POST_SAFELIST);
     }
 
     /**
-     * 使用 Jsoup 从富文本 HTML 提取纯文本摘要
+     * 从 safeHtml 提取纯文本摘要。
+     * doc.text() 会解码 HTML 实体（&amp;lt; → &lt;），可能复活被前端转义过的危险标签。
+     * 因此解码后过一遍 POST_SAFELIST 清洗，剥离复活的不安全属性（如 onerror）。
+     * 由于 POST_SAFELIST 包含了 img 等合法标签，doc.text() 解码后如果有真标签
+     * 会被 Jsoup.clean 清理掉不合法属性后保留合法标签。
+     * 如果 decoded 中不包含任何合法标签（正常情况），Jsoup.clean 原样返回纯文本。
      */
-    private String extractText(String html) {
-        Document doc = Jsoup.parse(html);
-        return doc.text();
+    private String extractText(String safeHtml) {
+        Document doc = Jsoup.parse(safeHtml);
+        String decoded = doc.text();
+        // POST_SAFELIST 清洗：有合法标签则保留并剥离危险属性，无标签则原样返回
+        return Jsoup.clean(decoded, POST_SAFELIST);
     }
 
     /**

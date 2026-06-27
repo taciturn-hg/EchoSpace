@@ -19,11 +19,11 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- 实际哈希值请通过注册接口生成，下方为占位值
 -- ============================================================
 INSERT INTO user (id, username, nickname, email, phone, password, avatar, bio, status, created_at) VALUES
-(1001, 'admin',        'Echo 官方',   'admin@echospace.local',    '13800001001', '$2a$10$xVqYLGEMC1JmKqiQKVfLBeK6q8qM5h7qP1vqGcMmFqZ9xVqYLGEM', 'https://picsum.photos/seed/admin-avatar/100/100',    'EchoSpace 官方账号',                              1, '2025-01-15 10:00:00'),
-(2048, 'vue_master',   '前端小王子',  'vue@echospace.local',      '13800002048', '$2a$10$xVqYLGEMC1JmKqiQKVfLBeK6q8qM5h7qP1vqGcMmFqZ9xVqYLGEM', NULL,                                                  'Vue 技术爱好者',                                  1, '2025-02-20 14:30:00'),
-(337,  'cycling_fan',  NULL,          'cycling@echospace.local',  '13800003370', '$2a$10$xVqYLGEMC1JmKqiQKVfLBeK6q8qM5h7qP1vqGcMmFqZ9xVqYLGEM', 'https://picsum.photos/seed/cycling-avatar/100/100', '热爱骑行，热爱生活',                              1, '2025-03-10 08:15:00'),
-(512,  'java_dev',     'Java 架构师', 'java@echospace.local',     '13800005120', '$2a$10$xVqYLGEMC1JmKqiQKVfLBeK6q8qM5h7qP1vqGcMmFqZ9xVqYLGEM', 'https://picsum.photos/seed/java-avatar/100/100',    'Spring Boot / Microservices 实践者',              1, '2025-01-28 16:45:00'),
-(789,  'ts_learner',   '小菜鸟',      'ts@echospace.local',       '13800007890', '$2a$10$xVqYLGEMC1JmKqiQKVfLBeK6q8qM5h7qP1vqGcMmFqZ9xVqYLGEM', NULL,                                                  'TypeScript 进阶中',                               1, '2025-04-01 12:00:00');
+(1001, 'admin',        'Echo 官方',   'admin@echospace.local',    '13800001001', '$2a$10$NsiHrjjS5IJOL5KWdSYpKOBVIxEa300Ni3LOrzLQTTUhOxuo3OU0O', 'https://picsum.photos/seed/admin-avatar/100/100',    'EchoSpace 官方账号',                              1, '2025-01-15 10:00:00'),
+(2048, 'vue_master',   '前端小王子',  'vue@echospace.local',      '13800002048', '$2a$10$NsiHrjjS5IJOL5KWdSYpKOBVIxEa300Ni3LOrzLQTTUhOxuo3OU0O', NULL,                                                  'Vue 技术爱好者',                                  1, '2025-02-20 14:30:00'),
+(337,  'cycling_fan',  NULL,          'cycling@echospace.local',  '13800003370', '$2a$10$NsiHrjjS5IJOL5KWdSYpKOBVIxEa300Ni3LOrzLQTTUhOxuo3OU0O', 'https://picsum.photos/seed/cycling-avatar/100/100', '热爱骑行，热爱生活',                              1, '2025-03-10 08:15:00'),
+(512,  'java_dev',     'Java 架构师', 'java@echospace.local',     '13800005120', '$2a$10$NsiHrjjS5IJOL5KWdSYpKOBVIxEa300Ni3LOrzLQTTUhOxuo3OU0O', 'https://picsum.photos/seed/java-avatar/100/100',    'Spring Boot / Microservices 实践者',              1, '2025-01-28 16:45:00'),
+(789,  'ts_learner',   '小菜鸟',      'ts@echospace.local',       '13800007890', '$2a$10$NsiHrjjS5IJOL5KWdSYpKOBVIxEa300Ni3LOrzLQTTUhOxuo3OU0O', NULL,                                                  'TypeScript 进阶中',                               1, '2025-04-01 12:00:00');
 
 -- ============================================================
 -- 帖子（23 条，覆盖 3 页，每页 10 条）

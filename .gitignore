@@ -63,9 +63,6 @@ coverage
 
 .eslintcache
 
-.understand-anything
-.vite
-
 # Cypress
 /cypress/videos/
 /cypress/screenshots/
@@ -75,6 +72,14 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# Vite 本地构建缓存
+.vite
+
+# Understand-Anything（仅忽略中间产物，保留 knowledge-graph.json 团队共享）
+.understand-anything/intermediate/
+.understand-anything/tmp/
+.understand-anything/.trash-*
 
 # TRAE
 .trae

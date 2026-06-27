@@ -185,8 +185,8 @@ onUnmounted(() => {
 
     <!-- ===== 帖子部分 ===== -->
     <div class="post-card__body" @click="handleBodyClick">
-      <h3 class="post-card__title">{{ post.title }}</h3>
-      <p v-if="post.contentText" class="post-card__summary" v-html="post.contentText" />
+      <h3 class="post-card__title" v-html="post.title"></h3>
+      <p v-if="post.contentText" class="post-card__summary" v-html="post.contentText"></p>
 
       <!-- 图片列表 -->
       <div v-if="imageCount > 0" :class="['post-card__images', imageGridClass]">
