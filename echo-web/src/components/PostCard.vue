@@ -3,6 +3,7 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElAvatar, ElMessage } from 'element-plus'
 import { MessageCircle, Heart, Bookmark, Share2, Pencil, Trash2 } from '@lucide/vue'
+import DOMPurify from 'dompurify'
 import type { PostVO } from '@/api/modules/index'
 import { formatRelativeTime } from '@/utils/time'
 import { formatCount } from '@/utils/number'
@@ -48,6 +49,15 @@ const imageCount = computed(() => images.value.length)
 const imageGridClass = computed(() => `images--count-${imageCount.value}`)
 
 const displayName = computed(() => props.post.author.nickname || props.post.author.username)
+
+const sanitizedTitle = computed(() =>
+  DOMPurify.sanitize(props.post.title, { ALLOWED_TAGS: ['em'], ALLOWED_ATTR: [] }),
+)
+
+const sanitizedSummary = computed(() => {
+  if (!props.post.contentText) return ''
+  return DOMPurify.sanitize(props.post.contentText, { ALLOWED_TAGS: ['em'], ALLOWED_ATTR: [] })
+})
 
 function handleUserClick() {
   router.push(`/user/${props.post.author.id}`)
@@ -185,8 +195,8 @@ onUnmounted(() => {
 
     <!-- ===== 帖子部分 ===== -->
     <div class="post-card__body" @click="handleBodyClick">
-      <h3 class="post-card__title">{{ post.title }}</h3>
-      <p v-if="post.contentText" class="post-card__summary" v-html="post.contentText" />
+      <h3 class="post-card__title" v-html="sanitizedTitle"></h3>
+      <p v-if="post.contentText" class="post-card__summary" v-html="sanitizedSummary"></p>
 
       <!-- 图片列表 -->
       <div v-if="imageCount > 0" :class="['post-card__images', imageGridClass]">

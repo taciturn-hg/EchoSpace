@@ -59,6 +59,7 @@ jwt:
 storage:
   type: minio
 
+
 minio:
   endpoint: http://localhost:9000
   # public-base-url: https://cdn.example.com  # 对外访问域名（经 nginx/CDN 反代时配置，默认使用 endpoint）
@@ -82,6 +83,3 @@ security:
     - /error
     - /swagger-ui/**
     - /v3/api-docs/**
-
-
-

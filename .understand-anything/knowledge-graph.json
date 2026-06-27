@@ -1,0 +1,3548 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "EchoSpace",
+    "languages": [
+      "Java",
+      "TypeScript",
+      "Markdown",
+      "SQL",
+      "YAML",
+      "XML",
+      "Shell"
+    ],
+    "frameworks": [
+      "Spring Boot 3.5",
+      "Vue 3.5",
+      "MyBatis-Plus 3.5.7",
+      "Elasticsearch 8",
+      "Element Plus 2",
+      "TipTap 3",
+      "Pinia 3",
+      "Vue Router 5",
+      "Vite 8",
+      "Spring Security",
+      "JWT",
+      "MinIO"
+    ],
+    "description": "基于 Vue 3 + Spring Boot 的现代社区论坛系统，支持帖子发布浏览、富文本编辑、嵌套评论、全文搜索、用户关注等社交功能",
+    "analyzedAt": "2026-06-27T06:39:48.853Z",
+    "gitCommitHash": "6c32e32e8f077bfdaa37f60b1a1b29771e0a5005"
+  },
+  "nodes": [
+    {
+      "id": "document:.claude/CLAUDE.md",
+      "type": "document",
+      "name": "CLAUDE.md",
+      "summary": "项目开发规范和约定的概要文档，包含技术栈、项目结构、关键约定和常用命令",
+      "tags": [
+        "project-guide",
+        "convention"
+      ],
+      "filePath": ".claude/CLAUDE.md",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "type": "document",
+      "name": "PROJECT_ARCHITECTURE.md",
+      "summary": "项目架构深度参考文档，记录完整架构设计、Sprint开发历史、数据库实体、页面清单和关键文件索引",
+      "tags": [
+        "architecture",
+        "reference"
+      ],
+      "filePath": ".claude/PROJECT_ARCHITECTURE.md",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.claude/PRPs/reviews/pr-12-review.md",
+      "type": "document",
+      "name": "pr-12-review.md",
+      "filePath": ".claude/PRPs/reviews/pr-12-review.md",
+      "summary": "针对 PR #12（Sprint6 用户个人主页功能）的详细代码审查报告，发现1个CRITICAL级XSS漏洞（PostCard标题未消毒）、4个HIGH级问题（N+1查询/竞态条件/回复点赞计数/服务器计数丢弃）、5个MEDIUM级问题和5个LOW级问题，均附修复方案，最终决策为REQUEST CHANGES。",
+      "tags": [
+        "code-review",
+        "security",
+        "performance",
+        "bug-report"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.claude/skills/thesis-reviewer/PROJECT_ARCHITECTURE.md",
+      "type": "document",
+      "name": "PROJECT_ARCHITECTURE.md",
+      "filePath": ".claude/skills/thesis-reviewer/PROJECT_ARCHITECTURE.md",
+      "summary": "论文审查技能的架构参考文档，简要列出 EchoSpace 项目的前后端技术栈（Spring Boot/Vue3/MySQL等）、核心模块（User/Post/Comment/Like/Favorite）及当前开发状态（Auth/Comment已完成，Like/Favorite开发中）。",
+      "tags": [
+        "documentation",
+        "architecture",
+        "reference",
+        "thesis"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:.claude/skills/thesis-reviewer/SKILL.md",
+      "type": "document",
+      "name": "SKILL.md",
+      "filePath": ".claude/skills/thesis-reviewer/SKILL.md",
+      "summary": "论文审查技能定义文件，声明审查维度（功能一致性/技术一致性/数据库一致性/API一致性/架构一致性）和待检测问题类型（虚构功能/虚假技术/缺失实现/错误描述），并在生成报告前要求读取架构文档。",
+      "tags": [
+        "skill-definition",
+        "thesis",
+        "review"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "schema:data:.claude/skills/thesis-writer/references/基于Java+Web技术的校园论坛网页的设计与实现.pdf",
+      "type": "schema",
+      "name": "基于Java+Web技术的校园论坛网页的设计与实现.pdf",
+      "filePath": ".claude/skills/thesis-writer/references/基于Java+Web技术的校园论坛网页的设计与实现.pdf",
+      "summary": "论文写作参考 PDF：基于Java+Web技术的校园论坛网页设计与实现，为 EchoSpace 论文提供同类论坛系统的设计与实现参考。",
+      "tags": [
+        "reference",
+        "thesis",
+        "forum",
+        "java-web"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "schema:data:.claude/skills/thesis-writer/references/基于Java的Web软件程序框架分层设计探讨_黄丽萍.pdf",
+      "type": "schema",
+      "name": "基于Java的Web软件程序框架分层设计探讨_黄丽萍.pdf",
+      "filePath": ".claude/skills/thesis-writer/references/基于Java的Web软件程序框架分层设计探讨_黄丽萍.pdf",
+      "summary": "论文写作参考 PDF：探讨 Java Web 软件程序框架分层设计方法论，为 EchoSpace 论文的架构设计章节提供理论支撑。",
+      "tags": [
+        "reference",
+        "thesis",
+        "architecture",
+        "layered-design"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "schema:data:.claude/skills/thesis-writer/references/基于Spring_Boot的师范生技能训练经验分享系统设计与实现_伟力苏.pdf",
+      "type": "schema",
+      "name": "基于Spring_Boot的师范生技能训练经验分享系统设计与实现_伟力苏.pdf",
+      "filePath": ".claude/skills/thesis-writer/references/基于Spring_Boot的师范生技能训练经验分享系统设计与实现_伟力苏.pdf",
+      "summary": "论文写作参考 PDF：基于 Spring Boot 的师范生技能训练经验分享系统，提供 Spring Boot 社区类系统的设计与实现参考范例。",
+      "tags": [
+        "reference",
+        "thesis",
+        "spring-boot",
+        "community"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "schema:data:.claude/skills/thesis-writer/references/基于Spring_Boot和Vue技术的访客管理系统设计与实现_丁福江.pdf",
+      "type": "schema",
+      "name": "基于Spring_Boot和Vue技术的访客管理系统设计与实现_丁福江.pdf",
+      "filePath": ".claude/skills/thesis-writer/references/基于Spring_Boot和Vue技术的访客管理系统设计与实现_丁福江.pdf",
+      "summary": "论文写作参考 PDF：基于 Spring Boot 和 Vue 技术的访客管理系统，为 EchoSpace 前后端分离架构的论文写作提供同类技术栈参考。",
+      "tags": [
+        "reference",
+        "thesis",
+        "spring-boot",
+        "vue"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "schema:data:.claude/skills/thesis-writer/references/基于Spring_Boot与Vue框架的叫号系统的设计与实现_金明俐.pdf",
+      "type": "schema",
+      "name": "基于Spring_Boot与Vue框架的叫号系统的设计与实现_金明俐.pdf",
+      "filePath": ".claude/skills/thesis-writer/references/基于Spring_Boot与Vue框架的叫号系统的设计与实现_金明俐.pdf",
+      "summary": "论文写作参考 PDF：基于 Spring Boot 与 Vue 框架的叫号系统，提供前后端分离架构下完整系统的论文写作范例。",
+      "tags": [
+        "reference",
+        "thesis",
+        "spring-boot",
+        "vue"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "schema:data:.claude/skills/thesis-writer/references/基于SpringBoot+Vue的在线考试系统设计与实现.pdf",
+      "type": "schema",
+      "name": "基于SpringBoot+Vue的在线考试系统设计与实现.pdf",
+      "filePath": ".claude/skills/thesis-writer/references/基于SpringBoot+Vue的在线考试系统设计与实现.pdf",
+      "summary": "论文写作参考 PDF：基于 SpringBoot + Vue 的在线考试系统设计与实现，为 EchoSpace 论文提供 SpringBoot+Vue 技术栈的同类论文写作参考。",
+      "tags": [
+        "reference",
+        "thesis",
+        "spring-boot",
+        "vue"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "schema:data:.claude/skills/thesis-writer/references/基于SpringBoot和Vue的多功能时间管理系统的设计与实现_朱启方.pdf",
+      "type": "schema",
+      "name": "基于SpringBoot和Vue的多功能时间管理系统的设计与实现_朱启方.pdf",
+      "filePath": ".claude/skills/thesis-writer/references/基于SpringBoot和Vue的多功能时间管理系统的设计与实现_朱启方.pdf",
+      "summary": "论文写作参考 PDF：基于 SpringBoot 和 Vue 的多功能时间管理系统，为 EchoSpace 论文的多功能系统描述提供写作参考。",
+      "tags": [
+        "reference",
+        "thesis",
+        "spring-boot",
+        "vue"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "schema:data:.claude/skills/thesis-writer/references/基于SpringBoot和Vue框架的高校统战工作服务信息管理系统的设计与实现.pdf",
+      "type": "schema",
+      "name": "基于SpringBoot和Vue框架的高校统战工作服务信息管理系统的设计与实现.pdf",
+      "filePath": ".claude/skills/thesis-writer/references/基于SpringBoot和Vue框架的高校统战工作服务信息管理系统的设计与实现.pdf",
+      "summary": "论文写作参考 PDF：基于 SpringBoot 和 Vue 框架的高校统战信息服务管理系统，为 EchoSpace 论文的高校信息管理系统类论文提供参考范例。",
+      "tags": [
+        "reference",
+        "thesis",
+        "spring-boot",
+        "vue",
+        "campus"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "schema:data:.claude/skills/thesis-writer/references/面向高招会行程规划的区域招生组管理系统_李硕.pdf",
+      "type": "schema",
+      "name": "面向高招会行程规划的区域招生组管理系统_李硕.pdf",
+      "filePath": ".claude/skills/thesis-writer/references/面向高招会行程规划的区域招生组管理系统_李硕.pdf",
+      "summary": "论文写作参考 PDF：面向高招会的区域招生组行程规划管理系统，提供 Web 管理系统类论文的写作结构和设计方法参考。",
+      "tags": [
+        "reference",
+        "thesis",
+        "management-system",
+        "web"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "schema:data:.claude/skills/thesis-writer/references/铁路事故故障文本大数据分析关键技术研究及应用_杨连报.pdf",
+      "type": "schema",
+      "name": "铁路事故故障文本大数据分析关键技术研究及应用_杨连报.pdf",
+      "filePath": ".claude/skills/thesis-writer/references/铁路事故故障文本大数据分析关键技术研究及应用_杨连报.pdf",
+      "summary": "论文写作参考 PDF：铁路事故故障文本大数据分析关键技术研究及应用，为 EchoSpace 论文的搜索与数据分析相关章节提供技术参考。",
+      "tags": [
+        "reference",
+        "thesis",
+        "big-data",
+        "search"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "schema:data:.claude/skills/thesis-writer/references/新型分布式搜索引擎在财务管理数字化中的应用实践_周正.pdf",
+      "type": "schema",
+      "name": "新型分布式搜索引擎在财务管理数字化中的应用实践_周正.pdf",
+      "filePath": ".claude/skills/thesis-writer/references/新型分布式搜索引擎在财务管理数字化中的应用实践_周正.pdf",
+      "summary": "论文写作参考 PDF：新型分布式搜索引擎在财务管理数字化中的应用实践，为 EchoSpace 论文的 Elasticsearch 搜索引擎章节提供技术引用和理论基础。",
+      "tags": [
+        "reference",
+        "thesis",
+        "search-engine",
+        "distributed"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "schema:data:.claude/skills/thesis-writer/references/信息数字化社区服务管理系统的设计与实现.pdf",
+      "type": "schema",
+      "name": "信息数字化社区服务管理系统的设计与实现.pdf",
+      "filePath": ".claude/skills/thesis-writer/references/信息数字化社区服务管理系统的设计与实现.pdf",
+      "summary": "论文写作参考 PDF：信息数字化社区服务管理系统设计与实现，为 EchoSpace 论文的社区服务类系统设计提供同类参考。",
+      "tags": [
+        "reference",
+        "thesis",
+        "community",
+        "management-system"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "schema:data:.claude/skills/thesis-writer/references/智慧校园学习交流与交易网站设计与实现.pdf",
+      "type": "schema",
+      "name": "智慧校园学习交流与交易网站设计与实现.pdf",
+      "filePath": ".claude/skills/thesis-writer/references/智慧校园学习交流与交易网站设计与实现.pdf",
+      "summary": "论文写作参考 PDF：智慧校园学习交流与交易网站设计与实现，与 EchoSpace 校园论坛定位高度契合，为论文提供最直接的同类系统参考。",
+      "tags": [
+        "reference",
+        "thesis",
+        "campus",
+        "forum",
+        "exchange"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "schema:data:.claude/skills/thesis-writer/references/Attention-Based_Character-Word_Hybrid_Neural_Networks_With_Semantic_and_Structural_Information_for_Identifying_of_Urgent_Posts_in_MOOC_Discussion_Forums.pdf",
+      "type": "schema",
+      "name": "Attention-Based_Character-Word_Hybrid_Neural_Networks.pdf",
+      "filePath": ".claude/skills/thesis-writer/references/Attention-Based_Character-Word_Hybrid_Neural_Networks_With_Semantic_and_Structural_Information_for_Identifying_of_Urgent_Posts_in_MOOC_Discussion_Forums.pdf",
+      "summary": "论文写作参考 PDF（英文）：基于注意力机制的字符-词混合神经网络在MOOC论坛紧急帖子识别中的应用，为 EchoSpace 论文的论坛帖子分析与智能识别方向提供学术参考。",
+      "tags": [
+        "reference",
+        "thesis",
+        "nlp",
+        "forum",
+        "neural-network"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "schema:data:.claude/skills/thesis-writer/references/Design and Implementation of a Microservice-Based Forum System with Vue.js Frontend.pdf",
+      "type": "schema",
+      "name": "Design and Implementation of a Microservice-Based Forum System with Vue.js Frontend.pdf",
+      "filePath": ".claude/skills/thesis-writer/references/Design and Implementation of a Microservice-Based Forum System with Vue.js Frontend.pdf",
+      "summary": "论文写作参考 PDF（英文）：基于微服务的 Vue.js 前端论坛系统设计与实现，与 EchoSpace 论坛系统主题高度一致，为论文的英文摘要和国际对比提供直接参考。",
+      "tags": [
+        "reference",
+        "thesis",
+        "forum",
+        "vue",
+        "microservice"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "schema:data:.claude/skills/thesis-writer/templates/项目报告模版.docx",
+      "type": "schema",
+      "name": "项目报告模版.docx",
+      "filePath": ".claude/skills/thesis-writer/templates/项目报告模版.docx",
+      "summary": "论文写作模板 DOCX 文件，定义项目报告的标准格式和章节结构，作为 EchoSpace 毕业设计论文的排版和内容组织模板。",
+      "tags": [
+        "template",
+        "thesis",
+        "report",
+        "format"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.github/copilot-instructions.md",
+      "type": "document",
+      "name": "copilot-instructions.md",
+      "filePath": ".github/copilot-instructions.md",
+      "summary": "GitHub Copilot 代码审查指令文件，设定 AI 角色为资深全栈工程师，定义代码审查规则（安全优先/XSS/SQL注入/N+1查询/命名规范）和回复格式要求，包含前端（Vue组合式API/计算属性）和后端（Java构造器注入/Swagger规范）特定规则。",
+      "tags": [
+        "documentation",
+        "code-review",
+        "ai-instructions",
+        "security"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.github/pull_request_template",
+      "type": "document",
+      "name": "pull_request_template",
+      "filePath": ".github/pull_request_template",
+      "summary": "GitHub Pull Request 模板，包含提交类型（Feature/Fix/Refactor/Docs/Perf）、变更背景、自检清单（NPE防御/N+1性能/日志规范/文档同步/Result包装/字段命名）和测试说明等标准化检查项。",
+      "tags": [
+        "documentation",
+        "template",
+        "pull-request",
+        "checklist"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:.gitignore",
+      "type": "config",
+      "name": ".gitignore",
+      "filePath": ".gitignore",
+      "summary": "Git 忽略规则配置，排除编译产物（target/build/dist）、IDE配置（.idea/.vscode/.trae）、日志文件、Node模块、测试覆盖率报告、Vite临时文件，以及临时排除的测试目录（echo-server/src/test/ 和前端 __tests__/*.test.*/*.spec.*）。",
+      "tags": [
+        "configuration",
+        "git",
+        "build-system"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "README.md",
+      "summary": "EchoSpace 项目主页文档，包含项目简介（Vue3+SpringBoot论坛系统）、功能特性（用户系统/帖子/评论/搜索/关注/文件上传/XSS防护）、技术栈详情、项目结构树、环境要求与快速启动指南、文档索引、Sprint开发路线和MIT许可证。",
+      "tags": [
+        "documentation",
+        "entry-point",
+        "overview",
+        "getting-started"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:docs/Question.md",
+      "type": "document",
+      "name": "开发问题与解决方案",
+      "summary": "记录37个开发过程中遇到的关键技术问题及其详细解决方案，覆盖Spring Security、Axios拦截器、文件上传安全等",
+      "tags": [
+        "troubleshooting",
+        "knowledge-base"
+      ],
+      "filePath": "docs/Question.md",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:docs/02-api-documentation.md",
+      "type": "document",
+      "name": "API 接口文档",
+      "summary": "完整的RESTful API接口文档，包含认证、用户、帖子、评论、搜索、文件等所有端点",
+      "tags": [
+        "api",
+        "documentation"
+      ],
+      "filePath": "docs/02-api-documentation.md",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:docs/03-database-design.md",
+      "type": "document",
+      "name": "数据库设计文档",
+      "summary": "MySQL数据库的ER图和表结构设计说明",
+      "tags": [
+        "database",
+        "design"
+      ],
+      "filePath": "docs/03-database-design.md",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:docs/04-development-plan.md",
+      "type": "document",
+      "name": "开发计划",
+      "summary": "项目Sprint开发计划与迭代规划文档",
+      "tags": [
+        "planning",
+        "sprint"
+      ],
+      "filePath": "docs/04-development-plan.md",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:docs/05-feature-flows.md",
+      "type": "document",
+      "name": "功能流程文档",
+      "summary": "用户操作流程和功能交互说明文档",
+      "tags": [
+        "feature",
+        "flow"
+      ],
+      "filePath": "docs/05-feature-flows.md",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:docs/roadmap.md",
+      "type": "document",
+      "name": "项目路线图",
+      "summary": "待开发功能和技术债务的路线图文档",
+      "tags": [
+        "planning",
+        "roadmap"
+      ],
+      "filePath": "docs/roadmap.md",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:docs/01-requirements-and-plan.md",
+      "type": "document",
+      "name": "需求与规划",
+      "summary": "项目初始需求和总体设计规划文档",
+      "tags": [
+        "requirements",
+        "planning"
+      ],
+      "filePath": "docs/01-requirements-and-plan.md",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:echo-server/pom.xml",
+      "type": "config",
+      "name": "Maven POM",
+      "summary": "Spring Boot 后端项目的Maven构建配置，定义所有依赖：Spring Security、MyBatis-Plus、Elasticsearch、MinIO、RabbitMQ、Redis等",
+      "tags": [
+        "build",
+        "dependencies"
+      ],
+      "filePath": "echo-server/pom.xml",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:echo-web/package.json",
+      "type": "config",
+      "name": "npm Package",
+      "summary": "Vue 前端项目的npm包配置，依赖：Vue 3、Element Plus、TipTap、Axios、Pinia、DOMPurify等",
+      "tags": [
+        "build",
+        "dependencies"
+      ],
+      "filePath": "echo-web/package.json",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:echo-web/vite.config.ts",
+      "type": "config",
+      "name": "Vite 配置",
+      "summary": "Vite构建工具配置，含API代理到localhost:8080",
+      "tags": [
+        "build",
+        "proxy"
+      ],
+      "filePath": "echo-web/vite.config.ts",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:echo-web/tsconfig.json",
+      "type": "config",
+      "name": "TypeScript 配置",
+      "summary": "TypeScript编译器配置，包含路径别名@映射",
+      "tags": [
+        "typescript",
+        "config"
+      ],
+      "filePath": "echo-web/tsconfig.json",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:echo-server/src/main/resources/application.yaml",
+      "type": "config",
+      "name": "Spring Boot 配置",
+      "summary": "后端主配置文件：数据源、JWT、MinIO、Elasticsearch等",
+      "tags": [
+        "config",
+        "spring"
+      ],
+      "filePath": "echo-server/src/main/resources/application.yaml",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:echo-server/src/main/resources/application-dev.yaml",
+      "type": "config",
+      "name": "开发环境配置",
+      "summary": "开发环境的数据库和中间件连接参数",
+      "tags": [
+        "config",
+        "dev"
+      ],
+      "filePath": "echo-server/src/main/resources/application-dev.yaml",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:echo-server/src/main/resources/application-prod.yaml",
+      "type": "config",
+      "name": "生产环境配置",
+      "summary": "生产环境的数据库和中间件连接参数",
+      "tags": [
+        "config",
+        "prod"
+      ],
+      "filePath": "echo-server/src/main/resources/application-prod.yaml",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:echo-server/src/main/resources/logback.xml",
+      "type": "config",
+      "name": "Logback 日志配置",
+      "summary": "后端日志输出格式和级别配置",
+      "tags": [
+        "logging",
+        "config"
+      ],
+      "filePath": "echo-server/src/main/resources/logback.xml",
+      "complexity": "moderate"
+    },
+    {
+      "id": "table:echo-server/src/main/resources/db/init.sql:user",
+      "type": "table",
+      "name": "user 表",
+      "summary": "用户表：存储账号(username)、密码(password)、昵称(nickname)、手机(phone)、邮箱(email)、头像(avatar)、简介(bio)、状态(status)",
+      "tags": [
+        "user",
+        "core"
+      ],
+      "filePath": "echo-server/src/main/resources/db/init.sql:user",
+      "complexity": "moderate"
+    },
+    {
+      "id": "table:echo-server/src/main/resources/db/init.sql:post",
+      "type": "table",
+      "name": "post 表",
+      "summary": "帖子表：存储标题(title)、HTML内容(contentHtml)、文本(contentText)、封面(cover)、点赞/收藏/评论/浏览计数、状态(status)、乐观锁(version)",
+      "tags": [
+        "post",
+        "core"
+      ],
+      "filePath": "echo-server/src/main/resources/db/init.sql:post",
+      "complexity": "moderate"
+    },
+    {
+      "id": "table:echo-server/src/main/resources/db/init.sql:comment",
+      "type": "table",
+      "name": "comment 表",
+      "summary": "评论表：关联帖子(postId)、用户(userId)、父评论(parentId)、回复目标(replyToUid)、内容(content)、点赞数(likeCount)、软删除(status)",
+      "tags": [
+        "comment",
+        "core"
+      ],
+      "filePath": "echo-server/src/main/resources/db/init.sql:comment",
+      "complexity": "moderate"
+    },
+    {
+      "id": "table:echo-server/src/main/resources/db/init.sql:user_like",
+      "type": "table",
+      "name": "user_like 表",
+      "summary": "点赞关系表：统一处理帖子/评论的点赞(targetType:1帖2评3回复)",
+      "tags": [
+        "like",
+        "relation"
+      ],
+      "filePath": "echo-server/src/main/resources/db/init.sql:user_like",
+      "complexity": "moderate"
+    },
+    {
+      "id": "table:echo-server/src/main/resources/db/init.sql:user_favorite",
+      "type": "table",
+      "name": "user_favorite 表",
+      "summary": "收藏关系表：记录用户收藏的帖子",
+      "tags": [
+        "favorite",
+        "relation"
+      ],
+      "filePath": "echo-server/src/main/resources/db/init.sql:user_favorite",
+      "complexity": "moderate"
+    },
+    {
+      "id": "table:echo-server/src/main/resources/db/init.sql:user_follow",
+      "type": "table",
+      "name": "user_follow 表",
+      "summary": "关注关系表：记录用户间的关注关系(followerId/followedId)",
+      "tags": [
+        "follow",
+        "relation"
+      ],
+      "filePath": "echo-server/src/main/resources/db/init.sql:user_follow",
+      "complexity": "moderate"
+    },
+    {
+      "id": "table:echo-server/src/main/resources/db/init.sql:init",
+      "type": "table",
+      "name": "数据库初始化",
+      "summary": "init.sql：建表语句",
+      "tags": [
+        "database",
+        "ddl"
+      ],
+      "filePath": "echo-server/src/main/resources/db/init.sql:init",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:data:echo-server/src/main/resources/db/data.sql",
+      "type": "file",
+      "name": "测试数据",
+      "summary": "data.sql：包含38条评论+99条点赞+25条收藏+18条关注的测试数据",
+      "tags": [
+        "test-data",
+        "seed"
+      ],
+      "filePath": "echo-server/src/main/resources/db/data.sql",
+      "complexity": "moderate"
+    },
+    {
+      "id": "module:security",
+      "type": "module",
+      "name": "安全模块",
+      "summary": "Spring Security + JWT认证体系：JwtAuthFilter、JwtUtil、SecurityConfig、SecurityUtil、UserPrincipal、SecurityProperties",
+      "tags": [
+        "security",
+        "authentication",
+        "jwt"
+      ],
+      "filePath": "module:security",
+      "complexity": "moderate"
+    },
+    {
+      "id": "module:common",
+      "type": "module",
+      "name": "通用模块",
+      "summary": "统一响应封装(Result)、业务异常(BusinessException)、全局异常处理(GlobalExceptionHandler)、脱敏工具(MaskUtil)",
+      "tags": [
+        "common",
+        "infrastructure"
+      ],
+      "filePath": "module:common",
+      "complexity": "moderate"
+    },
+    {
+      "id": "module:config",
+      "type": "module",
+      "name": "配置模块",
+      "summary": "CORS配置(CorsConfig)、MinIO配置(MinioConfig/MinioProperties)、MyBatisPlus配置、Swagger配置",
+      "tags": [
+        "config",
+        "infrastructure"
+      ],
+      "filePath": "module:config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "module:post-service",
+      "type": "module",
+      "name": "帖子服务",
+      "summary": "帖子CRUD + 游标分页 + Jsoup HTML清洗 + ES同步 + 点赞/收藏 Toggle",
+      "tags": [
+        "post",
+        "business"
+      ],
+      "filePath": "module:post-service",
+      "complexity": "moderate"
+    },
+    {
+      "id": "module:comment-service",
+      "type": "module",
+      "name": "评论服务",
+      "summary": "评论CRUD + 游标分页 + 级联软删除 + 点赞 Toggle",
+      "tags": [
+        "comment",
+        "business"
+      ],
+      "filePath": "module:comment-service",
+      "complexity": "moderate"
+    },
+    {
+      "id": "module:user-service",
+      "type": "module",
+      "name": "用户服务",
+      "summary": "用户资料/设置/密码管理 + 关注/取关 + 粉丝/关注列表",
+      "tags": [
+        "user",
+        "business"
+      ],
+      "filePath": "module:user-service",
+      "complexity": "moderate"
+    },
+    {
+      "id": "module:auth-service",
+      "type": "module",
+      "name": "认证服务",
+      "summary": "用户注册/登录(三合一) + BCrypt加密 + JWT双Token生成",
+      "tags": [
+        "auth",
+        "business"
+      ],
+      "filePath": "module:auth-service",
+      "complexity": "moderate"
+    },
+    {
+      "id": "module:search-service",
+      "type": "module",
+      "name": "搜索服务",
+      "summary": "Elasticsearch全文检索 + IK分词 + 高亮 + 分页 + 数据同步",
+      "tags": [
+        "search",
+        "business"
+      ],
+      "filePath": "module:search-service",
+      "complexity": "moderate"
+    },
+    {
+      "id": "module:file-service",
+      "type": "module",
+      "name": "文件服务",
+      "summary": "MinIO文件上传(头像/图片) + 扩展名白名单 + Content-Type服务端推导",
+      "tags": [
+        "file",
+        "storage"
+      ],
+      "filePath": "module:file-service",
+      "complexity": "moderate"
+    },
+    {
+      "id": "module:vue-components",
+      "type": "module",
+      "name": "Vue 组件层",
+      "summary": "PostCard、CommentCard、CommentCreate、CommentThread、UserCard、LayoutPage",
+      "tags": [
+        "vue",
+        "components",
+        "ui"
+      ],
+      "filePath": "module:vue-components",
+      "complexity": "moderate"
+    },
+    {
+      "id": "module:vue-views",
+      "type": "module",
+      "name": "Vue 视图层",
+      "summary": "HomePage、PostDetail、PostCreate、SearchPage、UserProfile、LoginPage、RegisterPage、SettingsPage等",
+      "tags": [
+        "vue",
+        "views",
+        "pages"
+      ],
+      "filePath": "module:vue-views",
+      "complexity": "moderate"
+    },
+    {
+      "id": "module:vue-composables",
+      "type": "module",
+      "name": "Vue Composable层",
+      "summary": "useInfiniteList泛型双模式(游标/页码) + 各种工具函数",
+      "tags": [
+        "vue",
+        "composables",
+        "reusable"
+      ],
+      "filePath": "module:vue-composables",
+      "complexity": "moderate"
+    },
+    {
+      "id": "module:vue-api",
+      "type": "module",
+      "name": "Vue API层",
+      "summary": "Axios实例 + 请求/响应拦截器 + Token刷新 + API模块(auth/posts/comments/users)",
+      "tags": [
+        "vue",
+        "api",
+        "http"
+      ],
+      "filePath": "module:vue-api",
+      "complexity": "moderate"
+    },
+    {
+      "id": "module:vue-stores",
+      "type": "module",
+      "name": "Vue 状态层",
+      "summary": "Pinia userStore + persistedstate持久化 + refreshingPromise去重锁",
+      "tags": [
+        "vue",
+        "state",
+        "pinia"
+      ],
+      "filePath": "module:vue-stores",
+      "complexity": "moderate"
+    },
+    {
+      "id": "module:vue-router",
+      "type": "module",
+      "name": "Vue 路由层",
+      "summary": "Vue Router路由表 + beforeEach守卫(guest/requiresAuth) + to.matched.some",
+      "tags": [
+        "vue",
+        "routing",
+        "guard"
+      ],
+      "filePath": "module:vue-router",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/EchoServerApplication.java",
+      "type": "file",
+      "name": "EchoServerApplication",
+      "summary": "Spring Boot 应用程序入口类",
+      "tags": [
+        "entry-point",
+        "spring-boot",
+        "tested"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/EchoServerApplication.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "endpoint:echo-server/src/main/java/com/echospace/controller/AuthController.java",
+      "type": "endpoint",
+      "name": "AuthController",
+      "summary": "认证控制器：POST /auth/login(三合一登录)、/register(注册)、/refresh(刷新Token)、GET /me(当前用户信息)",
+      "tags": [
+        "controller",
+        "auth",
+        "rest"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/controller/AuthController.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "endpoint:echo-server/src/main/java/com/echospace/controller/PostController.java",
+      "type": "endpoint",
+      "name": "PostController",
+      "summary": "帖子控制器：CRUD + 游标列表 + 点赞/收藏 Toggle + 搜索分页",
+      "tags": [
+        "controller",
+        "post",
+        "rest"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/controller/PostController.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "endpoint:echo-server/src/main/java/com/echospace/controller/CommentController.java",
+      "type": "endpoint",
+      "name": "CommentController",
+      "summary": "评论控制器：发表/列表游标分页/二级回复/点赞 Toggle/软删除",
+      "tags": [
+        "controller",
+        "comment",
+        "rest"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/controller/CommentController.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "endpoint:echo-server/src/main/java/com/echospace/controller/UserController.java",
+      "type": "endpoint",
+      "name": "UserController",
+      "summary": "用户自我管理控制器：/me/profile GET/PUT、/me/settings GET/PUT、/me/password PUT",
+      "tags": [
+        "controller",
+        "user",
+        "rest"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/controller/UserController.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "endpoint:echo-server/src/main/java/com/echospace/controller/UserPublicController.java",
+      "type": "endpoint",
+      "name": "UserPublicController",
+      "summary": "用户公开信息控制器：GET /users/{id}、/users/{id}/posts、follow/followers/following",
+      "tags": [
+        "controller",
+        "user",
+        "public"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/controller/UserPublicController.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "endpoint:echo-server/src/main/java/com/echospace/controller/FileController.java",
+      "type": "endpoint",
+      "name": "FileController",
+      "summary": "文件上传控制器：POST avatar、image，DELETE file",
+      "tags": [
+        "controller",
+        "file",
+        "upload"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/controller/FileController.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "endpoint:echo-server/src/main/java/com/echospace/controller/AdminController.java",
+      "type": "endpoint",
+      "name": "AdminController",
+      "summary": "管理工具控制器：POST /admin/sync-es 全量同步ES索引",
+      "tags": [
+        "controller",
+        "admin",
+        "tool"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/controller/AdminController.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/service/impl/AuthServiceImpl.java",
+      "type": "file",
+      "name": "AuthServiceImpl",
+      "summary": "认证服务实现：注册(BCrypt加密) + 三合一登录(用户名/邮箱/手机号) + JWT双Token生成",
+      "tags": [
+        "service",
+        "auth",
+        "impl"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/service/impl/AuthServiceImpl.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/service/impl/PostServiceImpl.java",
+      "type": "file",
+      "name": "PostServiceImpl",
+      "summary": "帖子服务实现：CRUD + Jsoup HTML清洗 + 游标分页(Keyset Pagination) + ES同步写入(try-catch兜底) + 乐观更新Toggle(like/favorite)",
+      "tags": [
+        "service",
+        "post",
+        "impl",
+        "complex"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/service/impl/PostServiceImpl.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/service/impl/CommentServiceImpl.java",
+      "type": "file",
+      "name": "CommentServiceImpl",
+      "summary": "评论服务实现：CRUD + 游标分页 + 级联软删除 + 回复分页 + 点赞Toggle",
+      "tags": [
+        "service",
+        "comment",
+        "impl"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/service/impl/CommentServiceImpl.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/service/impl/UserServiceImpl.java",
+      "type": "file",
+      "name": "UserServiceImpl",
+      "summary": "用户服务实现：资料/设置/密码管理 + 关注Toggle(禁止自关注) + 粉丝/关注列表分页",
+      "tags": [
+        "service",
+        "user",
+        "impl"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/service/impl/UserServiceImpl.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/service/impl/SearchServiceImpl.java",
+      "type": "file",
+      "name": "SearchServiceImpl",
+      "summary": "搜索服务实现：ES multi_match模糊查询(fuzziness:AUTO) + IK分词 + 高亮 + 分页",
+      "tags": [
+        "service",
+        "search",
+        "impl"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/service/impl/SearchServiceImpl.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/service/impl/MinioFileServiceImpl.java",
+      "type": "file",
+      "name": "MinioFileServiceImpl",
+      "summary": "MinIO存储实现：文件上传(扩展名白名单+大小校验+Content-Type服务端推导) + 文件删除",
+      "tags": [
+        "service",
+        "storage",
+        "minio",
+        "impl"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/service/impl/MinioFileServiceImpl.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/security/JwtAuthFilter.java",
+      "type": "file",
+      "name": "JwtAuthFilter",
+      "summary": "JWT认证过滤器：Token解析 + type校验(防Refresh冒用) + shouldNotFilter白名单 + 401统一JSON响应",
+      "tags": [
+        "security",
+        "filter",
+        "jwt"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/security/JwtAuthFilter.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/security/SecurityConfig.java",
+      "type": "file",
+      "name": "SecurityConfig",
+      "summary": "Spring Security配置：白名单 + 无状态Session + CORS + JwtAuthFilter注册 + exceptionHandling",
+      "tags": [
+        "security",
+        "config"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/security/SecurityConfig.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/security/JwtUtil.java",
+      "type": "file",
+      "name": "JwtUtil",
+      "summary": "JWT工具类：双Token生成(access/refresh) + TokenType枚举 + 签名/解析 + @Value注入+@PostConstruct初始化密钥",
+      "tags": [
+        "security",
+        "jwt",
+        "utility"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/security/JwtUtil.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/security/SecurityUtil.java",
+      "type": "file",
+      "name": "SecurityUtil",
+      "summary": "安全上下文工具：getCurrentUserId()/getCurrentUsername()从SecurityContextHolder提取UserPrincipal",
+      "tags": [
+        "security",
+        "utility"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/security/SecurityUtil.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/security/UserPrincipal.java",
+      "type": "file",
+      "name": "UserPrincipal",
+      "summary": "用户主体Record：封装userId和username为principal，存入SecurityContext",
+      "tags": [
+        "security",
+        "model"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/security/UserPrincipal.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/security/SecurityProperties.java",
+      "type": "file",
+      "name": "SecurityProperties",
+      "summary": "安全配置属性：@ConfigurationProperties绑定yaml白名单列表 + ConfigurableApplicationContext注入",
+      "tags": [
+        "security",
+        "config",
+        "properties"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/security/SecurityProperties.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/entity/User.java",
+      "type": "file",
+      "name": "User Entity",
+      "summary": "用户实体：MyBatis-Plus BaseMapper，逻辑删除@TableLogic",
+      "tags": [
+        "entity",
+        "user",
+        "mybatis"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/entity/User.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/entity/Post.java",
+      "type": "file",
+      "name": "Post Entity",
+      "summary": "帖子实体：@Version乐观锁，逻辑删除",
+      "tags": [
+        "entity",
+        "post",
+        "mybatis"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/entity/Post.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/entity/Comment.java",
+      "type": "file",
+      "name": "Comment Entity",
+      "summary": "评论实体：parentId(0=一级) + replyToUid + 逻辑删除",
+      "tags": [
+        "entity",
+        "comment",
+        "mybatis"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/entity/Comment.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/main.ts",
+      "type": "file",
+      "name": "main.ts",
+      "summary": "Vue应用入口：创建App -> 安装Pinia(持久化) -> Vue Router -> Element Plus -> 挂载到#app",
+      "tags": [
+        "entry-point",
+        "vue",
+        "bootstrap"
+      ],
+      "filePath": "echo-web/src/main.ts",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/router/index.ts",
+      "type": "file",
+      "name": "Vue Router",
+      "summary": "路由配置：guest路由(login/register) + requiresAuth路由(/) + beforeEach守卫(to.matched.some)",
+      "tags": [
+        "router",
+        "guard",
+        "vue"
+      ],
+      "filePath": "echo-web/src/router/index.ts",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/stores/userStore.ts",
+      "type": "file",
+      "name": "Pinia Store",
+      "summary": "用户状态管理：token + refreshToken + userInfo + refreshingPromise(去重锁) + persistedstate持久化",
+      "tags": [
+        "pinia",
+        "state",
+        "auth"
+      ],
+      "filePath": "echo-web/src/stores/userStore.ts",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/utils/result.ts",
+      "type": "file",
+      "name": "Axios 拦截器",
+      "summary": "HTTP客户端核心：请求拦截器注入Token + 双响应拦截器(业务码转换/统一错误处理/401自动刷新/并发去重)",
+      "tags": [
+        "axios",
+        "interceptor",
+        "http"
+      ],
+      "filePath": "echo-web/src/utils/result.ts",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/composables/useInfiniteList.ts",
+      "type": "file",
+      "name": "useInfiniteList",
+      "summary": "泛型可复用Composable：双模式(cursor游标/page页码)无限滚动 + fetchFn注入 + reset/setBaseParam",
+      "tags": [
+        "composable",
+        "infinite-scroll",
+        "reusable"
+      ],
+      "filePath": "echo-web/src/composables/useInfiniteList.ts",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/components/LayoutPage.vue",
+      "type": "file",
+      "name": "LayoutPage",
+      "summary": "主布局组件：固定顶栏(Logo+搜索框+发布按钮+用户下拉菜单) + 可折叠侧边栏 + RouterView过渡动画",
+      "tags": [
+        "layout",
+        "shell"
+      ],
+      "filePath": "echo-web/src/components/LayoutPage.vue",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/components/PostCard.vue",
+      "type": "file",
+      "name": "PostCard",
+      "summary": "帖子卡片组件：作者区+标题摘要+图片网格+交互栏(点赞/收藏乐观更新) + 图片预览 + props同步watch",
+      "tags": [
+        "card",
+        "post",
+        "optimistic-update"
+      ],
+      "filePath": "echo-web/src/components/PostCard.vue",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/components/CommentThread.vue",
+      "type": "file",
+      "name": "CommentThread",
+      "summary": "评论线程组件：父评论+嵌套回复列表 + 回复分页 + replyLikes本地覆盖Map + 内联回复编辑器",
+      "tags": [
+        "comment",
+        "nested",
+        "thread"
+      ],
+      "filePath": "echo-web/src/components/CommentThread.vue",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/components/CommentCreate.vue",
+      "type": "file",
+      "name": "CommentCreate",
+      "summary": "评论创建组件：textarea + 5000字符限制 + 回复模式前缀 + canSubmit空模板校验",
+      "tags": [
+        "comment",
+        "create",
+        "form"
+      ],
+      "filePath": "echo-web/src/components/CommentCreate.vue",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/components/CommentCard.vue",
+      "type": "file",
+      "name": "CommentCard",
+      "summary": "评论卡片组件：头像/昵称/时间 + @回复目标 + 内容 + 点赞/回复/删除操作",
+      "tags": [
+        "comment",
+        "card",
+        "display"
+      ],
+      "filePath": "echo-web/src/components/CommentCard.vue",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/components/UserCard.vue",
+      "type": "file",
+      "name": "UserCard",
+      "summary": "用户卡片组件：头像+昵称+关注时间标签，用于关注/粉丝列表弹窗",
+      "tags": [
+        "user",
+        "card",
+        "display"
+      ],
+      "filePath": "echo-web/src/components/UserCard.vue",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/views/LoginPage.vue",
+      "type": "file",
+      "name": "LoginPage",
+      "summary": "登录页：三合一账号登录 + el-form校验 + fade-in动画 + Token存储 + 路由跳转",
+      "tags": [
+        "login",
+        "auth",
+        "view"
+      ],
+      "filePath": "echo-web/src/views/LoginPage.vue",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/views/RegisterPage.vue",
+      "type": "file",
+      "name": "RegisterPage",
+      "summary": "注册页：5字段表单(用户名/手机/邮箱/密码/确认密码) + 正则校验 + 成功后跳转登录",
+      "tags": [
+        "register",
+        "auth",
+        "view"
+      ],
+      "filePath": "echo-web/src/views/RegisterPage.vue",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/views/HomePage.vue",
+      "type": "file",
+      "name": "HomePage",
+      "summary": "首页：排序工具栏(最新/最热) + useInfiniteList双模式 + PostCard列表 + v-infinite-scroll无限滚动",
+      "tags": [
+        "home",
+        "feed",
+        "view"
+      ],
+      "filePath": "echo-web/src/views/HomePage.vue",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/views/PostCreate.vue",
+      "type": "file",
+      "name": "PostCreate",
+      "summary": "帖子发布/编辑页：TipTap富文本(StarterKit+Image+Link) + 图片上传(粘贴/拖拽/点击) + 链接协议白名单 + 编辑模式预填充",
+      "tags": [
+        "post",
+        "editor",
+        "view"
+      ],
+      "filePath": "echo-web/src/views/PostCreate.vue",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/views/PostDetail.vue",
+      "type": "file",
+      "name": "PostDetail",
+      "summary": "帖子详情页：三态处理(loading/error/content) + DOMPurify消毒 + 关注/点赞/收藏乐观更新 + 评论区无限滚动",
+      "tags": [
+        "post",
+        "detail",
+        "view"
+      ],
+      "filePath": "echo-web/src/views/PostDetail.vue",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/views/SearchPage.vue",
+      "type": "file",
+      "name": "SearchPage",
+      "summary": "搜索页：ES全文检索 + 页码分页 + 排序切换 + 骨架屏loading + 空结果状态 + route.query监听",
+      "tags": [
+        "search",
+        "view"
+      ],
+      "filePath": "echo-web/src/views/SearchPage.vue",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/views/UserProfile.vue",
+      "type": "file",
+      "name": "UserProfile",
+      "summary": "用户主页：公开信息展示 + requestSeq竞态防护 + 关注弹窗(分页Tab) + PostCard编辑/删除 + 帖子列表",
+      "tags": [
+        "user",
+        "profile",
+        "view"
+      ],
+      "filePath": "echo-web/src/views/UserProfile.vue",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/views/SettingsPage.vue",
+      "type": "file",
+      "name": "SettingsPage",
+      "summary": "账号设置页：手机号/邮箱编辑 + dirty checking + 正则校验 + userStore同步",
+      "tags": [
+        "settings",
+        "account",
+        "view"
+      ],
+      "filePath": "echo-web/src/views/SettingsPage.vue",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/views/ProfileSettingsPage.vue",
+      "type": "file",
+      "name": "ProfileSettingsPage",
+      "summary": "资料设置页：头像上传(URL.createObjectURL预览+revoke清理) + 昵称/简介编辑 + 孤文件清理",
+      "tags": [
+        "settings",
+        "profile",
+        "view"
+      ],
+      "filePath": "echo-web/src/views/ProfileSettingsPage.vue",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/views/ChangePasswordPage.vue",
+      "type": "file",
+      "name": "ChangePasswordPage",
+      "summary": "修改密码页：旧密码+新密码+确认密码 + 自定义validator(新旧不可同/确认一致)",
+      "tags": [
+        "settings",
+        "password",
+        "view"
+      ],
+      "filePath": "echo-web/src/views/ChangePasswordPage.vue",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/api/auth.ts",
+      "type": "file",
+      "name": "Auth API",
+      "summary": "认证API：login/register/refresh/me 四个端点调用",
+      "tags": [
+        "api",
+        "auth"
+      ],
+      "filePath": "echo-web/src/api/auth.ts",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/api/posts.ts",
+      "type": "file",
+      "name": "Posts API",
+      "summary": "帖子API：CRUD + 列表(游标) + 点赞/收藏/搜索(页码)",
+      "tags": [
+        "api",
+        "post"
+      ],
+      "filePath": "echo-web/src/api/posts.ts",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/api/comments.ts",
+      "type": "file",
+      "name": "Comments API",
+      "summary": "评论API：列表(游标+replySize) + 回复(页码) + 创建 + 点赞 + 删除",
+      "tags": [
+        "api",
+        "comment"
+      ],
+      "filePath": "echo-web/src/api/comments.ts",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/api/users.ts",
+      "type": "file",
+      "name": "Users API",
+      "summary": "用户API：公开资料 + 资料/设置编辑 + 改密 + 头像/图片上传 + 文件删除 + 关注/粉丝/关注中",
+      "tags": [
+        "api",
+        "user"
+      ],
+      "filePath": "echo-web/src/api/users.ts",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/api/modules/index.ts",
+      "type": "file",
+      "name": "API 类型定义",
+      "summary": "全部TypeScript DTO/VO类型定义 + Axios InternalAxiosRequestConfig._retry扩展",
+      "tags": [
+        "api",
+        "types",
+        "dto"
+      ],
+      "filePath": "echo-web/src/api/modules/index.ts",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/common/GlobalExceptionHandler.java",
+      "type": "file",
+      "name": "GlobalExceptionHandler",
+      "summary": "全局异常处理器：处理 BusinessException→400、MethodArgumentNotValidException→400、DuplicateKeyException→409、MissingServletRequestPartException→400、MultipartException→400、兜底Exception→500",
+      "tags": [
+        "common",
+        "exception",
+        "handler"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/common/GlobalExceptionHandler.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/common/Result.java",
+      "type": "file",
+      "name": "Result",
+      "summary": "统一响应包装类：code(状态码)+msg(消息)+data(T数据)，静态工厂方法success/error",
+      "tags": [
+        "common",
+        "response",
+        "wrapper"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/common/Result.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/common/BusinessException.java",
+      "type": "file",
+      "name": "BusinessException",
+      "summary": "自定义业务异常类，携带业务错误码和消息，由GlobalExceptionHandler捕获并转为标准Result响应",
+      "tags": [
+        "common",
+        "exception"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/common/BusinessException.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/util/MaskUtil.java",
+      "type": "file",
+      "name": "MaskUtil",
+      "summary": "敏感数据脱敏工具：maskPhone(手机号中间4位)、maskEmail(邮箱局部)、maskPassword(全星号)、maskToken(截断显示)",
+      "tags": [
+        "common",
+        "utility",
+        "security"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/util/MaskUtil.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/mapper/AuthMapper.java",
+      "type": "file",
+      "name": "AuthMapper",
+      "summary": "认证Mapper：用户查询相关SQL",
+      "tags": [
+        "mapper",
+        "auth",
+        "mybatis"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/mapper/AuthMapper.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/mapper/PostMapper.java",
+      "type": "file",
+      "name": "PostMapper",
+      "summary": "帖子Mapper：自定义游标分页SQL(selectListLatest/selectListHot) + 详情查询(selectDetailWithAuthor+LEFT JOIN isLiked/isCollected)",
+      "tags": [
+        "mapper",
+        "post",
+        "mybatis"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/mapper/PostMapper.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/mapper/CommentMapper.java",
+      "type": "file",
+      "name": "CommentMapper",
+      "summary": "评论Mapper：6条自定义SQL包括游标分页、回复分页、级联软删除",
+      "tags": [
+        "mapper",
+        "comment",
+        "mybatis"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/mapper/CommentMapper.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/mapper/UserMapper.java",
+      "type": "file",
+      "name": "UserMapper",
+      "summary": "用户Mapper：用户查询和更新相关SQL",
+      "tags": [
+        "mapper",
+        "user",
+        "mybatis"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/mapper/UserMapper.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/document/PostDocument.java",
+      "type": "file",
+      "name": "PostDocument",
+      "summary": "Elasticsearch 帖子文档映射：id、title、contentText、authorId、likeCount/collectCount/commentCount/viewCount/createdAt/sortScore 字段定义",
+      "tags": [
+        "elasticsearch",
+        "document",
+        "index"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/document/PostDocument.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/test/java/com/echospace/EchoServerApplicationTests.java",
+      "type": "file",
+      "name": "EchoServerApplicationTests",
+      "summary": "Spring Boot 测试入口类，验证应用上下文加载",
+      "tags": [
+        "test",
+        "spring-boot"
+      ],
+      "filePath": "echo-server/src/test/java/com/echospace/EchoServerApplicationTests.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/App.vue",
+      "type": "file",
+      "name": "App.vue",
+      "summary": "Vue 根组件：<RouterView> 路由出口",
+      "tags": [
+        "root",
+        "vue"
+      ],
+      "filePath": "echo-web/src/App.vue",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/views/ForgotPasswordPage.vue",
+      "type": "file",
+      "name": "ForgotPasswordPage",
+      "summary": "忘记密码页（占位页面，功能待开发）",
+      "tags": [
+        "auth",
+        "placeholder",
+        "view"
+      ],
+      "filePath": "echo-web/src/views/ForgotPasswordPage.vue",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/views/ResetPasswordPage..vue",
+      "type": "file",
+      "name": "ResetPasswordPage",
+      "summary": "重置密码页（占位页面，功能待开发）",
+      "tags": [
+        "auth",
+        "placeholder",
+        "view"
+      ],
+      "filePath": "echo-web/src/views/ResetPasswordPage..vue",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/utils/time.ts",
+      "type": "file",
+      "name": "time.ts",
+      "summary": "时间工具函数：formatRelativeTime(相对时间:\"刚刚\"/\"X分钟前\"/\"X天前\") + formatDateTime(\"YYYY-MM-DD HH:mm\")",
+      "tags": [
+        "utility",
+        "time",
+        "formatter"
+      ],
+      "filePath": "echo-web/src/utils/time.ts",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/utils/number.ts",
+      "type": "file",
+      "name": "number.ts",
+      "summary": "数字格式化工具：formatCount(>=10000转\"x.xw\"中文万) + 去除尾随零",
+      "tags": [
+        "utility",
+        "number",
+        "formatter"
+      ],
+      "filePath": "echo-web/src/utils/number.ts",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-web/src/utils/header.ts",
+      "type": "file",
+      "name": "header.ts",
+      "summary": "Axios请求头工具：setHeader(兼容AxiosHeaders和普通对象的set方法)",
+      "tags": [
+        "utility",
+        "axios",
+        "header"
+      ],
+      "filePath": "echo-web/src/utils/header.ts",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/config/MinioConfig.java",
+      "type": "file",
+      "name": "MinioConfig",
+      "summary": "MinIO配置类：@ConditionalOnProperty(storage.type=minio)条件装配 + ConfigurationProperties绑定 + @Validated校验",
+      "tags": [
+        "config",
+        "minio",
+        "storage"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/config/MinioConfig.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/config/MinioProperties.java",
+      "type": "file",
+      "name": "MinioProperties",
+      "summary": "MinIO属性类：endpoint/accessKey/secretKey/bucketName(@NotBlank) + publicBaseUrl(可选对外域名)",
+      "tags": [
+        "config",
+        "minio",
+        "properties"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/config/MinioProperties.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/config/CorsConfig.java",
+      "type": "file",
+      "name": "CorsConfig",
+      "summary": "CORS配置：CorsConfigurationSource Bean(允许localhost:5173) + Security Filter层CORS",
+      "tags": [
+        "config",
+        "cors",
+        "security"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/config/CorsConfig.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/config/SwaggerConfig.java",
+      "type": "file",
+      "name": "SwaggerConfig",
+      "summary": "Swagger/OpenAPI配置：全局BearerAuth + 匿名接口@SecurityRequirements覆盖",
+      "tags": [
+        "config",
+        "swagger",
+        "openapi"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/config/SwaggerConfig.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/config/MyBatisPlusConfig.java",
+      "type": "file",
+      "name": "MyBatisPlusConfig",
+      "summary": "MyBatis-Plus配置：分页插件PaginationInnerInterceptor注册",
+      "tags": [
+        "config",
+        "mybatis",
+        "pagination"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/config/MyBatisPlusConfig.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/entity/UserLike.java",
+      "type": "file",
+      "name": "UserLike Entity",
+      "summary": "点赞关系实体：targetType(1帖/2评/3回) + targetId + userId组合唯一",
+      "tags": [
+        "entity",
+        "like",
+        "mybatis"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/entity/UserLike.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/entity/UserFavorite.java",
+      "type": "file",
+      "name": "UserFavorite Entity",
+      "summary": "收藏关系实体：userId + postId组合唯一",
+      "tags": [
+        "entity",
+        "favorite",
+        "mybatis"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/entity/UserFavorite.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/entity/UserFollow.java",
+      "type": "file",
+      "name": "UserFollow Entity",
+      "summary": "关注关系实体：followerId + followedId组合唯一，禁止自关注",
+      "tags": [
+        "entity",
+        "follow",
+        "mybatis"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/entity/UserFollow.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/resources/mapper/CommentMapper.xml",
+      "type": "file",
+      "name": "CommentMapper.xml",
+      "summary": "评论Mapper XML：selectComments/selectReplies游标+页码SQL",
+      "tags": [
+        "mapper",
+        "xml",
+        "mybatis"
+      ],
+      "filePath": "echo-server/src/main/resources/mapper/CommentMapper.xml",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/resources/mapper/PostMapper.xml",
+      "type": "file",
+      "name": "PostMapper.xml",
+      "summary": "帖子Mapper XML：selectListLatest/selectListHot(游标分页LEFT JOIN) + selectDetailWithAuthor(详情过滤p.status=1)",
+      "tags": [
+        "mapper",
+        "xml",
+        "mybatis"
+      ],
+      "filePath": "echo-server/src/main/resources/mapper/PostMapper.xml",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/dto/LoginDTO.java",
+      "type": "file",
+      "name": "LoginDTO / RegisterDTO",
+      "summary": "认证DTO：LoginDTO(account/password) + RegisterDTO(username/phone/email/password/confirmPassword)",
+      "tags": [
+        "dto",
+        "auth",
+        "request"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/dto/LoginDTO.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/vo/LoginVO.java",
+      "type": "file",
+      "name": "LoginVO",
+      "summary": "登录响应VO：accessToken + refreshToken + expiresIn",
+      "tags": [
+        "vo",
+        "auth",
+        "response"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/vo/LoginVO.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/dto/CreatePostDTO.java",
+      "type": "file",
+      "name": "CreatePostDTO / UpdatePostDTO",
+      "summary": "帖子DTO：CreatePostDTO(title/contentHtml) + UpdatePostDTO(title/contentHtml)",
+      "tags": [
+        "dto",
+        "post",
+        "request"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/dto/CreatePostDTO.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/vo/PostItemVO.java",
+      "type": "file",
+      "name": "PostItemVO / PostDetailVO / CursorPageVO",
+      "summary": "帖子VO：PostItemVO(列表含isLiked/isCollected) + PostDetailVO(详情含contentHtml) + CursorPageVO(游标分页)",
+      "tags": [
+        "vo",
+        "post",
+        "response"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/vo/PostItemVO.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/vo/LikePostVO.java",
+      "type": "file",
+      "name": "LikePostVO / FavoritePostVO / FollowVO",
+      "summary": "互动VO：LikePostVO(liked+likeCount) + FavoritePostVO(favorited) + FollowVO(followed)",
+      "tags": [
+        "vo",
+        "interaction",
+        "response"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/vo/LikePostVO.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/dto/CreateCommentDTO.java",
+      "type": "file",
+      "name": "CreateCommentDTO / CreateCommentVO",
+      "summary": "评论DTO/VO：CreateCommentDTO(content/parentId/replyToUid) + CreateCommentVO(id)",
+      "tags": [
+        "dto",
+        "vo",
+        "comment"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/dto/CreateCommentDTO.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/vo/CommentVO.java",
+      "type": "file",
+      "name": "CommentVO / LikeCommentVO",
+      "summary": "评论VO：CommentVO(嵌套replies+replyCount+hasMoreReplies) + LikeCommentVO(liked)",
+      "tags": [
+        "vo",
+        "comment",
+        "response"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/vo/CommentVO.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/vo/UserProfileVO.java",
+      "type": "file",
+      "name": "UserProfileVO / PublicUserVO / UserSettingsVO",
+      "summary": "用户VO：UserProfileVO(自身资料) + PublicUserVO(公开含帖/粉数+isFollowed) + UserSettingsVO(账号设置)",
+      "tags": [
+        "vo",
+        "user",
+        "response"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/vo/UserProfileVO.java",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:echo-server/src/main/java/com/echospace/vo/FollowItemVO.java",
+      "type": "file",
+      "name": "FollowItemVO / PageVO / UploadVO",
+      "summary": "辅助VO：FollowItemVO(关注项) + PageVO(页码分页) + UploadAvatarVO/UploadImageVO(上传结果url)",
+      "tags": [
+        "vo",
+        "utility",
+        "response"
+      ],
+      "filePath": "echo-server/src/main/java/com/echospace/vo/FollowItemVO.java",
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "document:README.md",
+      "target": "document:.claude/CLAUDE.md",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:README.md",
+      "target": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:.claude/CLAUDE.md",
+      "target": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:.claude/CLAUDE.md",
+      "target": "document:.claude/PRPs/reviews/pr-12-review.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "target": "document:.claude/PRPs/reviews/pr-12-review.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:.github/copilot-instructions.md",
+      "target": "document:.claude/CLAUDE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:.github/pull_request_template",
+      "target": "document:.github/copilot-instructions.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:.claude/skills/thesis-reviewer/SKILL.md",
+      "target": "document:.claude/skills/thesis-reviewer/PROJECT_ARCHITECTURE.md",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:.claude/skills/thesis-reviewer/PROJECT_ARCHITECTURE.md",
+      "target": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:.claude/skills/thesis-reviewer/PROJECT_ARCHITECTURE.md",
+      "target": "document:.claude/CLAUDE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/references/智慧校园学习交流与交易网站设计与实现.pdf",
+      "target": "document:README.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/references/Design and Implementation of a Microservice-Based Forum System with Vue.js Frontend.pdf",
+      "target": "document:README.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/references/基于Java+Web技术的校园论坛网页的设计与实现.pdf",
+      "target": "document:README.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/references/基于SpringBoot和Vue的多功能时间管理系统的设计与实现_朱启方.pdf",
+      "target": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/references/基于SpringBoot和Vue框架的高校统战工作服务信息管理系统的设计与实现.pdf",
+      "target": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/references/基于Spring_Boot的师范生技能训练经验分享系统设计与实现_伟力苏.pdf",
+      "target": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/references/基于Spring_Boot和Vue技术的访客管理系统设计与实现_丁福江.pdf",
+      "target": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/references/基于Spring_Boot与Vue框架的叫号系统的设计与实现_金明俐.pdf",
+      "target": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/references/基于SpringBoot+Vue的在线考试系统设计与实现.pdf",
+      "target": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/references/新型分布式搜索引擎在财务管理数字化中的应用实践_周正.pdf",
+      "target": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/references/智慧校园学习交流与交易网站设计与实现.pdf",
+      "target": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/templates/项目报告模版.docx",
+      "target": "document:.claude/skills/thesis-reviewer/SKILL.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/templates/项目报告模版.docx",
+      "target": "document:.claude/skills/thesis-reviewer/PROJECT_ARCHITECTURE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/references/Design and Implementation of a Microservice-Based Forum System with Vue.js Frontend.pdf",
+      "target": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/references/基于Java+Web技术的校园论坛网页的设计与实现.pdf",
+      "target": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/references/基于Java的Web软件程序框架分层设计探讨_黄丽萍.pdf",
+      "target": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/references/信息数字化社区服务管理系统的设计与实现.pdf",
+      "target": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/references/面向高招会行程规划的区域招生组管理系统_李硕.pdf",
+      "target": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/references/铁路事故故障文本大数据分析关键技术研究及应用_杨连报.pdf",
+      "target": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "schema:data:.claude/skills/thesis-writer/references/Attention-Based_Character-Word_Hybrid_Neural_Networks_With_Semantic_and_Structural_Information_for_Identifying_of_Urgent_Posts_in_MOOC_Discussion_Forums.pdf",
+      "target": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:.github/copilot-instructions.md",
+      "target": "document:.github/pull_request_template",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:.github/pull_request_template",
+      "target": "document:.claude/PRPs/reviews/pr-12-review.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:README.md",
+      "target": "config:.gitignore",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "config:.gitignore",
+      "target": "document:README.md",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:.claude/CLAUDE.md",
+      "target": "document:docs/02-api-documentation.md",
+      "type": "related",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:.claude/CLAUDE.md",
+      "target": "document:docs/04-development-plan.md",
+      "type": "related",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:.claude/CLAUDE.md",
+      "target": "document:docs/Question.md",
+      "type": "documents",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "target": "document:docs/02-api-documentation.md",
+      "type": "related",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:.claude/PROJECT_ARCHITECTURE.md",
+      "target": "document:docs/03-database-design.md",
+      "type": "related",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "document:docs/Question.md",
+      "target": "document:.claude/CLAUDE.md",
+      "type": "related",
+      "weight": 0.3,
+      "direction": "forward"
+    },
+    {
+      "source": "module:security",
+      "target": "module:config",
+      "type": "depends_on",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "module:security",
+      "target": "module:common",
+      "type": "depends_on",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "module:post-service",
+      "target": "module:search-service",
+      "type": "depends_on",
+      "weight": 0.6,
+      "label": "ES同步写入",
+      "direction": "forward"
+    },
+    {
+      "source": "module:post-service",
+      "target": "module:file-service",
+      "type": "depends_on",
+      "weight": 0.3,
+      "direction": "forward"
+    },
+    {
+      "source": "module:comment-service",
+      "target": "module:common",
+      "type": "depends_on",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "module:user-service",
+      "target": "module:common",
+      "type": "depends_on",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "module:search-service",
+      "target": "module:config",
+      "type": "depends_on",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "module:vue-api",
+      "target": "module:vue-stores",
+      "type": "depends_on",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "module:vue-api",
+      "target": "module:vue-router",
+      "type": "depends_on",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "module:vue-views",
+      "target": "module:vue-components",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "module:vue-views",
+      "target": "module:vue-composables",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "module:vue-views",
+      "target": "module:vue-api",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "module:vue-views",
+      "target": "module:vue-stores",
+      "type": "imports",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "module:vue-components",
+      "target": "module:vue-api",
+      "type": "imports",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "module:vue-components",
+      "target": "module:vue-composables",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "module:vue-components",
+      "target": "module:vue-stores",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "module:vue-router",
+      "target": "module:vue-stores",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "module:vue-router",
+      "target": "module:vue-views",
+      "type": "routes",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/security/SecurityConfig.java",
+      "target": "file:echo-server/src/main/java/com/echospace/security/JwtAuthFilter.java",
+      "type": "configures",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/security/JwtAuthFilter.java",
+      "target": "file:echo-server/src/main/java/com/echospace/security/JwtUtil.java",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/security/JwtAuthFilter.java",
+      "target": "file:echo-server/src/main/java/com/echospace/security/SecurityUtil.java",
+      "type": "calls",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/security/JwtAuthFilter.java",
+      "target": "file:echo-server/src/main/java/com/echospace/security/UserPrincipal.java",
+      "type": "depends_on",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/security/SecurityConfig.java",
+      "target": "file:echo-server/src/main/java/com/echospace/security/SecurityProperties.java",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/common/GlobalExceptionHandler.java",
+      "target": "file:echo-server/src/main/java/com/echospace/common/Result.java",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/common/GlobalExceptionHandler.java",
+      "target": "file:echo-server/src/main/java/com/echospace/common/BusinessException.java",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "endpoint:echo-server/src/main/java/com/echospace/controller/AuthController.java",
+      "target": "file:echo-server/src/main/java/com/echospace/service/impl/AuthServiceImpl.java",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "endpoint:echo-server/src/main/java/com/echospace/controller/PostController.java",
+      "target": "file:echo-server/src/main/java/com/echospace/service/impl/PostServiceImpl.java",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "endpoint:echo-server/src/main/java/com/echospace/controller/CommentController.java",
+      "target": "file:echo-server/src/main/java/com/echospace/service/impl/CommentServiceImpl.java",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "endpoint:echo-server/src/main/java/com/echospace/controller/UserController.java",
+      "target": "file:echo-server/src/main/java/com/echospace/service/impl/UserServiceImpl.java",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "endpoint:echo-server/src/main/java/com/echospace/controller/UserPublicController.java",
+      "target": "file:echo-server/src/main/java/com/echospace/service/impl/UserServiceImpl.java",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "endpoint:echo-server/src/main/java/com/echospace/controller/AdminController.java",
+      "target": "file:echo-server/src/main/java/com/echospace/service/impl/SearchServiceImpl.java",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/service/impl/AuthServiceImpl.java",
+      "target": "file:echo-server/src/main/java/com/echospace/mapper/AuthMapper.java",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/service/impl/PostServiceImpl.java",
+      "target": "file:echo-server/src/main/java/com/echospace/mapper/PostMapper.java",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/service/impl/CommentServiceImpl.java",
+      "target": "file:echo-server/src/main/java/com/echospace/mapper/CommentMapper.java",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/service/impl/UserServiceImpl.java",
+      "target": "file:echo-server/src/main/java/com/echospace/mapper/UserMapper.java",
+      "type": "calls",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "endpoint:echo-server/src/main/java/com/echospace/controller/AuthController.java",
+      "target": "file:echo-server/src/main/java/com/echospace/dto/LoginDTO.java",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "endpoint:echo-server/src/main/java/com/echospace/controller/AuthController.java",
+      "target": "file:echo-server/src/main/java/com/echospace/vo/LoginVO.java",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "endpoint:echo-server/src/main/java/com/echospace/controller/PostController.java",
+      "target": "file:echo-server/src/main/java/com/echospace/dto/CreatePostDTO.java",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "endpoint:echo-server/src/main/java/com/echospace/controller/PostController.java",
+      "target": "file:echo-server/src/main/java/com/echospace/vo/PostItemVO.java",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "endpoint:echo-server/src/main/java/com/echospace/controller/PostController.java",
+      "target": "file:echo-server/src/main/java/com/echospace/vo/LikePostVO.java",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "endpoint:echo-server/src/main/java/com/echospace/controller/CommentController.java",
+      "target": "file:echo-server/src/main/java/com/echospace/dto/CreateCommentDTO.java",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "endpoint:echo-server/src/main/java/com/echospace/controller/CommentController.java",
+      "target": "file:echo-server/src/main/java/com/echospace/vo/CommentVO.java",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "endpoint:echo-server/src/main/java/com/echospace/controller/UserController.java",
+      "target": "file:echo-server/src/main/java/com/echospace/vo/UserProfileVO.java",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "endpoint:echo-server/src/main/java/com/echospace/controller/UserPublicController.java",
+      "target": "file:echo-server/src/main/java/com/echospace/vo/UserProfileVO.java",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "endpoint:echo-server/src/main/java/com/echospace/controller/UserPublicController.java",
+      "target": "file:echo-server/src/main/java/com/echospace/vo/FollowItemVO.java",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "endpoint:echo-server/src/main/java/com/echospace/controller/UserPublicController.java",
+      "target": "file:echo-server/src/main/java/com/echospace/vo/LikePostVO.java",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "endpoint:echo-server/src/main/java/com/echospace/controller/FileController.java",
+      "target": "file:echo-server/src/main/java/com/echospace/vo/FollowItemVO.java",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/service/impl/UserServiceImpl.java",
+      "target": "file:echo-server/src/main/java/com/echospace/entity/User.java",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/service/impl/PostServiceImpl.java",
+      "target": "file:echo-server/src/main/java/com/echospace/entity/Post.java",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/service/impl/PostServiceImpl.java",
+      "target": "file:echo-server/src/main/java/com/echospace/entity/User.java",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/service/impl/CommentServiceImpl.java",
+      "target": "file:echo-server/src/main/java/com/echospace/entity/Comment.java",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/service/impl/AuthServiceImpl.java",
+      "target": "file:echo-server/src/main/java/com/echospace/entity/User.java",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "config:echo-server/pom.xml",
+      "target": "config:echo-server/src/main/resources/application.yaml",
+      "type": "configures",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "config:echo-server/src/main/resources/application.yaml",
+      "target": "config:echo-server/src/main/resources/application-dev.yaml",
+      "type": "contains",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "config:echo-server/src/main/resources/application.yaml",
+      "target": "config:echo-server/src/main/resources/application-prod.yaml",
+      "type": "contains",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/mapper/CommentMapper.java",
+      "target": "file:echo-server/src/main/resources/mapper/CommentMapper.xml",
+      "type": "depends_on",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/mapper/PostMapper.java",
+      "target": "file:echo-server/src/main/resources/mapper/PostMapper.xml",
+      "type": "depends_on",
+      "weight": 0.8,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/main.ts",
+      "target": "file:echo-web/src/router/index.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/main.ts",
+      "target": "file:echo-web/src/stores/userStore.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/main.ts",
+      "target": "file:echo-web/src/App.vue",
+      "type": "contains",
+      "weight": 1,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/router/index.ts",
+      "target": "file:echo-web/src/views/HomePage.vue",
+      "type": "routes",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/router/index.ts",
+      "target": "file:echo-web/src/views/LoginPage.vue",
+      "type": "routes",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/router/index.ts",
+      "target": "file:echo-web/src/views/RegisterPage.vue",
+      "type": "routes",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/router/index.ts",
+      "target": "file:echo-web/src/views/PostDetail.vue",
+      "type": "routes",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/router/index.ts",
+      "target": "file:echo-web/src/views/PostCreate.vue",
+      "type": "routes",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/router/index.ts",
+      "target": "file:echo-web/src/views/SearchPage.vue",
+      "type": "routes",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/router/index.ts",
+      "target": "file:echo-web/src/views/UserProfile.vue",
+      "type": "routes",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/router/index.ts",
+      "target": "file:echo-web/src/views/SettingsPage.vue",
+      "type": "routes",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/router/index.ts",
+      "target": "file:echo-web/src/views/ProfileSettingsPage.vue",
+      "type": "routes",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/router/index.ts",
+      "target": "file:echo-web/src/views/ChangePasswordPage.vue",
+      "type": "routes",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/router/index.ts",
+      "target": "file:echo-web/src/views/ForgotPasswordPage.vue",
+      "type": "routes",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/router/index.ts",
+      "target": "file:echo-web/src/components/LayoutPage.vue",
+      "type": "routes",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/LoginPage.vue",
+      "target": "file:echo-web/src/api/auth.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/RegisterPage.vue",
+      "target": "file:echo-web/src/api/auth.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/HomePage.vue",
+      "target": "file:echo-web/src/api/posts.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/PostDetail.vue",
+      "target": "file:echo-web/src/api/posts.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/PostDetail.vue",
+      "target": "file:echo-web/src/api/comments.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/PostCreate.vue",
+      "target": "file:echo-web/src/api/posts.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/PostCreate.vue",
+      "target": "file:echo-web/src/api/users.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/SearchPage.vue",
+      "target": "file:echo-web/src/api/posts.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/UserProfile.vue",
+      "target": "file:echo-web/src/api/posts.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/UserProfile.vue",
+      "target": "file:echo-web/src/api/users.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/SettingsPage.vue",
+      "target": "file:echo-web/src/api/users.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/ProfileSettingsPage.vue",
+      "target": "file:echo-web/src/api/users.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/ChangePasswordPage.vue",
+      "target": "file:echo-web/src/api/users.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/HomePage.vue",
+      "target": "file:echo-web/src/components/PostCard.vue",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/PostDetail.vue",
+      "target": "file:echo-web/src/components/CommentCreate.vue",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/PostDetail.vue",
+      "target": "file:echo-web/src/components/CommentThread.vue",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/SearchPage.vue",
+      "target": "file:echo-web/src/components/PostCard.vue",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/UserProfile.vue",
+      "target": "file:echo-web/src/components/PostCard.vue",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/UserProfile.vue",
+      "target": "file:echo-web/src/components/UserCard.vue",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/HomePage.vue",
+      "target": "file:echo-web/src/composables/useInfiniteList.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/PostDetail.vue",
+      "target": "file:echo-web/src/composables/useInfiniteList.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/SearchPage.vue",
+      "target": "file:echo-web/src/composables/useInfiniteList.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/UserProfile.vue",
+      "target": "file:echo-web/src/composables/useInfiniteList.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/components/PostCard.vue",
+      "target": "file:echo-web/src/api/posts.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/components/CommentThread.vue",
+      "target": "file:echo-web/src/api/comments.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/components/CommentCreate.vue",
+      "target": "file:echo-web/src/api/comments.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/components/LayoutPage.vue",
+      "target": "file:echo-web/src/api/auth.ts",
+      "type": "imports",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/components/PostCard.vue",
+      "target": "file:echo-web/src/stores/userStore.ts",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/components/LayoutPage.vue",
+      "target": "file:echo-web/src/stores/userStore.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/components/CommentCreate.vue",
+      "target": "file:echo-web/src/stores/userStore.ts",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/api/auth.ts",
+      "target": "file:echo-web/src/utils/result.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/api/posts.ts",
+      "target": "file:echo-web/src/utils/result.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/api/comments.ts",
+      "target": "file:echo-web/src/utils/result.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/api/users.ts",
+      "target": "file:echo-web/src/utils/result.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/api/auth.ts",
+      "target": "file:echo-web/src/api/modules/index.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/api/posts.ts",
+      "target": "file:echo-web/src/api/modules/index.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/api/comments.ts",
+      "target": "file:echo-web/src/api/modules/index.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/api/users.ts",
+      "target": "file:echo-web/src/api/modules/index.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/LoginPage.vue",
+      "target": "file:echo-web/src/stores/userStore.ts",
+      "type": "imports",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/PostDetail.vue",
+      "target": "file:echo-web/src/stores/userStore.ts",
+      "type": "imports",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/PostCreate.vue",
+      "target": "file:echo-web/src/stores/userStore.ts",
+      "type": "imports",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/UserProfile.vue",
+      "target": "file:echo-web/src/stores/userStore.ts",
+      "type": "imports",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/SettingsPage.vue",
+      "target": "file:echo-web/src/stores/userStore.ts",
+      "type": "imports",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/ProfileSettingsPage.vue",
+      "target": "file:echo-web/src/stores/userStore.ts",
+      "type": "imports",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/ChangePasswordPage.vue",
+      "target": "file:echo-web/src/stores/userStore.ts",
+      "type": "imports",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/PostDetail.vue",
+      "target": "file:echo-web/src/utils/time.ts",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/PostDetail.vue",
+      "target": "file:echo-web/src/utils/number.ts",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/views/UserProfile.vue",
+      "target": "file:echo-web/src/utils/time.ts",
+      "type": "imports",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-web/src/stores/userStore.ts",
+      "target": "config:echo-web/package.json",
+      "type": "depends_on",
+      "weight": 0.3,
+      "label": "pinia-plugin-persistedstate",
+      "direction": "forward"
+    },
+    {
+      "source": "table:echo-server/src/main/resources/db/init.sql:post",
+      "target": "table:echo-server/src/main/resources/db/init.sql:user",
+      "type": "depends_on",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "table:echo-server/src/main/resources/db/init.sql:comment",
+      "target": "table:echo-server/src/main/resources/db/init.sql:post",
+      "type": "depends_on",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "table:echo-server/src/main/resources/db/init.sql:comment",
+      "target": "table:echo-server/src/main/resources/db/init.sql:user",
+      "type": "depends_on",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "table:echo-server/src/main/resources/db/init.sql:user_like",
+      "target": "table:echo-server/src/main/resources/db/init.sql:post",
+      "type": "depends_on",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "table:echo-server/src/main/resources/db/init.sql:user_favorite",
+      "target": "table:echo-server/src/main/resources/db/init.sql:post",
+      "type": "depends_on",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "table:echo-server/src/main/resources/db/init.sql:user_follow",
+      "target": "table:echo-server/src/main/resources/db/init.sql:user",
+      "type": "depends_on",
+      "weight": 0.6,
+      "direction": "forward"
+    },
+    {
+      "source": "table:echo-server/src/main/resources/db/init.sql:init",
+      "target": "table:echo-server/src/main/resources/db/init.sql:user",
+      "type": "contains",
+      "weight": 0.9,
+      "direction": "forward"
+    },
+    {
+      "source": "table:echo-server/src/main/resources/db/init.sql:init",
+      "target": "table:echo-server/src/main/resources/db/init.sql:post",
+      "type": "contains",
+      "weight": 0.9,
+      "direction": "forward"
+    },
+    {
+      "source": "module:vue-api",
+      "target": "module:auth-service",
+      "type": "calls",
+      "weight": 0.7,
+      "label": "REST API",
+      "direction": "forward"
+    },
+    {
+      "source": "module:vue-api",
+      "target": "module:post-service",
+      "type": "calls",
+      "weight": 0.7,
+      "label": "REST API",
+      "direction": "forward"
+    },
+    {
+      "source": "module:vue-api",
+      "target": "module:comment-service",
+      "type": "calls",
+      "weight": 0.7,
+      "label": "REST API",
+      "direction": "forward"
+    },
+    {
+      "source": "module:vue-api",
+      "target": "module:user-service",
+      "type": "calls",
+      "weight": 0.7,
+      "label": "REST API",
+      "direction": "forward"
+    },
+    {
+      "source": "module:vue-api",
+      "target": "module:search-service",
+      "type": "calls",
+      "weight": 0.6,
+      "label": "REST API",
+      "direction": "forward"
+    },
+    {
+      "source": "module:vue-api",
+      "target": "module:file-service",
+      "type": "calls",
+      "weight": 0.5,
+      "label": "REST API",
+      "direction": "forward"
+    },
+    {
+      "source": "module:security",
+      "target": "endpoint:echo-server/src/main/java/com/echospace/controller/AuthController.java",
+      "type": "middleware",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "module:security",
+      "target": "endpoint:echo-server/src/main/java/com/echospace/controller/PostController.java",
+      "type": "middleware",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "module:security",
+      "target": "endpoint:echo-server/src/main/java/com/echospace/controller/CommentController.java",
+      "type": "middleware",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "module:security",
+      "target": "endpoint:echo-server/src/main/java/com/echospace/controller/UserController.java",
+      "type": "middleware",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "module:security",
+      "target": "endpoint:echo-server/src/main/java/com/echospace/controller/UserPublicController.java",
+      "type": "middleware",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "module:security",
+      "target": "endpoint:echo-server/src/main/java/com/echospace/controller/FileController.java",
+      "type": "middleware",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "module:security",
+      "target": "endpoint:echo-server/src/main/java/com/echospace/controller/AdminController.java",
+      "type": "middleware",
+      "weight": 0.5,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/document/PostDocument.java",
+      "target": "file:echo-server/src/main/java/com/echospace/service/impl/SearchServiceImpl.java",
+      "type": "depends_on",
+      "weight": 0.7,
+      "direction": "forward"
+    },
+    {
+      "source": "file:echo-server/src/main/java/com/echospace/EchoServerApplication.java",
+      "target": "file:echo-server/src/test/java/com/echospace/EchoServerApplicationTests.java",
+      "type": "tested_by",
+      "weight": 0.5,
+      "direction": "forward",
+      "description": "Direction corrected (was test → production)"
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:references",
+      "name": "AI 工具与参考资料",
+      "description": "Claude Code 项目规范与架构文档、GitHub Copilot 代码审查指令、PR 模板；论文写作参考 PDF（15 篇 Spring Boot+Vue 论坛论文）与毕业设计报告 DOCX 模板",
+      "nodeIds": [
+        "document:.claude/CLAUDE.md",
+        "document:.claude/PROJECT_ARCHITECTURE.md",
+        "document:.claude/PRPs/reviews/pr-12-review.md",
+        "document:.claude/skills/thesis-reviewer/PROJECT_ARCHITECTURE.md",
+        "document:.claude/skills/thesis-reviewer/SKILL.md",
+        "schema:data:.claude/skills/thesis-writer/references/基于Java+Web技术的校园论坛网页的设计与实现.pdf",
+        "schema:data:.claude/skills/thesis-writer/references/基于Java的Web软件程序框架分层设计探讨_黄丽萍.pdf",
+        "schema:data:.claude/skills/thesis-writer/references/基于Spring_Boot的师范生技能训练经验分享系统设计与实现_伟力苏.pdf",
+        "schema:data:.claude/skills/thesis-writer/references/基于Spring_Boot和Vue技术的访客管理系统设计与实现_丁福江.pdf",
+        "schema:data:.claude/skills/thesis-writer/references/基于Spring_Boot与Vue框架的叫号系统的设计与实现_金明俐.pdf",
+        "schema:data:.claude/skills/thesis-writer/references/基于SpringBoot+Vue的在线考试系统设计与实现.pdf",
+        "schema:data:.claude/skills/thesis-writer/references/基于SpringBoot和Vue的多功能时间管理系统的设计与实现_朱启方.pdf",
+        "schema:data:.claude/skills/thesis-writer/references/基于SpringBoot和Vue框架的高校统战工作服务信息管理系统的设计与实现.pdf",
+        "schema:data:.claude/skills/thesis-writer/references/面向高招会行程规划的区域招生组管理系统_李硕.pdf",
+        "schema:data:.claude/skills/thesis-writer/references/铁路事故故障文本大数据分析关键技术研究及应用_杨连报.pdf",
+        "schema:data:.claude/skills/thesis-writer/references/新型分布式搜索引擎在财务管理数字化中的应用实践_周正.pdf",
+        "schema:data:.claude/skills/thesis-writer/references/信息数字化社区服务管理系统的设计与实现.pdf",
+        "schema:data:.claude/skills/thesis-writer/references/智慧校园学习交流与交易网站设计与实现.pdf",
+        "schema:data:.claude/skills/thesis-writer/references/Attention-Based_Character-Word_Hybrid_Neural_Networks_With_Semantic_and_Structural_Information_for_Identifying_of_Urgent_Posts_in_MOOC_Discussion_Forums.pdf",
+        "schema:data:.claude/skills/thesis-writer/references/Design and Implementation of a Microservice-Based Forum System with Vue.js Frontend.pdf",
+        "schema:data:.claude/skills/thesis-writer/templates/项目报告模版.docx",
+        "document:.github/copilot-instructions.md",
+        "document:.github/pull_request_template"
+      ]
+    },
+    {
+      "id": "layer:backend-config",
+      "name": "后端配置与安全层",
+      "description": "Spring Boot 应用入口、配置类（MyBatis-Plus/MinIO/CORS/Swagger）、多环境 YAML、Logback 日志、Git 忽略规则；Spring Security 配置、JWT 双 Token 认证过滤器、SecurityContext 上下文工具、安全属性绑定",
+      "nodeIds": [
+        "config:.gitignore",
+        "config:echo-server/src/main/resources/application.yaml",
+        "config:echo-server/src/main/resources/application-dev.yaml",
+        "config:echo-server/src/main/resources/application-prod.yaml",
+        "config:echo-server/src/main/resources/logback.xml",
+        "file:echo-server/src/main/java/com/echospace/EchoServerApplication.java",
+        "file:echo-server/src/main/java/com/echospace/security/JwtAuthFilter.java",
+        "file:echo-server/src/main/java/com/echospace/security/SecurityConfig.java",
+        "file:echo-server/src/main/java/com/echospace/security/JwtUtil.java",
+        "file:echo-server/src/main/java/com/echospace/security/SecurityUtil.java",
+        "file:echo-server/src/main/java/com/echospace/security/UserPrincipal.java",
+        "file:echo-server/src/main/java/com/echospace/security/SecurityProperties.java",
+        "file:echo-server/src/main/java/com/echospace/config/MinioConfig.java",
+        "file:echo-server/src/main/java/com/echospace/config/MinioProperties.java",
+        "file:echo-server/src/main/java/com/echospace/config/CorsConfig.java",
+        "file:echo-server/src/main/java/com/echospace/config/SwaggerConfig.java",
+        "file:echo-server/src/main/java/com/echospace/config/MyBatisPlusConfig.java"
+      ]
+    },
+    {
+      "id": "layer:documentation",
+      "name": "文档",
+      "description": "项目文档与设计资料，包含 README、API 接口文档、数据库设计、需求分析、开发计划、功能流程、问题记录与路线图",
+      "nodeIds": [
+        "document:README.md",
+        "document:docs/Question.md",
+        "document:docs/02-api-documentation.md",
+        "document:docs/03-database-design.md",
+        "document:docs/04-development-plan.md",
+        "document:docs/05-feature-flows.md",
+        "document:docs/roadmap.md",
+        "document:docs/01-requirements-and-plan.md"
+      ]
+    },
+    {
+      "id": "layer:backend-data",
+      "name": "后端数据层",
+      "description": "MyBatis Mapper 接口与 XML 映射文件、实体类、Elasticsearch 文档映射、数据库初始化 DDL 与种子数据、Maven 构建配置",
+      "nodeIds": [
+        "config:echo-server/pom.xml",
+        "table:echo-server/src/main/resources/db/init.sql:user",
+        "table:echo-server/src/main/resources/db/init.sql:post",
+        "table:echo-server/src/main/resources/db/init.sql:comment",
+        "table:echo-server/src/main/resources/db/init.sql:user_like",
+        "table:echo-server/src/main/resources/db/init.sql:user_favorite",
+        "table:echo-server/src/main/resources/db/init.sql:user_follow",
+        "table:echo-server/src/main/resources/db/init.sql:init",
+        "file:data:echo-server/src/main/resources/db/data.sql",
+        "file:echo-server/src/main/java/com/echospace/entity/User.java",
+        "file:echo-server/src/main/java/com/echospace/entity/Post.java",
+        "file:echo-server/src/main/java/com/echospace/entity/Comment.java",
+        "file:echo-server/src/main/java/com/echospace/mapper/AuthMapper.java",
+        "file:echo-server/src/main/java/com/echospace/mapper/PostMapper.java",
+        "file:echo-server/src/main/java/com/echospace/mapper/CommentMapper.java",
+        "file:echo-server/src/main/java/com/echospace/mapper/UserMapper.java",
+        "file:echo-server/src/main/java/com/echospace/document/PostDocument.java",
+        "file:echo-server/src/test/java/com/echospace/EchoServerApplicationTests.java",
+        "file:echo-server/src/main/java/com/echospace/entity/UserLike.java",
+        "file:echo-server/src/main/java/com/echospace/entity/UserFavorite.java",
+        "file:echo-server/src/main/java/com/echospace/entity/UserFollow.java",
+        "file:echo-server/src/main/resources/mapper/CommentMapper.xml",
+        "file:echo-server/src/main/resources/mapper/PostMapper.xml"
+      ]
+    },
+    {
+      "id": "layer:frontend-state",
+      "name": "前端状态与基础设施层",
+      "description": "Pinia 用户状态 Store（Token 持久化与并发刷新去重）、Axios 拦截器与 API 函数模块（auth/posts/comments/users）、TypeScript 类型定义、泛型无限滚动 Composable、时间/数字格式化工具、Vite/TypeScript 构建配置、Vue 应用入口与根组件",
+      "nodeIds": [
+        "config:echo-web/package.json",
+        "config:echo-web/vite.config.ts",
+        "config:echo-web/tsconfig.json",
+        "file:echo-web/src/main.ts",
+        "file:echo-web/src/stores/userStore.ts",
+        "file:echo-web/src/utils/result.ts",
+        "file:echo-web/src/composables/useInfiniteList.ts",
+        "file:echo-web/src/api/auth.ts",
+        "file:echo-web/src/api/posts.ts",
+        "file:echo-web/src/api/comments.ts",
+        "file:echo-web/src/api/users.ts",
+        "file:echo-web/src/api/modules/index.ts",
+        "file:echo-web/src/App.vue",
+        "file:echo-web/src/utils/time.ts",
+        "file:echo-web/src/utils/number.ts",
+        "file:echo-web/src/utils/header.ts"
+      ]
+    },
+    {
+      "id": "layer:backend-api",
+      "name": "后端 API 层",
+      "description": "REST 控制器端点，负责 HTTP 请求路由分发、参数校验和响应封装，调用 Service 层完成业务处理",
+      "nodeIds": [
+        "endpoint:echo-server/src/main/java/com/echospace/controller/AuthController.java",
+        "endpoint:echo-server/src/main/java/com/echospace/controller/PostController.java",
+        "endpoint:echo-server/src/main/java/com/echospace/controller/CommentController.java",
+        "endpoint:echo-server/src/main/java/com/echospace/controller/UserController.java",
+        "endpoint:echo-server/src/main/java/com/echospace/controller/UserPublicController.java",
+        "endpoint:echo-server/src/main/java/com/echospace/controller/FileController.java",
+        "endpoint:echo-server/src/main/java/com/echospace/controller/AdminController.java"
+      ]
+    },
+    {
+      "id": "layer:backend-service",
+      "name": "后端服务层",
+      "description": "核心业务逻辑实现，包含事务管理、Jsoup HTML 清洗、ES 同步写入、游标分页、乐观更新 Toggle 等复杂业务编排",
+      "nodeIds": [
+        "file:echo-server/src/main/java/com/echospace/service/impl/AuthServiceImpl.java",
+        "file:echo-server/src/main/java/com/echospace/service/impl/PostServiceImpl.java",
+        "file:echo-server/src/main/java/com/echospace/service/impl/CommentServiceImpl.java",
+        "file:echo-server/src/main/java/com/echospace/service/impl/UserServiceImpl.java",
+        "file:echo-server/src/main/java/com/echospace/service/impl/SearchServiceImpl.java",
+        "file:echo-server/src/main/java/com/echospace/service/impl/MinioFileServiceImpl.java"
+      ]
+    },
+    {
+      "id": "layer:frontend-views",
+      "name": "前端页面层",
+      "description": "页面级 Vue 组件（首页/帖子详情/发布编辑/搜索/用户主页/登录注册/设置页）与 Vue Router 路由配置及导航守卫",
+      "nodeIds": [
+        "file:echo-web/src/router/index.ts",
+        "file:echo-web/src/views/LoginPage.vue",
+        "file:echo-web/src/views/RegisterPage.vue",
+        "file:echo-web/src/views/HomePage.vue",
+        "file:echo-web/src/views/PostCreate.vue",
+        "file:echo-web/src/views/PostDetail.vue",
+        "file:echo-web/src/views/SearchPage.vue",
+        "file:echo-web/src/views/UserProfile.vue",
+        "file:echo-web/src/views/SettingsPage.vue",
+        "file:echo-web/src/views/ProfileSettingsPage.vue",
+        "file:echo-web/src/views/ChangePasswordPage.vue",
+        "file:echo-web/src/views/ForgotPasswordPage.vue",
+        "file:echo-web/src/views/ResetPasswordPage..vue"
+      ]
+    },
+    {
+      "id": "layer:frontend-components",
+      "name": "前端组件层",
+      "description": "可复用的 UI 组件：帖子卡片 PostCard（自闭环乐观更新）、评论线程 CommentThread、评论卡片/创建器、用户卡片、主布局 LayoutPage",
+      "nodeIds": [
+        "file:echo-web/src/components/LayoutPage.vue",
+        "file:echo-web/src/components/PostCard.vue",
+        "file:echo-web/src/components/CommentThread.vue",
+        "file:echo-web/src/components/CommentCreate.vue",
+        "file:echo-web/src/components/CommentCard.vue",
+        "file:echo-web/src/components/UserCard.vue"
+      ]
+    },
+    {
+      "id": "layer:backend-infrastructure",
+      "name": "后端基础设施",
+      "description": "统一响应包装 Result、全局异常处理器、自定义业务异常、DTO 请求体与 VO 响应体定义、敏感数据脱敏工具 MaskUtil",
+      "nodeIds": [
+        "file:echo-server/src/main/java/com/echospace/common/GlobalExceptionHandler.java",
+        "file:echo-server/src/main/java/com/echospace/common/Result.java",
+        "file:echo-server/src/main/java/com/echospace/common/BusinessException.java",
+        "file:echo-server/src/main/java/com/echospace/util/MaskUtil.java",
+        "file:echo-server/src/main/java/com/echospace/dto/LoginDTO.java",
+        "file:echo-server/src/main/java/com/echospace/vo/LoginVO.java",
+        "file:echo-server/src/main/java/com/echospace/dto/CreatePostDTO.java",
+        "file:echo-server/src/main/java/com/echospace/vo/PostItemVO.java",
+        "file:echo-server/src/main/java/com/echospace/vo/LikePostVO.java",
+        "file:echo-server/src/main/java/com/echospace/dto/CreateCommentDTO.java",
+        "file:echo-server/src/main/java/com/echospace/vo/CommentVO.java",
+        "file:echo-server/src/main/java/com/echospace/vo/UserProfileVO.java",
+        "file:echo-server/src/main/java/com/echospace/vo/FollowItemVO.java"
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "项目总览与快速入门",
+      "description": "从 README.md 开始，了解 EchoSpace 的项目定位——一个基于 Vue 3 + Spring Boot 的现代社区论坛系统。该文档涵盖了功能特性（用户系统、帖子发布、评论互动、全文搜索、关注机制、XSS 防护）、完整的技术栈说明（Vue 3/Element Plus/TipTap 前端 + Spring Boot 3/MyBatis-Plus/Elasticsearch/MinIO 后端）、项目结构树、环境要求与快速启动指南，是理解整体架构的最佳起点。",
+      "nodeIds": [
+        "document:README.md",
+        "document:.claude/CLAUDE.md"
+      ]
+    },
+    {
+      "order": 2,
+      "title": "前端应用启动与状态管理",
+      "description": "Vue 应用的入口文件 main.ts 负责整个前端应用的初始化流程：创建 App 实例，依次安装 Pinia 状态管理（启用 persistedstate 持久化）、Vue Router 路由、Element Plus 组件库，最后挂载到 #app 根节点。在这一步中，userStore（被 11 个文件依赖，是整个前端依赖最广的模块）管理着 token、refreshToken 和 userInfo 三大核心状态，并通过 refreshingPromise 去重锁防止并发 Token 刷新。所有 API 模块（auth/posts/comments/users）都依赖的 Axios 拦截器层 result.ts，在请求拦截器中自动注入 Token，在响应拦截器中处理 401 异常并自动刷新 Token，构成了前端的安全通信底座。",
+      "nodeIds": [
+        "file:echo-web/src/main.ts",
+        "file:echo-web/src/stores/userStore.ts",
+        "file:echo-web/src/utils/result.ts"
+      ],
+      "languageLesson": "Pinia 的 persistedstate 插件将 store 状态自动同步到 localStorage，实现页面刷新后登录态不丢失。refreshingPromise 去重锁模式（用一个 Promise 变量保存正在进行的刷新请求，后续并发的 401 响应直接 await 同一个 Promise，避免多次刷新）是处理并发 Token 刷新的标准 Vue 前端模式。"
+    },
+    {
+      "order": 3,
+      "title": "前端路由与布局骨架",
+      "description": "Vue Router 定义了整个前端的页面导航结构：guest 路由（login/register 无需登录）、requiresAuth 路由（首页/帖子/搜索/用户主页/设置等需要登录），通过 beforeEach 导航守卫（to.matched.some 模式）统一处理鉴权拦截与 Token 刷新逻辑。所有需认证的页面都包裹在 LayoutPage 布局组件中，该组件提供了统一的界面骨架——固定顶栏（Logo + 搜索框 + 发布按钮 + 用户下拉菜单）、可折叠侧边栏导航以及 RouterView 过渡动画出口，确保了一致的用户交互体验。",
+      "nodeIds": [
+        "file:echo-web/src/router/index.ts",
+        "file:echo-web/src/components/LayoutPage.vue",
+        "file:echo-web/src/App.vue"
+      ],
+      "languageLesson": "Vue Router 的 to.matched.some(record => record.meta.requiresAuth) 模式遍历当前路由及其所有父路由的匹配记录，判断是否需要认证。相比直接检查 to.meta.requiresAuth，这个模式能正确处理嵌套路由场景，确保子路由也继承父路由的鉴权要求。"
+    },
+    {
+      "order": 4,
+      "title": "后端启动与安全认证体系",
+      "description": "EchoServerApplication 是 Spring Boot 应用的启动入口。项目采用 Spring Security + JWT 双 Token 认证体系：SecurityConfig 配置了白名单路径、无状态 Session 策略、CORS 支持，并注册了 JwtAuthFilter 过滤器链。JwtAuthFilter 是整个安全体系的核心过滤器——在每个请求到达 Controller 之前拦截并解析 JWT Token，通过 type 校验防止 Refresh Token 被用作 Access Token，对白名单路径（shouldNotFilter）放行，认证失败时返回统一的 401 JSON 响应。JwtUtil 工具类负责 Token 的生成（access + refresh 双 Token）与解析，SecurityUtil 从 SecurityContextHolder 中提取当前用户的 UserPrincipal（Java Record 类型封装 userId 和 username）。",
+      "nodeIds": [
+        "file:echo-server/src/main/java/com/echospace/EchoServerApplication.java",
+        "file:echo-server/src/main/java/com/echospace/security/SecurityConfig.java",
+        "file:echo-server/src/main/java/com/echospace/security/JwtAuthFilter.java",
+        "file:echo-server/src/main/java/com/echospace/security/JwtUtil.java"
+      ],
+      "languageLesson": "Spring Security 的 OncePerRequestFilter 保证每个请求只经过一次过滤器的 doFilterInternal 方法，而 shouldNotFilter 机制允许指定不需要 JWT 认证的 URI 列表（如 /auth/login、/auth/register）。JWT 双 Token 模式中，Access Token 短期有效（通常 15-30 分钟）用于日常 API 调用，Refresh Token 长期有效（通常 7-30 天）仅用于获取新的 Access Token，降低了 Access Token 泄露的风险窗口。"
+    },
+    {
+      "order": 5,
+      "title": "数据库架构设计",
+      "description": "项目的核心数据模型由 6 张 MySQL 表和对应的 MyBatis 实体类组成。user 表存储用户的基本账号信息，post 表记录帖子的标题、HTML 内容、封面和各类计数（点赞/收藏/评论/浏览），并采用 @Version 乐观锁防止并发更新冲突。评论系统通过 comment 表实现，采用 parentId（0 表示一级评论）和 replyToUid 字段支持嵌套回复和 @提及功能。三张关系表——user_like（统一处理帖子/评论/回复的点赞，通过 targetType 区分 1帖/2评/3回）、user_favorite（收藏关系）、user_follow（关注关系）——构成了平台的社交互动基础。所有表均使用逻辑删除（@TableLogic）保证数据的可恢复性。",
+      "nodeIds": [
+        "table:echo-server/src/main/resources/db/init.sql:user",
+        "table:echo-server/src/main/resources/db/init.sql:post",
+        "table:echo-server/src/main/resources/db/init.sql:comment",
+        "table:echo-server/src/main/resources/db/init.sql:user_like",
+        "table:echo-server/src/main/resources/db/init.sql:user_follow"
+      ],
+      "languageLesson": "MyBatis-Plus 的 @Version 乐观锁通过在 UPDATE 语句中附带 version 条件（WHERE version = ?），当 version 与数据库不一致时更新失败，从而防止并发覆盖问题。targetType 字段的设计（1帖/2评/3回）是一种常见的多态关联模式——用一张 user_like 表统一管理对不同类型内容的点赞关系，避免了为每个内容类型单独建表。"
+    },
+    {
+      "order": 6,
+      "title": "后端 API 层与请求响应规范",
+      "description": "后端 API 层由 7 个 REST Controller 组成，按职责划分为：AuthController（认证：登录/注册/刷新 Token）、PostController（帖子 CRUD + 游标分页列表 + 点赞/收藏 Toggle）、CommentController（评论发表/嵌套列表/点赞/软删除）、UserController（/me 路径下的个人资料/设置/密码管理）、UserPublicController（用户公开信息查询与关注关系）、FileController（头像和图片上传/删除）、AdminController（ES 全量同步管理工具）。所有 Controller 通过构造器注入对应的 Service 实现类，请求体使用 DTO（LoginDTO、CreatePostDTO、CreateCommentDTO 等）进行参数校验，响应体统一包装在 Result<T> 泛型类中（code + msg + data），通过 VO（LoginVO、PostItemVO、CommentVO 等）定义返回数据结构。",
+      "nodeIds": [
+        "endpoint:echo-server/src/main/java/com/echospace/controller/AuthController.java",
+        "endpoint:echo-server/src/main/java/com/echospace/controller/PostController.java",
+        "endpoint:echo-server/src/main/java/com/echospace/controller/CommentController.java",
+        "file:echo-server/src/main/java/com/echospace/common/Result.java",
+        "file:echo-server/src/main/java/com/echospace/common/GlobalExceptionHandler.java"
+      ],
+      "languageLesson": "Spring Boot 中单构造器的 Bean 会自动触发构造器注入，无需显式添加 @Autowired 注解。Result<T> 泛型响应包装模式是前后端分离项目的标准实践——前端 Axios 拦截器（Step 2 中的 result.ts）根据 code 字段判断业务成败，与 HTTP 状态码解耦。GlobalExceptionHandler 使用 @RestControllerAdvice 统一拦截各类异常（BusinessException→400、DuplicateKeyException→409、兜底 Exception→500），确保每个异常都产生一致的 Result 响应格式。"
+    },
+    {
+      "order": 7,
+      "title": "核心业务逻辑：帖子与评论服务",
+      "description": "PostServiceImpl 和 CommentServiceImpl 是后端最核心的两个业务实现。PostServiceImpl 实现了完整的帖子生命周期管理：发布时使用 Jsoup 对 HTML 内容进行 XSS 清洗（仅允许安全标签和 http/https/mailto/tel 协议的链接），采用游标分页（Keyset Pagination）实现高效的无限滚动列表，发布/编辑时将帖子异步同步到 Elasticsearch（try-catch 兜底，ES 写入失败不影响 MySQL 主流程），点赞和收藏采用 Toggle 模式（查已有记录 → 存在则删除且计数-1，不存在则插入且计数+1）并结合 @Transactional 和 catch DuplicateKeyException 防御并发重复操作。CommentServiceImpl 同样采用游标分页处理评论列表，实现了级联软删除（删除父评论时递归标记子评论为已删除）和二级回复的分页查询。",
+      "nodeIds": [
+        "file:echo-server/src/main/java/com/echospace/service/impl/PostServiceImpl.java",
+        "file:echo-server/src/main/java/com/echospace/service/impl/CommentServiceImpl.java",
+        "file:echo-server/src/main/java/com/echospace/mapper/PostMapper.java"
+      ],
+      "languageLesson": "游标分页（Keyset Pagination）相比传统的 OFFSET 分页，在数据量大的场景下性能更好——它基于上一页最后一条记录的排序字段（如 {timestamp}_{id}）作为游标，直接 WHERE 过滤而非跳过 N 行，避免了 OFFSET 大值时的全表扫描。Toggle 模式中捕获 DuplicateKeyException 是处理并发重复点击的关键——当两个请求几乎同时插入同一条记录时，第一个成功、第二个触发唯一约束冲突，catch 异常后转为更新/删除操作，保证操作的幂等性。"
+    },
+    {
+      "order": 8,
+      "title": "帖子卡片与首页内容流",
+      "description": "PostCard 是前端最重要的可复用组件，实现了「自闭环」交互模式——点赞、收藏操作在组件内部直接调用 API、执行乐观更新（操作前保存 snapshot → 本地立即修改 UI → API 成功后同步服务端返回值 → 失败则回滚 snapshot），父组件无需维护 likedPosts/collectedPosts 等状态集合。HomePage 首页通过排序工具栏（最新/最热）切换不同的数据源模式，使用 useInfiniteList 泛型 Composable（支持 cursor 游标和 page 页码双模式）驱动 PostCard 列表的无限滚动加载，结合 v-infinite-scroll 指令实现了流畅的内容浏览体验。PostCreate 页面使用 TipTap 富文本编辑器（集成 StarterKit + Image + Link 扩展），支持图片的粘贴/拖拽/点击三种上传方式，编辑模式下预填充已有内容。",
+      "nodeIds": [
+        "file:echo-web/src/components/PostCard.vue",
+        "file:echo-web/src/views/HomePage.vue",
+        "file:echo-web/src/views/PostCreate.vue",
+        "file:echo-web/src/composables/useInfiniteList.ts"
+      ],
+      "languageLesson": "乐观更新模式的核心是三步：snapshot（保存旧值）→ optimistic（本地立即更新 UI）→ settle（API 返回后，成功则同步服务端值，失败则回滚 snapshot）。这种模式让用户感觉操作瞬间完成，但需要在失败回滚时做好 UI 恢复。useInfiniteList 采用泛型设计 useInfiniteList<T>，通过 fetchFn 注入具体的数据获取逻辑，实现了游标和页码两种分页模式的统一 Composable 抽象——游标模式传 cursor 参数、页码模式传 page 参数，模板层无需关心底层分页机制。"
+    },
+    {
+      "order": 9,
+      "title": "帖子详情与评论互动",
+      "description": "PostDetail 页面实现了完整的帖子内容消费体验：采用三态处理（loading 加载态 / error 错误态 / content 内容态），通过 DOMPurify 对后端返回的 HTML 内容进行客户端二次消毒，确保 XSS 安全。页面底部集成了 CommentThread 评论线程组件——它管理一级评论列表和每个评论下的嵌套回复，通过 replyLikes 本地覆盖 Map（Record<number, {liked, likeCount}>）精确追踪每条回复的点赞状态，首次 toggle 前从 reply prop 初始化基线，避免了从 false/0 起步导致的计数错乱问题。CommentCreate 组件提供文本输入框（支持 5000 字符限制和回复模式前缀），CommentCard 展示单条评论的头像/昵称/时间/@回复目标/内容/操作按钮。useInfiniteList 同时被 PostDetail 页面用于评论列表的无限滚动分页加载。",
+      "nodeIds": [
+        "file:echo-web/src/views/PostDetail.vue",
+        "file:echo-web/src/components/CommentThread.vue",
+        "file:echo-web/src/components/CommentCreate.vue",
+        "file:echo-web/src/components/CommentCard.vue"
+      ],
+      "languageLesson": "DOMPurify 消毒库在客户端对 HTML 字符串进行白名单过滤，仅允许安全标签和属性通过，是防范 XSS 的最后一层防线。replyLikes 本地覆盖 Map 模式处理了一个常见的边界条件问题——当用户首次对某条回复点赞时，后端返回的 reply prop 中可能不包含该回复的点赞状态，如果用 false/0 作为默认值会导致 UI 计数从 0 开始显示，因此必须先检查 reply prop 中是否已有初始值，有就用真实值，没有才用默认值。"
+    },
+    {
+      "order": 10,
+      "title": "项目文档与架构参考",
+      "description": "除了代码本身，EchoSpace 提供了丰富的项目文档支撑团队协作和新成员上手。PROJECT_ARCHITECTURE.md 是项目架构的深度参考文档，记录了完整的分层架构设计（10 个逻辑层级）、6 个 Sprint 的开发演进历史、数据库实体关系和页面清单。API 接口文档（docs/02-api-documentation.md）详细列出所有 REST 端点的请求参数和响应格式，数据库设计文档（docs/03-database-design.md）包含 ER 图和表结构说明，开发问题记录（docs/Question.md）积累了 37 个实际遇到的技术问题及其解决方案，开发计划（docs/04-development-plan.md）和路线图（docs/roadmap.md）展示了项目的迭代规划和未来方向。这些文档与代码中的实际实现（如 CLAUDE.md 中约定的构造器注入、Toggle 模式、游标分页等最佳实践）相辅相成，构成了完整的项目知识体系。",
+      "nodeIds": [
+        "document:.claude/PROJECT_ARCHITECTURE.md",
+        "document:docs/02-api-documentation.md",
+        "document:docs/03-database-design.md",
+        "document:docs/Question.md",
+        "document:docs/roadmap.md"
+      ]
+    }
+  ]
+}

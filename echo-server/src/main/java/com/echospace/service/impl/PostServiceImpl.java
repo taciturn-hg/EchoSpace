@@ -64,8 +64,7 @@ public class PostServiceImpl implements PostService {
 
     /**
      * 帖子富文本 HTML 清洗白名单：
-     * 允许 TipTap StarterKit + Image + Link 生成的标签和属性，
-     * img/src 和 a/href 仅允许 http/https/mailto/tel 协议。
+     * 允许 TipTap StarterKit + Image + Link 生成的标签和属性。
      */
     private static final Safelist POST_SAFELIST;
 
@@ -80,7 +79,7 @@ public class PostServiceImpl implements PostService {
                 .addAttributes("a", "href", "rel")
                 .addAttributes("pre", "class")
                 .addAttributes("code", "class")
-                .addProtocols("img", "src", "http", "https")
+                .addProtocols("img", "src", "http", "https", "data")
                 .addProtocols("a", "href", "http", "https", "mailto", "tel");
     }
 
@@ -107,6 +106,8 @@ public class PostServiceImpl implements PostService {
         Long userId = requireCurrentUserId();
 
         String safeHtml = sanitizeHtml(dto.getContentHtml());
+        // extractText 在 sanitizeHtml 之后调用：虽然 safeHtml 已清洗，但 doc.text() 会解码实体，
+        // extractText 内会对解码后的字符串再做一次清洗/降权处理，避免实体“复活”成可渲染标签
         String contentText = extractText(safeHtml);
         String coverImage = extractCoverImage(safeHtml);
 
@@ -381,18 +382,32 @@ public class PostServiceImpl implements PostService {
 
     /**
      * 使用 Jsoup + 白名单清洗富文本 HTML，移除危险标签和非法协议。
+     * <p>
+     * 先移除 script/style/noscript/iframe/object/embed 等危险标签
+     * 及其全部文本内容，再通过白名单清洗常规标签和属性。
+     * </p>
      * 调用方保证 html 非空。
      */
     private String sanitizeHtml(String html) {
-        return Jsoup.clean(html, POST_SAFELIST);
+        // 先移除危险标签及其文本内容（Jsoup.clean 默认保留被移除标签的文本）
+        Document doc = Jsoup.parse(html);
+        doc.select("script, style, noscript, iframe, object, embed").remove();
+        return Jsoup.clean(doc.body().html(), POST_SAFELIST);
     }
 
     /**
-     * 使用 Jsoup 从富文本 HTML 提取纯文本摘要
+     * 从 safeHtml 提取纯文本摘要。
+     * doc.text() 会解码 HTML 实体（&amp;lt; → &lt;），可能复活被前端转义过的危险标签。
+     * 因此解码后使用 Safelist.none() 再清洗，确保最终只保留纯文本（剥离任何“复活”的标签/属性）。
+     * 这里不使用 POST_SAFELIST，是为了避免合法标签（如 img/a）在摘要中被保留，
+     * 防止前端使用 v-html 渲染摘要时产生意外的 HTML 渲染/样式影响。
+     * 如果 decoded 本身不包含可解析的 HTML 标签（正常情况），Jsoup.clean 会原样返回文本。
      */
-    private String extractText(String html) {
-        Document doc = Jsoup.parse(html);
-        return doc.text();
+    private String extractText(String safeHtml) {
+        Document doc = Jsoup.parse(safeHtml);
+        String decoded = doc.text();
+        // 生成摘要建议仅保留纯文本，避免通过实体“复活”的标签在前端 v-html 中被渲染
+        return Jsoup.clean(decoded, Safelist.none());
     }
 
     /**
