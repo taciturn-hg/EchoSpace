@@ -78,11 +78,12 @@ public class GlobalExceptionHandler {
     }
 
     private String formatDataSize(DataSize size) {
+        if (size == null) return "未知";
         long bytes = size.toBytes();
-        if (bytes < 0) return "未知";
-        if (bytes % (1024 * 1024) == 0) return (bytes / 1024 / 1024) + "MB";
-        if (bytes % 1024 == 0) return (bytes / 1024) + "KB";
-        return DataSize.ofBytes(bytes).toMegabytes() + "MB";
+        if (bytes < 1024) return bytes + "B";
+        if (bytes < 1024L * 1024) return (bytes + 1024 - 1) / 1024 + "KB";
+        if (bytes < 1024L * 1024 * 1024) return (bytes + 1024L * 1024 - 1) / (1024L * 1024) + "MB";
+        return (bytes + 1024L * 1024 * 1024 - 1) / (1024L * 1024 * 1024) + "GB";
     }
 
     /**

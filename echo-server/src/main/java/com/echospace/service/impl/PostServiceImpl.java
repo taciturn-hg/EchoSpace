@@ -105,8 +105,8 @@ public class PostServiceImpl implements PostService {
         Long userId = requireCurrentUserId();
 
         String safeHtml = sanitizeHtml(dto.getContentHtml());
-        // extractText 在 sanitizeHtml 之后调用，传入的是已清洗 HTML，
-        // 不会保留任何危险标签或属性，doc.text() 提取纯文本是安全的
+        // extractText 在 sanitizeHtml 之后调用：虽然 safeHtml 已清洗，但 doc.text() 会解码实体，
+        // extractText 内会对解码后的字符串再做一次清洗/降权处理，避免实体“复活”成可渲染标签
         String contentText = extractText(safeHtml);
         String coverImage = extractCoverImage(safeHtml);
 
@@ -391,7 +391,7 @@ public class PostServiceImpl implements PostService {
         // 先移除危险标签及其文本内容（Jsoup.clean 默认保留被移除标签的文本）
         Document doc = Jsoup.parse(html);
         doc.select("script, style, noscript, iframe, object, embed").remove();
-        return Jsoup.clean(html, POST_SAFELIST);
+        return Jsoup.clean(doc.body().html(), POST_SAFELIST);
     }
 
     /**
@@ -405,8 +405,8 @@ public class PostServiceImpl implements PostService {
     private String extractText(String safeHtml) {
         Document doc = Jsoup.parse(safeHtml);
         String decoded = doc.text();
-        // POST_SAFELIST 清洗：有合法标签则保留并剥离危险属性，无标签则原样返回
-        return Jsoup.clean(decoded, POST_SAFELIST);
+        // 生成摘要建议仅保留纯文本，避免通过实体“复活”的标签在前端 v-html 中被渲染
+        return Jsoup.clean(decoded, Safelist.none());
     }
 
     /**
